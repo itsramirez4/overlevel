@@ -1,0 +1,125 @@
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
+import { BarChart3, ChevronRight } from 'lucide-react-native';
+import { api } from '../../../services/api';
+import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
+import { Header } from '../../../components/common/Header';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { Card } from '../../../components/ui/Card';
+import { VolumeChart } from '../../../components/analytics/VolumeChart';
+
+export default function AnalyticsScreen() {
+  const router = useRouter();
+
+  const { data: exercises, isLoading } = useQuery({
+    queryKey: ['exercises'],
+    queryFn: () => api.get('/exercises').then((r) => r.data),
+  });
+
+  const { data: volumeHistory } = useQuery({
+    queryKey: ['analytics', 'volume-history'],
+    queryFn: () => api.get('/analytics/volume-history?weeks=8').then((r) => r.data),
+  });
+
+  const chartData = (volumeHistory || []).map((w: any) => ({
+    label: new Date(w.week_start).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+    volume: Math.round(w.total_volume),
+  }));
+
+  const hasVolume = chartData.some((d: any) => d.volume > 0);
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.content}>
+        <Header title="Analíticas" subtitle="Progreso por ejercicio" />
+
+        <FlatList
+          data={exercises || []}
+          keyExtractor={(item: any) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListHeaderComponent={
+            hasVolume ? (
+              <Card style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Volumen semanal</Text>
+                <VolumeChart data={chartData} />
+              </Card>
+            ) : null
+          }
+          ListEmptyComponent={
+            isLoading ? null : (
+              <EmptyState
+                icon={BarChart3}
+                title="Sin ejercicios todavía"
+                message="Registra sets para ver tu progreso aquí."
+              />
+            )
+          }
+          renderItem={({ item }: any) => (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/analytics/exercise/${item.id}`)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconBadge}>
+                <BarChart3 size={18} color={colors.accent.fire} strokeWidth={2} />
+              </View>
+              <Text style={styles.cardName}>{item.name}</Text>
+              <ChevronRight size={18} color={colors.text.muted} />
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.bg.primary,
+  },
+  content: {
+    flex: 1,
+    padding: spacing.lg,
+  },
+  listContent: {
+    flexGrow: 1,
+    paddingBottom: spacing.xxl,
+  },
+  chartCard: {
+    marginBottom: spacing.lg,
+  },
+  chartTitle: {
+    ...typography.h3,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bg.secondary,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    marginBottom: spacing.sm,
+    ...shadow.card,
+  },
+  iconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    backgroundColor: colors.bg.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  cardName: {
+    ...typography.body,
+    color: colors.text.primary,
+    fontWeight: '700',
+    flex: 1,
+  },
+});

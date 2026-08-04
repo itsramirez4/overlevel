@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+*.log
+
+# Expo
+.expo/
+.expo-shared/
+
+# macOS / editors / Windows
+.DS_Store
+Thumbs.db
+.vscode/

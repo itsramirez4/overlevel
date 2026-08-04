@@ -1,0 +1,183 @@
+import { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors, spacing, typography } from '../../utils/theme';
+import { api } from '../../services/api';
+import { workoutStore } from '../../stores/workoutStore';
+import { scheduleRestTimerNotification } from '../../services/notifications';
+import { Input } from '../ui/Input';
+import { Button } from '../ui/Button';
+
+export interface SetLoggerProps {
+  workoutId: string;
+  exercise: any;
+  setNumber: number;
+  onSetLogged: () => void;
+  previousSet?: any;
+}
+
+export const SetLogger = ({
+  workoutId,
+  exercise,
+  setNumber,
+  onSetLogged,
+  previousSet,
+}: SetLoggerProps) => {
+  const [reps, setReps] = useState(previousSet?.reps?.toString() || '');
+  const [weight, setWeight] = useState(previousSet?.weight?.toString() || '');
+  const [rpe, setRpe] = useState(previousSet?.rpe?.toString() || '');
+  const [rest, setRest] = useState(previousSet?.rest_seconds?.toString() || '90');
+  const [tempo, setTempo] = useState(previousSet?.tempo || '');
+  const [formNotes, setFormNotes] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    if (!reps || !weight) {
+      setError('Reps y peso son obligatorios');
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+
+    try {
+      await api.post('/sets', {
+        workout_id: workoutId,
+        exercise_id: exercise.id,
+        set_number: setNumber,
+        reps: parseInt(reps),
+        weight: parseFloat(weight),
+        rpe: rpe ? parseInt(rpe) : undefined,
+        rest_seconds: rest ? parseInt(rest) : undefined,
+        tempo: tempo || undefined,
+        form_notes: formNotes || undefined,
+      });
+
+      setFormNotes('');
+
+      const restSeconds = rest ? parseInt(rest) : 0;
+      if (restSeconds > 0) {
+        workoutStore.getState().startRest(restSeconds);
+        scheduleRestTimerNotification(restSeconds).catch(() => {});
+      }
+
+      onSetLogged();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'No se pudo registrar la serie');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View>
+      <View style={styles.row}>
+        <View style={styles.setBadge}>
+          <Text style={styles.setBadgeText}>{setNumber}</Text>
+        </View>
+        <View style={styles.half}>
+          <Input
+            placeholder="Kg"
+            value={weight}
+            onChangeText={setWeight}
+            keyboardType="decimal-pad"
+          />
+        </View>
+        <View style={styles.half}>
+          <Input
+            placeholder="Reps"
+            value={reps}
+            onChangeText={setReps}
+            keyboardType="number-pad"
+          />
+        </View>
+      </View>
+
+      <TouchableOpacity onPress={() => setShowAdvanced((v) => !v)} style={styles.advancedToggle}>
+        <Text style={styles.advancedToggleText}>
+          {showAdvanced ? 'Ocultar detalles' : 'RPE, descanso, tempo…'}
+        </Text>
+      </TouchableOpacity>
+
+      {showAdvanced && (
+        <>
+          <View style={styles.row}>
+            <View style={styles.third}>
+              <Input label="RPE" placeholder="8" value={rpe} onChangeText={setRpe} keyboardType="number-pad" />
+            </View>
+            <View style={styles.third}>
+              <Input
+                label="Descanso (s)"
+                placeholder="180"
+                value={rest}
+                onChangeText={setRest}
+                keyboardType="number-pad"
+              />
+            </View>
+            <View style={styles.third}>
+              <Input label="Tempo" placeholder="2-1-3" value={tempo} onChangeText={setTempo} />
+            </View>
+          </View>
+
+          <Input
+            label="Notas de forma (opcional)"
+            placeholder="Cómo se sintió la serie…"
+            value={formNotes}
+            onChangeText={setFormNotes}
+            multiline
+            style={styles.notesInput}
+          />
+        </>
+      )}
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <Button label={loading ? 'Guardando…' : 'REGISTRAR SERIE'} loading={loading} onPress={handleSubmit} />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  setBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.bg.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  setBadgeText: {
+    ...typography.small,
+    color: colors.accent.fire,
+    fontWeight: '800',
+  },
+  half: {
+    flex: 1,
+  },
+  third: {
+    flex: 1,
+  },
+  advancedToggle: {
+    marginBottom: spacing.sm,
+  },
+  advancedToggleText: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+  },
+  notesInput: {
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
+  error: {
+    ...typography.small,
+    color: colors.semantic.error,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+});

@@ -1,0 +1,148 @@
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
+import { Dumbbell, Plus } from 'lucide-react-native';
+import { api } from '../../../services/api';
+import { colors, radius, spacing, typography } from '../../../utils/theme';
+import { useWorkout } from '../../../hooks/useWorkout';
+import { workoutStore } from '../../../stores/workoutStore';
+import { ExerciseLogSection } from '../../../components/workout/ExerciseLogSection';
+import { SessionTimer } from '../../../components/workout/SessionTimer';
+import { RestTimer } from '../../../components/workout/RestTimer';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { Button } from '../../../components/ui/Button';
+
+export default function WorkoutLogScreen() {
+  const router = useRouter();
+  const { currentWorkout, completeWorkout } = useWorkout();
+  const sessionExercises = workoutStore((state) => state.sessionExercises);
+  const removeSessionExercise = workoutStore((state) => state.removeSessionExercise);
+
+  const { data: sets, refetch } = useQuery({
+    queryKey: ['sets', currentWorkout?.id],
+    queryFn: () => api.get(`/sets/workout/${currentWorkout!.id}`).then((r) => r.data),
+    enabled: !!currentWorkout,
+  });
+
+  if (!currentWorkout) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.emptyContainer}>
+          <EmptyState
+            icon={Dumbbell}
+            title="No hay entrenamiento activo"
+            message="Empieza uno desde la pestaña Entrenamientos."
+          />
+          <Button
+            label="IR A ENTRENAMIENTOS"
+            variant="outline"
+            onPress={() => router.replace('/workouts')}
+            style={styles.emptyButton}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const handleComplete = async () => {
+    await completeWorkout();
+    router.replace('/(tabs)/dashboard');
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Entrenamiento en curso</Text>
+          <SessionTimer startedAt={currentWorkout.started_at} />
+        </View>
+
+        <RestTimer />
+
+        {sessionExercises.length === 0 ? (
+          <EmptyState
+            icon={Dumbbell}
+            title="Sin ejercicios todavía"
+            message="Añade el primer ejercicio para empezar a registrar series."
+          />
+        ) : (
+          sessionExercises.map((exercise) => (
+            <ExerciseLogSection
+              key={exercise.id}
+              workoutId={currentWorkout.id}
+              exercise={exercise}
+              loggedSets={(sets || []).filter((s: any) => s.exercise_id === exercise.id)}
+              onSetLogged={() => refetch()}
+              onRemove={() => removeSessionExercise(exercise.id)}
+            />
+          ))
+        )}
+
+        <TouchableOpacity
+          style={styles.addExerciseButton}
+          onPress={() => router.push('/workouts/add-exercise')}
+          activeOpacity={0.7}
+        >
+          <Plus size={18} color={colors.accent.fire} strokeWidth={2.4} />
+          <Text style={styles.addExerciseText}>Añadir ejercicio</Text>
+        </TouchableOpacity>
+
+        <Button label="TERMINAR ENTRENAMIENTO" variant="outline" onPress={handleComplete} style={styles.endButton} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.bg.primary,
+  },
+  container: {
+    flex: 1,
+  },
+  content: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  emptyContainer: {
+    flex: 1,
+    padding: spacing.lg,
+    justifyContent: 'center',
+  },
+  emptyButton: {
+    marginTop: spacing.lg,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  title: {
+    ...typography.h2,
+    color: colors.text.primary,
+    flex: 1,
+  },
+  addExerciseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    borderWidth: 1.5,
+    borderColor: colors.accent.fire,
+    borderStyle: 'dashed',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  addExerciseText: {
+    ...typography.small,
+    color: colors.accent.fire,
+    fontWeight: '700',
+  },
+  endButton: {
+    marginBottom: spacing.lg,
+  },
+});
