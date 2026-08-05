@@ -40,9 +40,16 @@ export class ImportService {
   async importHevyCsv(userId: string, csvText: string): Promise<HevyImportResult> {
     let rows: Record<string, string>[];
     try {
-      rows = parse(csvText, { columns: true, skip_empty_lines: true, trim: true });
-    } catch {
-      throw new AppError('El archivo no es un CSV válido', 400);
+      rows = parse(csvText, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+        bom: true,
+        relax_column_count: true,
+        relax_quotes: true,
+      });
+    } catch (err: any) {
+      throw new AppError(`El archivo no es un CSV válido (${err?.message || 'error desconocido'})`, 400);
     }
 
     if (rows.length === 0) throw new AppError('El CSV no tiene filas', 400);
