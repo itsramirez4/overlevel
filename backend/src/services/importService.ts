@@ -3,15 +3,20 @@ import { supabaseAdmin } from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import { computeSetIsPr } from './setService';
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Hevy's date format uses the abbreviation for whatever language the app was
+// set to when the export was made — support English and Spanish.
+const MONTHS_EN = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-/** Hevy exports "10 Jun 2024, 08:15" alongside occasional ISO timestamps. */
+/** Hevy exports "10 Jun 2024, 08:15" (or "4 ago 2026, 17:18" in Spanish) alongside occasional ISO timestamps. */
 function parseHevyDate(raw: string): Date | null {
   if (!raw) return null;
 
   const match = raw.match(/^(\d{1,2}) (\w{3}) (\d{4}),\s*(\d{1,2}):(\d{2})/);
   if (match) {
-    const monthIndex = MONTHS.indexOf(match[2]);
+    const monthAbbr = match[2].toLowerCase();
+    const enIndex = MONTHS_EN.indexOf(monthAbbr);
+    const monthIndex = enIndex >= 0 ? enIndex : MONTHS_ES.indexOf(monthAbbr);
     if (monthIndex >= 0) {
       const d = new Date(Number(match[3]), monthIndex, Number(match[1]), Number(match[4]), Number(match[5]));
       if (!isNaN(d.getTime())) return d;
@@ -71,7 +76,7 @@ export class ImportService {
           user_id: userId,
           started_at: group.startedAt.toISOString(),
           completed_at: completedAt.toISOString(),
-          notes: first.description || undefined,
+          notes: first.description || first.title || undefined,
         })
         .select()
         .single();
@@ -143,6 +148,7 @@ export class ImportService {
           reps,
           weight,
           rpe: row.rpe ? Math.round(parseFloat(row.rpe)) : undefined,
+          form_notes: row.exercise_notes || undefined,
           is_warmup: isWarmup,
           is_pr: isPr,
           superset_group: row.superset_id ? `${workout.id}-${row.superset_id}` : undefined,
