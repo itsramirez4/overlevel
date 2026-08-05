@@ -9,6 +9,7 @@ import { colors, radius, shadow, spacing, typography } from '../../../utils/them
 import { workoutStore } from '../../../stores/workoutStore';
 import { ExerciseForm } from '../../../components/forms/ExerciseForm';
 import { EmptyState } from '../../../components/common/EmptyState';
+import { Input } from '../../../components/ui/Input';
 
 export default function WorkoutAddExerciseScreen() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function WorkoutAddExerciseScreen() {
   const [creatingNew, setCreatingNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   const { data: exercises, isLoading } = useQuery({
     queryKey: ['exercises'],
@@ -26,14 +28,21 @@ export default function WorkoutAddExerciseScreen() {
   });
 
   const alreadyAddedIds = new Set(sessionExercises.map((e) => e.id));
-  const availableExercises = (exercises || []).filter((e: any) => !alreadyAddedIds.has(e.id));
+  const availableExercises = (exercises || [])
+    .filter((e: any) => !alreadyAddedIds.has(e.id))
+    .filter((e: any) => e.name.toLowerCase().includes(search.trim().toLowerCase()));
 
   const handlePick = (exercise: any) => {
     addSessionExercise(exercise);
     router.back();
   };
 
-  const handleCreateExercise = async (data: { name: string; category: string; notes?: string }) => {
+  const handleCreateExercise = async (data: {
+    name: string;
+    category: string;
+    notes?: string;
+    muscle_groups?: string[];
+  }) => {
     setError('');
     setSaving(true);
     try {
@@ -72,22 +81,25 @@ export default function WorkoutAddExerciseScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity
-              style={styles.newButton}
-              onPress={() => setCreatingNew(true)}
-              activeOpacity={0.7}
-            >
-              <Plus size={18} color={colors.accent.fire} strokeWidth={2.4} />
-              <Text style={styles.newButtonText}>Crear ejercicio nuevo</Text>
-            </TouchableOpacity>
+            <>
+              <Input placeholder="Buscar ejercicio…" value={search} onChangeText={setSearch} />
+              <TouchableOpacity
+                style={styles.newButton}
+                onPress={() => setCreatingNew(true)}
+                activeOpacity={0.7}
+              >
+                <Plus size={18} color={colors.accent.fire} strokeWidth={2.4} />
+                <Text style={styles.newButtonText}>Crear ejercicio nuevo</Text>
+              </TouchableOpacity>
+            </>
           )
         }
         ListEmptyComponent={
           creatingNew || isLoading ? null : (
             <EmptyState
               icon={Dumbbell}
-              title="Sin ejercicios disponibles"
-              message="Crea uno nuevo para añadirlo a este entrenamiento."
+              title={search ? 'Sin resultados' : 'Sin ejercicios disponibles'}
+              message={search ? 'Prueba con otro nombre.' : 'Crea uno nuevo para añadirlo a este entrenamiento.'}
             />
           )
         }

@@ -21,6 +21,13 @@ export default function SettingsScreen() {
   const [bodyWeight, setBodyWeight] = useState('');
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
 
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
   const { data: user } = useQuery({
     queryKey: ['users', 'me'],
     queryFn: () => api.get('/users/me').then((r) => r.data),
@@ -58,6 +65,40 @@ export default function SettingsScreen() {
   const handleSelectUnit = (unit: WeightUnit) => {
     setWeightUnit(unit);
     setSaved(false);
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError('');
+    setPasswordSaved(false);
+
+    if (!currentPassword || !newPassword) {
+      setPasswordError('Rellena ambos campos');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('La nueva contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Las contraseñas nuevas no coinciden');
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      await api.put('/users/me/password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordSaved(true);
+    } catch (err: any) {
+      setPasswordError(err.response?.data?.message || 'No se pudo cambiar la contraseña');
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   return (
@@ -114,6 +155,47 @@ export default function SettingsScreen() {
             <VolumeChart data={chartData} unit={weightUnit} />
           </Card>
         )}
+
+        <Card style={styles.passwordCard}>
+          <Text style={styles.chartTitle}>Cambiar contraseña</Text>
+
+          <Input
+            label="Contraseña actual"
+            value={currentPassword}
+            onChangeText={(text) => {
+              setCurrentPassword(text);
+              setPasswordSaved(false);
+            }}
+            secureTextEntry
+          />
+          <Input
+            label="Nueva contraseña"
+            value={newPassword}
+            onChangeText={(text) => {
+              setNewPassword(text);
+              setPasswordSaved(false);
+            }}
+            secureTextEntry
+          />
+          <Input
+            label="Confirmar nueva contraseña"
+            value={confirmPassword}
+            onChangeText={(text) => {
+              setConfirmPassword(text);
+              setPasswordSaved(false);
+            }}
+            secureTextEntry
+          />
+
+          {passwordError ? <Text style={styles.passwordError}>{passwordError}</Text> : null}
+          {passwordSaved && <Text style={styles.savedText}>Contraseña actualizada ✓</Text>}
+
+          <Button
+            label={passwordSaving ? 'Guardando…' : 'CAMBIAR CONTRASEÑA'}
+            loading={passwordSaving}
+            onPress={handleChangePassword}
+          />
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -147,6 +229,15 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     marginTop: spacing.xl,
+  },
+  passwordCard: {
+    marginTop: spacing.xl,
+  },
+  passwordError: {
+    ...typography.small,
+    color: colors.semantic.error,
+    marginBottom: spacing.md,
+    textAlign: 'center',
   },
   chartTitle: {
     ...typography.h3,

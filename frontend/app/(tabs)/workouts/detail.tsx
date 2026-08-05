@@ -47,7 +47,9 @@ export default function WorkoutDetailScreen() {
   }
 
   const sets = workout.sets || [];
-  const totalVolume = sets.reduce((sum: number, s: any) => sum + s.weight * s.reps, 0);
+  const totalVolume = sets
+    .filter((s: any) => !s.is_warmup)
+    .reduce((sum: number, s: any) => sum + s.weight * s.reps, 0);
 
   const exerciseGroups = Object.values(
     sets.reduce((groups: Record<string, { name: string; sets: any[] }>, set: any) => {
@@ -107,11 +109,15 @@ export default function WorkoutDetailScreen() {
           <View style={styles.exerciseCard}>
             <Text style={styles.exerciseName}>{item.name}</Text>
             {item.sets.map((set: any) => (
-              <View key={set.id} style={[styles.setRow, set.is_pr && styles.setRowPr]}>
+              <View
+                key={set.id}
+                style={[styles.setRow, set.is_pr && styles.setRowPr, set.is_warmup && styles.setRowWarmup]}
+              >
                 <Text style={styles.setNumber}>{set.set_number}</Text>
                 <Text style={styles.setValue}>
                   {set.weight}kg × {set.reps} reps
                 </Text>
+                {set.is_warmup ? <Text style={styles.warmupTag}>Calentamiento</Text> : null}
                 {set.is_pr && <Trophy size={14} color={colors.accent.ember} strokeWidth={2.2} />}
                 {set.rpe ? <Text style={styles.setRpe}>RPE {set.rpe}</Text> : null}
               </View>
@@ -199,6 +205,14 @@ const styles = StyleSheet.create({
   setRowPr: {
     borderWidth: 1,
     borderColor: colors.accent.ember,
+  },
+  setRowWarmup: {
+    opacity: 0.65,
+  },
+  warmupTag: {
+    ...typography.tiny,
+    color: colors.text.muted,
+    fontStyle: 'italic',
   },
   setNumber: {
     ...typography.tiny,

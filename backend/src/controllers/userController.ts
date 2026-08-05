@@ -18,6 +18,11 @@ export class UserController {
     const history = await userService.getBodyWeightHistory(req.userId!, days);
     res.json(history);
   }
+
+  async changePassword(req: AuthRequest, res: Response) {
+    await userService.changePassword(req.userId!, req.body.current_password, req.body.new_password);
+    res.status(204).send();
+  }
 }
 
 export const userController = new UserController();

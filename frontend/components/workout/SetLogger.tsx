@@ -28,6 +28,7 @@ export const SetLogger = ({
   const [rest, setRest] = useState(previousSet?.rest_seconds?.toString() || '90');
   const [tempo, setTempo] = useState(previousSet?.tempo || '');
   const [formNotes, setFormNotes] = useState('');
+  const [isWarmup, setIsWarmup] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -52,9 +53,11 @@ export const SetLogger = ({
         rest_seconds: rest ? parseInt(rest) : undefined,
         tempo: tempo || undefined,
         form_notes: formNotes || undefined,
+        is_warmup: isWarmup,
       });
 
       setFormNotes('');
+      setIsWarmup(false);
 
       const restSeconds = rest ? parseInt(rest) : 0;
       if (restSeconds > 0) {
@@ -93,6 +96,16 @@ export const SetLogger = ({
           />
         </View>
       </View>
+
+      <TouchableOpacity
+        onPress={() => setIsWarmup((v) => !v)}
+        style={[styles.warmupChip, isWarmup && styles.warmupChipSelected]}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.warmupChipText, isWarmup && styles.warmupChipTextSelected]}>
+          {isWarmup ? '✓ Calentamiento' : 'Marcar como calentamiento'}
+        </Text>
+      </TouchableOpacity>
 
       <TouchableOpacity onPress={() => setShowAdvanced((v) => !v)} style={styles.advancedToggle}>
         <Text style={styles.advancedToggleText}>
@@ -162,6 +175,27 @@ const styles = StyleSheet.create({
   },
   third: {
     flex: 1,
+  },
+  warmupChip: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: spacing.sm,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: colors.border.default,
+    marginBottom: spacing.sm,
+  },
+  warmupChipSelected: {
+    borderColor: colors.accent.ember,
+    backgroundColor: `${colors.accent.ember}1a`,
+  },
+  warmupChipText: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+    fontWeight: '700',
+  },
+  warmupChipTextSelected: {
+    color: colors.accent.ember,
   },
   advancedToggle: {
     marginBottom: spacing.sm,

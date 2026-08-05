@@ -70,11 +70,12 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
   }
 
   return (
-    <View style={[styles.row, set.is_pr && styles.rowPr]}>
+    <View style={[styles.row, set.is_pr && styles.rowPr, set.is_warmup && styles.rowWarmup]}>
       <Text style={styles.number}>{set.set_number}</Text>
-      <Text style={styles.value}>
+      <Text style={[styles.value, set.is_warmup && styles.valueWarmup]}>
         {set.weight}kg × {set.reps} reps
       </Text>
+      {set.is_warmup ? <Text style={styles.warmupTag}>Calentamiento</Text> : null}
       {set.is_pr && <Trophy size={14} color={colors.accent.ember} strokeWidth={2.2} />}
       {set.rpe ? <Text style={styles.rpe}>RPE {set.rpe}</Text> : null}
       <TouchableOpacity
@@ -122,6 +123,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.accent.ember,
   },
+  rowWarmup: {
+    opacity: 0.65,
+  },
   number: {
     ...typography.tiny,
     color: colors.accent.fire,
@@ -133,6 +137,14 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontWeight: '600',
     flex: 1,
+  },
+  valueWarmup: {
+    fontWeight: '400',
+  },
+  warmupTag: {
+    ...typography.tiny,
+    color: colors.text.muted,
+    fontStyle: 'italic',
   },
   rpe: {
     ...typography.tiny,

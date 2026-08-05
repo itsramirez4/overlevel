@@ -23,7 +23,12 @@ export default function ExerciseEditScreen() {
     enabled: isEditing,
   });
 
-  const handleSave = async (data: { name: string; category: string; notes?: string }) => {
+  const handleSave = async (data: {
+    name: string;
+    category: string;
+    notes?: string;
+    muscle_groups?: string[];
+  }) => {
     if (!data.name) {
       setError('El nombre es obligatorio');
       return;
@@ -65,7 +70,12 @@ export default function ExerciseEditScreen() {
             submitLabel={isEditing ? 'GUARDAR CAMBIOS' : undefined}
             initialValues={
               isEditing && exercise
-                ? { name: exercise.name, category: exercise.category, notes: exercise.notes || '' }
+                ? {
+                    name: exercise.name,
+                    category: exercise.category,
+                    notes: exercise.notes || '',
+                    muscle_groups: exercise.muscle_groups || [],
+                  }
                 : undefined
             }
           />

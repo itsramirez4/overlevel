@@ -23,11 +23,16 @@ export default function AddExerciseScreen() {
   const [targetReps, setTargetReps] = useState('8');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   const { data: exercises, isLoading } = useQuery({
     queryKey: ['exercises'],
     queryFn: () => api.get('/exercises').then((r) => r.data),
   });
+
+  const filteredExercises = (exercises || []).filter((e: any) =>
+    e.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
 
   const { data: routine } = useQuery({
     queryKey: ['routines', routineId],
@@ -35,7 +40,12 @@ export default function AddExerciseScreen() {
     enabled: !!routineId,
   });
 
-  const handleCreateExercise = async (data: { name: string; category: string; notes?: string }) => {
+  const handleCreateExercise = async (data: {
+    name: string;
+    category: string;
+    notes?: string;
+    muscle_groups?: string[];
+  }) => {
     setError('');
     setSaving(true);
     try {
@@ -84,7 +94,7 @@ export default function AddExerciseScreen() {
       <FlatList
         style={styles.list}
         contentContainerStyle={styles.listContent}
-        data={creatingNew ? [] : exercises || []}
+        data={creatingNew ? [] : filteredExercises}
         keyExtractor={(item: any) => item.id}
         ListHeaderComponent={
           creatingNew ? (
@@ -97,6 +107,7 @@ export default function AddExerciseScreen() {
           ) : (
             <>
               <Text style={styles.sectionTitle}>Elige un ejercicio</Text>
+              <Input placeholder="Buscar ejercicio…" value={search} onChangeText={setSearch} />
               <TouchableOpacity
                 style={styles.newButton}
                 onPress={() => setCreatingNew(true)}
@@ -112,8 +123,8 @@ export default function AddExerciseScreen() {
           creatingNew || isLoading ? null : (
             <EmptyState
               icon={Dumbbell}
-              title="Sin ejercicios todavía"
-              message="Crea uno nuevo para empezar a añadirlo a tus rutinas."
+              title={search ? 'Sin resultados' : 'Sin ejercicios todavía'}
+              message={search ? 'Prueba con otro nombre.' : 'Crea uno nuevo para empezar a añadirlo a tus rutinas.'}
             />
           )
         }

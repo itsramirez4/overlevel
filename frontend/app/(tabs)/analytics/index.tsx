@@ -23,12 +23,24 @@ export default function AnalyticsScreen() {
     queryFn: () => api.get('/analytics/volume-history?weeks=8').then((r) => r.data),
   });
 
+  const { data: muscleDistribution } = useQuery({
+    queryKey: ['analytics', 'muscle-distribution'],
+    queryFn: () => api.get('/analytics/muscle-distribution?weeks=8').then((r) => r.data),
+  });
+
   const chartData = (volumeHistory || []).map((w: any) => ({
     label: new Date(w.week_start).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
     volume: Math.round(w.total_volume),
   }));
 
   const hasVolume = chartData.some((d: any) => d.volume > 0);
+
+  const muscleChartData = (muscleDistribution || []).map((m: any) => ({
+    label: m.muscle_group,
+    volume: Math.round(m.volume),
+  }));
+
+  const hasMuscleDistribution = muscleChartData.length > 0;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -40,11 +52,21 @@ export default function AnalyticsScreen() {
           keyExtractor={(item: any) => item.id}
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
-            hasVolume ? (
-              <Card style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Volumen semanal</Text>
-                <VolumeChart data={chartData} />
-              </Card>
+            hasVolume || hasMuscleDistribution ? (
+              <>
+                {hasVolume && (
+                  <Card style={styles.chartCard}>
+                    <Text style={styles.chartTitle}>Volumen semanal</Text>
+                    <VolumeChart data={chartData} />
+                  </Card>
+                )}
+                {hasMuscleDistribution && (
+                  <Card style={styles.chartCard}>
+                    <Text style={styles.chartTitle}>Distribución por grupo muscular</Text>
+                    <VolumeChart data={muscleChartData} />
+                  </Card>
+                )}
+              </>
             ) : null
           }
           ListEmptyComponent={

@@ -8,6 +8,7 @@ import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { Input } from '../../../components/ui/Input';
 
 const categoryLabel: Record<string, string> = {
   compound: 'Compuesto',
@@ -20,11 +21,16 @@ export default function ManageExercisesScreen() {
   const queryClient = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   const { data: exercises, isLoading } = useQuery({
     queryKey: ['exercises'],
     queryFn: () => api.get('/exercises').then((r) => r.data),
   });
+
+  const filteredExercises = (exercises || []).filter((e: any) =>
+    e.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -58,16 +64,20 @@ export default function ManageExercisesScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
+      <View style={styles.searchContainer}>
+        <Input placeholder="Buscar ejercicio…" value={search} onChangeText={setSearch} />
+      </View>
+
       <FlatList
-        data={exercises || []}
+        data={filteredExercises}
         keyExtractor={(item: any) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           isLoading ? null : (
             <EmptyState
               icon={Dumbbell}
-              title="Sin ejercicios todavía"
-              message="Crea el primero con el botón de arriba."
+              title={search ? 'Sin resultados' : 'Sin ejercicios todavía'}
+              message={search ? 'Prueba con otro nombre.' : 'Crea el primero con el botón de arriba.'}
             />
           )
         }
@@ -140,6 +150,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.elevated,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  searchContainer: {
+    paddingHorizontal: spacing.lg,
   },
   listContent: {
     paddingHorizontal: spacing.lg,

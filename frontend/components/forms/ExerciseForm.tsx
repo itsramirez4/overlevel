@@ -8,6 +8,7 @@ interface ExerciseFormData {
   name: string;
   category: 'compound' | 'isolation' | 'cardio';
   notes?: string;
+  muscle_groups?: string[];
 }
 
 interface ExerciseFormProps {
@@ -23,10 +24,30 @@ const categories: { value: ExerciseFormData['category']; label: string }[] = [
   { value: 'cardio', label: 'Cardio' },
 ];
 
+const muscleGroupOptions = [
+  'Pecho',
+  'Espalda',
+  'Piernas',
+  'Hombros',
+  'Bíceps',
+  'Tríceps',
+  'Core',
+  'Glúteos',
+  'Pantorrillas',
+  'Antebrazos',
+];
+
 export const ExerciseForm = ({ onSubmit, loading, initialValues, submitLabel }: ExerciseFormProps) => {
   const [name, setName] = useState(initialValues?.name || '');
   const [category, setCategory] = useState<ExerciseFormData['category']>(initialValues?.category || 'compound');
   const [notes, setNotes] = useState(initialValues?.notes || '');
+  const [muscleGroups, setMuscleGroups] = useState<string[]>(initialValues?.muscle_groups || []);
+
+  const toggleMuscleGroup = (group: string) => {
+    setMuscleGroups((prev) =>
+      prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group]
+    );
+  };
 
   return (
     <View>
@@ -49,6 +70,23 @@ export const ExerciseForm = ({ onSubmit, loading, initialValues, submitLabel }: 
         })}
       </View>
 
+      <Text style={styles.label}>Grupos musculares (opcional)</Text>
+      <View style={styles.muscleGroupsWrap}>
+        {muscleGroupOptions.map((group) => {
+          const selected = muscleGroups.includes(group);
+          return (
+            <TouchableOpacity
+              key={group}
+              style={[styles.chip, styles.muscleChip, selected && styles.chipSelected]}
+              onPress={() => toggleMuscleGroup(group)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{group}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       <Input
         label="Notas (opcional)"
         placeholder="Cualquier apunte sobre este ejercicio…"
@@ -61,7 +99,7 @@ export const ExerciseForm = ({ onSubmit, loading, initialValues, submitLabel }: 
       <Button
         label={loading ? 'Guardando…' : submitLabel || 'GUARDAR EJERCICIO'}
         loading={loading}
-        onPress={() => onSubmit({ name, category, notes: notes || undefined })}
+        onPress={() => onSubmit({ name, category, notes: notes || undefined, muscle_groups: muscleGroups })}
       />
     </View>
   );
@@ -86,6 +124,16 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.border.default,
     alignItems: 'center',
+  },
+  muscleGroupsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  muscleChip: {
+    flex: 0,
+    paddingHorizontal: spacing.sm,
   },
   chipSelected: {
     borderColor: colors.accent.fire,

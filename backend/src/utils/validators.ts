@@ -68,6 +68,7 @@ export const logSetSchema = z.object({
   rest_seconds: z.number().int().nonnegative().optional(),
   tempo: z.string().optional(),
   form_notes: z.string().optional(),
+  is_warmup: z.boolean().optional(),
 });
 
 export const updateSetSchema = z.object({
@@ -77,4 +78,10 @@ export const updateSetSchema = z.object({
   rest_seconds: z.number().int().nonnegative().optional(),
   tempo: z.string().optional(),
   form_notes: z.string().optional(),
+  is_warmup: z.boolean().optional(),
+});
+
+export const changePasswordSchema = z.object({
+  current_password: z.string().min(1),
+  new_password: z.string().min(6),
 });

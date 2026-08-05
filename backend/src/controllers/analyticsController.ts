@@ -18,6 +18,12 @@ export class AnalyticsController {
     const history = await analyticsService.getWeeklyVolumeHistory(req.userId!, weeks);
     res.json(history);
   }
+
+  async muscleDistribution(req: AuthRequest, res: Response) {
+    const weeks = req.query.weeks ? parseInt(req.query.weeks as string) : 8;
+    const distribution = await analyticsService.getMuscleGroupDistribution(req.userId!, weeks);
+    res.json(distribution);
+  }
 }
 
 export const analyticsController = new AnalyticsController();

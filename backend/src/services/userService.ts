@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../config/supabase';
+import { supabase, supabaseAdmin } from '../config/supabase';
 import { BodyWeightLog, User } from '../types';
 import { AppError } from '../middleware/errorHandler';
 
@@ -50,6 +50,23 @@ export class UserService {
 
     if (error) throw new AppError('Failed to fetch body weight history');
     return (data || []) as BodyWeightLog[];
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.getUserById(userId);
+
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+
+    if (authError) throw new AppError('Contraseña actual incorrecta', 400);
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: newPassword,
+    });
+
+    if (error) throw new AppError('No se pudo actualizar la contraseña');
   }
 
   async getUserByEmail(email: string): Promise<User | null> {

@@ -29,7 +29,8 @@ export class SetService {
       .from('sets')
       .select('weight, reps, workouts!inner(user_id)')
       .eq('exercise_id', exerciseId)
-      .eq('workouts.user_id', userId);
+      .eq('workouts.user_id', userId)
+      .eq('is_warmup', false);
 
     if (excludeSetId) query = query.neq('id', excludeSetId);
 
@@ -67,7 +68,9 @@ export class SetService {
 
     if (!exercise) throw new AppError('Exercise not found', 404);
 
-    const isPr = await this.computeIsPr(input.exercise_id!, userId, input.weight!, input.reps!);
+    const isPr = input.is_warmup
+      ? false
+      : await this.computeIsPr(input.exercise_id!, userId, input.weight!, input.reps!);
 
     const { data, error } = await supabaseAdmin
       .from('sets')
@@ -91,9 +94,11 @@ export class SetService {
 
     const nextWeight = updates.weight ?? existing.weight;
     const nextReps = updates.reps ?? existing.reps;
+    const nextIsWarmup = updates.is_warmup ?? existing.is_warmup;
 
-    const isPr =
-      updates.weight !== undefined || updates.reps !== undefined
+    const isPr = nextIsWarmup
+      ? false
+      : updates.weight !== undefined || updates.reps !== undefined || updates.is_warmup === false
         ? await this.computeIsPr(existing.exercise_id, userId, nextWeight, nextReps, id)
         : existing.is_pr;
 

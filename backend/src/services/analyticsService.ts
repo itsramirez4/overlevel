@@ -9,7 +9,7 @@ export class AnalyticsService {
 
     const { data: monthWorkouts, error } = await supabaseAdmin
       .from('workouts')
-      .select('id, sets(weight, reps)')
+      .select('id, sets(weight, reps, is_warmup)')
       .eq('user_id', userId)
       .gte('started_at', startOfMonth.toISOString());
 
@@ -17,10 +17,9 @@ export class AnalyticsService {
 
     const workoutsThisMonth = monthWorkouts?.length || 0;
     const totalVolume = (monthWorkouts || []).reduce((sum, w: any) => {
-      const workoutVolume = (w.sets || []).reduce(
-        (setSum: number, s: any) => setSum + s.weight * s.reps,
-        0
-      );
+      const workoutVolume = (w.sets || [])
+        .filter((s: any) => !s.is_warmup)
+        .reduce((setSum: number, s: any) => setSum + s.weight * s.reps, 0);
       return sum + workoutVolume;
     }, 0);
 
@@ -99,7 +98,7 @@ export class AnalyticsService {
 
     const { data: workouts, error } = await supabaseAdmin
       .from('workouts')
-      .select('started_at, sets(weight, reps)')
+      .select('started_at, sets(weight, reps, is_warmup)')
       .eq('user_id', userId)
       .gte('started_at', since.toISOString());
 
@@ -114,7 +113,9 @@ export class AnalyticsService {
 
     for (const w of workouts || []) {
       const key = weekStart(new Date(w.started_at)).toISOString().split('T')[0];
-      const volume = (w.sets || []).reduce((sum: number, s: any) => sum + s.weight * s.reps, 0);
+      const volume = (w.sets || [])
+        .filter((s: any) => !s.is_warmup)
+        .reduce((sum: number, s: any) => sum + s.weight * s.reps, 0);
       buckets.set(key, (buckets.get(key) || 0) + volume);
     }
 
@@ -122,6 +123,42 @@ export class AnalyticsService {
       week_start,
       total_volume,
     }));
+  }
+
+  /**
+   * Attributes each non-warmup set's full volume to every muscle group tagged
+   * on its exercise (an exercise can target more than one), so a compound
+   * lift contributes to each group it trains rather than splitting volume.
+   */
+  async getMuscleGroupDistribution(userId: string, weeks = 8) {
+    const since = new Date();
+    since.setDate(since.getDate() - weeks * 7);
+
+    const { data: workouts, error } = await supabaseAdmin
+      .from('workouts')
+      .select('sets(weight, reps, is_warmup, exercises(muscle_groups))')
+      .eq('user_id', userId)
+      .gte('started_at', since.toISOString());
+
+    if (error) throw new AppError('Failed to compute muscle group distribution');
+
+    const totals = new Map<string, number>();
+    for (const w of workouts || []) {
+      for (const s of (w as any).sets || []) {
+        if (s.is_warmup) continue;
+        const volume = s.weight * s.reps;
+        const groups: string[] = s.exercises?.muscle_groups?.length
+          ? s.exercises.muscle_groups
+          : ['Sin clasificar'];
+        for (const g of groups) {
+          totals.set(g, (totals.get(g) || 0) + volume);
+        }
+      }
+    }
+
+    return Array.from(totals.entries())
+      .map(([muscle_group, volume]) => ({ muscle_group, volume }))
+      .sort((a, b) => b.volume - a.volume);
   }
 
   async getExerciseStats(exerciseId: string, userId: string) {

@@ -82,6 +82,7 @@ export interface Set {
   tempo?: string;
   form_notes?: string;
   is_pr: boolean;
+  is_warmup: boolean;
   created_at: string;
 }
 
