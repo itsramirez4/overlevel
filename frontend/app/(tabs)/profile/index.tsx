@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Dumbbell, LogOut, Settings } from 'lucide-react-native';
+import { Calculator, ChevronRight, Dumbbell, LogOut, Settings } from 'lucide-react-native';
 import { authStore } from '../../../stores/authStore';
 import { authService } from '../../../services/auth';
 import { colors, radius, spacing, typography } from '../../../utils/theme';
@@ -42,6 +42,16 @@ export default function ProfileScreen() {
         >
           <Dumbbell size={18} color={colors.text.secondary} strokeWidth={2} />
           <Text style={styles.rowLabel}>Ejercicios</Text>
+          <ChevronRight size={18} color={colors.text.muted} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => router.push('/profile/plate-calculator')}
+          activeOpacity={0.7}
+        >
+          <Calculator size={18} color={colors.text.secondary} strokeWidth={2} />
+          <Text style={styles.rowLabel}>Calculadora de discos</Text>
           <ChevronRight size={18} color={colors.text.muted} />
         </TouchableOpacity>
 

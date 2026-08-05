@@ -2,7 +2,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Dumbbell, Plus } from 'lucide-react-native';
+import { Calculator, Dumbbell, Plus } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, spacing, typography } from '../../../utils/theme';
 import { useWorkout } from '../../../hooks/useWorkout';
@@ -83,6 +83,14 @@ export default function WorkoutLogScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Entrenamiento en curso</Text>
           <SessionTimer startedAt={currentWorkout.started_at} />
+          <TouchableOpacity
+            onPress={() => router.push('/profile/plate-calculator')}
+            hitSlop={10}
+            style={styles.plateCalcButton}
+            accessibilityLabel="Calculadora de discos"
+          >
+            <Calculator size={18} color={colors.text.secondary} />
+          </TouchableOpacity>
         </View>
 
         <RestTimer />
@@ -145,6 +153,15 @@ const styles = StyleSheet.create({
   },
   emptyButton: {
     marginTop: spacing.lg,
+  },
+  plateCalcButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    backgroundColor: colors.bg.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: spacing.sm,
   },
   header: {
     flexDirection: 'row',

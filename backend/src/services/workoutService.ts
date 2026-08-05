@@ -6,7 +6,7 @@ export class WorkoutService {
   async list(userId: string, limit = 20): Promise<Workout[]> {
     const { data, error } = await supabaseAdmin
       .from('workouts')
-      .select('*, sets(*)')
+      .select('*, sets(*, exercises(name))')
       .eq('user_id', userId)
       .order('started_at', { ascending: false })
       .limit(limit);

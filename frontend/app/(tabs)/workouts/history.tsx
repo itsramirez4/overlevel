@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -7,19 +8,39 @@ import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Card } from '../../../components/ui/Card';
+import { Input } from '../../../components/ui/Input';
 import { WorkoutHeatmap } from '../../../components/analytics/WorkoutHeatmap';
 
 export default function WorkoutHistoryScreen() {
   const router = useRouter();
+  const [search, setSearch] = useState('');
 
   const { data: workouts, isLoading } = useQuery({
     queryKey: ['workouts', 'history'],
-    queryFn: () => api.get('/workouts').then((r) => r.data),
+    queryFn: () => api.get('/workouts?limit=200').then((r) => r.data),
   });
 
   const { data: heatmapData } = useQuery({
     queryKey: ['analytics', 'heatmap'],
     queryFn: () => api.get('/analytics/heatmap?weeks=10').then((r) => r.data),
+  });
+
+  const exerciseNames = (workout: any): string[] => {
+    const names = new Set<string>();
+    (workout.sets || []).forEach((s: any) => {
+      if (s.exercises?.name) names.add(s.exercises.name);
+    });
+    return Array.from(names);
+  };
+
+  const query = search.trim().toLowerCase();
+  const filteredWorkouts = (workouts || []).filter((w: any) => {
+    if (!query) return true;
+    const dateLabel = new Date(w.started_at)
+      .toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+      .toLowerCase();
+    if (dateLabel.includes(query)) return true;
+    return exerciseNames(w).some((name) => name.toLowerCase().includes(query));
   });
 
   return (
@@ -31,12 +52,16 @@ export default function WorkoutHistoryScreen() {
         <Text style={styles.title}>Historial</Text>
       </View>
 
+      <View style={styles.searchContainer}>
+        <Input placeholder="Buscar por ejercicio o fecha…" value={search} onChangeText={setSearch} />
+      </View>
+
       <FlatList
-        data={workouts || []}
+        data={filteredWorkouts}
         keyExtractor={(item: any) => item.id}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
-          heatmapData?.length ? (
+          !query && heatmapData?.length ? (
             <Card style={styles.heatmapCard}>
               <Text style={styles.heatmapTitle}>Constancia</Text>
               <WorkoutHeatmap data={heatmapData} />
@@ -45,7 +70,11 @@ export default function WorkoutHistoryScreen() {
         }
         ListEmptyComponent={
           isLoading ? null : (
-            <EmptyState icon={Dumbbell} title="Sin entrenamientos" message="Aún no has completado ninguno." />
+            <EmptyState
+              icon={Dumbbell}
+              title={query ? 'Sin resultados' : 'Sin entrenamientos'}
+              message={query ? 'Prueba con otro ejercicio o fecha.' : 'Aún no has completado ninguno.'}
+            />
           )
         }
         renderItem={({ item }: any) => (
@@ -65,7 +94,9 @@ export default function WorkoutHistoryScreen() {
                   month: 'short',
                 })}
               </Text>
-              <Text style={styles.sets}>{item.sets?.length || 0} sets</Text>
+              <Text style={styles.sets} numberOfLines={1}>
+                {item.sets?.length || 0} sets{exerciseNames(item).length ? ` · ${exerciseNames(item).join(', ')}` : ''}
+              </Text>
             </View>
             <ChevronRight size={18} color={colors.text.muted} />
           </TouchableOpacity>
@@ -93,6 +124,9 @@ const styles = StyleSheet.create({
   title: {
     ...typography.h1,
     color: colors.text.primary,
+  },
+  searchContainer: {
+    paddingHorizontal: spacing.lg,
   },
   listContent: {
     paddingHorizontal: spacing.lg,
