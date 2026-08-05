@@ -16,6 +16,7 @@ interface ExerciseLogSectionProps {
   isLinkedToPrevious: boolean;
   onToggleLink: () => void;
   supersetGroup?: string;
+  shouldRest: boolean;
 }
 
 export const ExerciseLogSection = ({
@@ -28,6 +29,7 @@ export const ExerciseLogSection = ({
   isLinkedToPrevious,
   onToggleLink,
   supersetGroup,
+  shouldRest,
 }: ExerciseLogSectionProps) => {
   const sortedSets = [...loggedSets].sort((a, b) => a.set_number - b.set_number);
   const lastSet = sortedSets[sortedSets.length - 1];
@@ -69,6 +71,7 @@ export const ExerciseLogSection = ({
         previousSet={lastSet}
         onSetLogged={onSetLogged}
         supersetGroup={supersetGroup}
+        shouldRest={shouldRest}
       />
     </Card>
   );

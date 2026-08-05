@@ -3,13 +3,14 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, spacing, typography } from '../../../utils/theme';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { VolumeChart } from '../../../components/analytics/VolumeChart';
+import { downloadOrShareJson } from '../../../services/dataExport';
 
 type WeightUnit = 'kg' | 'lbs';
 
@@ -27,6 +28,9 @@ export default function SettingsScreen() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   const { data: user } = useQuery({
     queryKey: ['users', 'me'],
@@ -98,6 +102,20 @@ export default function SettingsScreen() {
       setPasswordError(err.response?.data?.message || 'No se pudo cambiar la contraseña');
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setExportError('');
+    setExporting(true);
+    try {
+      const { data } = await api.get('/users/me/export');
+      const date = new Date().toISOString().split('T')[0];
+      await downloadOrShareJson(`overlevel-export-${date}.json`, data);
+    } catch (err: any) {
+      setExportError(err.response?.data?.message || 'No se pudieron exportar los datos');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -196,6 +214,28 @@ export default function SettingsScreen() {
             onPress={handleChangePassword}
           />
         </Card>
+
+        <Card style={styles.dataCard}>
+          <Text style={styles.chartTitle}>Datos</Text>
+
+          {exportError ? <Text style={styles.passwordError}>{exportError}</Text> : null}
+
+          <Button
+            label={exporting ? 'Exportando…' : 'EXPORTAR MIS DATOS'}
+            variant="outline"
+            loading={exporting}
+            onPress={handleExport}
+          />
+
+          <TouchableOpacity
+            style={styles.importRow}
+            onPress={() => router.push('/profile/import-hevy')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.importRowText}>Importar desde Hevy</Text>
+            <ChevronRight size={18} color={colors.text.muted} />
+          </TouchableOpacity>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -232,6 +272,23 @@ const styles = StyleSheet.create({
   },
   passwordCard: {
     marginTop: spacing.xl,
+  },
+  dataCard: {
+    marginTop: spacing.xl,
+  },
+  importRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.subtle,
+  },
+  importRowText: {
+    ...typography.body,
+    color: colors.text.primary,
+    fontWeight: '600',
   },
   passwordError: {
     ...typography.small,

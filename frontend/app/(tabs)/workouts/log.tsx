@@ -38,6 +38,14 @@ export default function WorkoutLogScreen() {
   });
   flushChain();
 
+  // Inside a superset round you move straight to the next exercise — the rest
+  // timer only fires once the round's last exercise logs a set.
+  const shouldRestAfter: Record<string, boolean> = {};
+  sessionExercises.forEach((exercise, i) => {
+    const next = sessionExercises[i + 1];
+    shouldRestAfter[exercise.id] = !(next && linkedToPrevious[next.id]);
+  });
+
   const { data: sets, refetch } = useQuery({
     queryKey: ['sets', currentWorkout?.id],
     queryFn: () => api.get(`/sets/workout/${currentWorkout!.id}`).then((r) => r.data),
@@ -98,6 +106,7 @@ export default function WorkoutLogScreen() {
               isLinkedToPrevious={!!linkedToPrevious[exercise.id]}
               onToggleLink={() => toggleSupersetLink(exercise.id)}
               supersetGroup={supersetGroups[exercise.id]}
+              shouldRest={shouldRestAfter[exercise.id]}
             />
           ))
         )}

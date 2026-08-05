@@ -87,3 +87,7 @@ export const changePasswordSchema = z.object({
   current_password: z.string().min(1),
   new_password: z.string().min(6),
 });
+
+export const importHevySchema = z.object({
+  csv: z.string().min(1),
+});

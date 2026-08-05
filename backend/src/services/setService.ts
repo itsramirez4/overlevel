@@ -2,6 +2,37 @@ import { supabaseAdmin } from '../config/supabase';
 import { Set } from '../types';
 import { AppError } from '../middleware/errorHandler';
 
+/**
+ * A set is a PR when it beats every other set of this exercise on weight,
+ * or ties the best weight with more reps than that set achieved.
+ * Exported so bulk-insert paths (e.g. CSV import) can reuse the exact same
+ * rule without paying for a per-row workout-ownership round trip.
+ */
+export async function computeSetIsPr(
+  exerciseId: string,
+  userId: string,
+  weight: number,
+  reps: number,
+  excludeSetId?: string
+): Promise<boolean> {
+  let query = supabaseAdmin
+    .from('sets')
+    .select('weight, reps, workouts!inner(user_id)')
+    .eq('exercise_id', exerciseId)
+    .eq('workouts.user_id', userId)
+    .eq('is_warmup', false);
+
+  if (excludeSetId) query = query.neq('id', excludeSetId);
+
+  const { data: priorBest } = await query
+    .order('weight', { ascending: false })
+    .order('reps', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return !priorBest || weight > priorBest.weight || (weight === priorBest.weight && reps > priorBest.reps);
+}
+
 export class SetService {
   private async assertWorkoutOwnership(workoutId: string, userId: string): Promise<void> {
     const { data } = await supabaseAdmin
@@ -12,35 +43,6 @@ export class SetService {
       .single();
 
     if (!data) throw new AppError('Workout not found', 404);
-  }
-
-  /**
-   * A set is a PR when it beats every other set of this exercise on weight,
-   * or ties the best weight with more reps than that set achieved.
-   */
-  private async computeIsPr(
-    exerciseId: string,
-    userId: string,
-    weight: number,
-    reps: number,
-    excludeSetId?: string
-  ): Promise<boolean> {
-    let query = supabaseAdmin
-      .from('sets')
-      .select('weight, reps, workouts!inner(user_id)')
-      .eq('exercise_id', exerciseId)
-      .eq('workouts.user_id', userId)
-      .eq('is_warmup', false);
-
-    if (excludeSetId) query = query.neq('id', excludeSetId);
-
-    const { data: priorBest } = await query
-      .order('weight', { ascending: false })
-      .order('reps', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    return !priorBest || weight > priorBest.weight || (weight === priorBest.weight && reps > priorBest.reps);
   }
 
   async listByWorkout(workoutId: string, userId: string): Promise<Set[]> {
@@ -70,7 +72,7 @@ export class SetService {
 
     const isPr = input.is_warmup
       ? false
-      : await this.computeIsPr(input.exercise_id!, userId, input.weight!, input.reps!);
+      : await computeSetIsPr(input.exercise_id!, userId, input.weight!, input.reps!);
 
     const { data, error } = await supabaseAdmin
       .from('sets')
@@ -99,7 +101,7 @@ export class SetService {
     const isPr = nextIsWarmup
       ? false
       : updates.weight !== undefined || updates.reps !== undefined || updates.is_warmup === false
-        ? await this.computeIsPr(existing.exercise_id, userId, nextWeight, nextReps, id)
+        ? await computeSetIsPr(existing.exercise_id, userId, nextWeight, nextReps, id)
         : existing.is_pr;
 
     const { data, error } = await supabaseAdmin

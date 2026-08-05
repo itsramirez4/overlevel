@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { userService } from '../services/userService';
+import { importService } from '../services/importService';
 
 export class UserController {
   async me(req: AuthRequest, res: Response) {
@@ -22,6 +23,16 @@ export class UserController {
   async changePassword(req: AuthRequest, res: Response) {
     await userService.changePassword(req.userId!, req.body.current_password, req.body.new_password);
     res.status(204).send();
+  }
+
+  async exportData(req: AuthRequest, res: Response) {
+    const data = await userService.exportData(req.userId!);
+    res.json(data);
+  }
+
+  async importHevy(req: AuthRequest, res: Response) {
+    const result = await importService.importHevyCsv(req.userId!, req.body.csv);
+    res.json(result);
   }
 }
 

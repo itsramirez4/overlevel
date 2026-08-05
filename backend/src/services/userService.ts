@@ -69,6 +69,34 @@ export class UserService {
     if (error) throw new AppError('No se pudo actualizar la contraseña');
   }
 
+  async exportData(userId: string) {
+    const user = await this.getUserById(userId);
+
+    const [exercises, routines, workouts, bodyWeightLogs] = await Promise.all([
+      supabaseAdmin.from('exercises').select('*').eq('user_id', userId),
+      supabaseAdmin.from('routines').select('*, routine_exercises(*)').eq('user_id', userId),
+      supabaseAdmin
+        .from('workouts')
+        .select('*, sets(*)')
+        .eq('user_id', userId)
+        .order('started_at', { ascending: true }),
+      supabaseAdmin.from('body_weight_logs').select('*').eq('user_id', userId).order('logged_at', { ascending: true }),
+    ]);
+
+    if (exercises.error || routines.error || workouts.error || bodyWeightLogs.error) {
+      throw new AppError('Failed to export data');
+    }
+
+    return {
+      exported_at: new Date().toISOString(),
+      user: { email: user.email, username: user.username, full_name: user.full_name },
+      exercises: exercises.data,
+      routines: routines.data,
+      workouts: workouts.data,
+      body_weight_logs: bodyWeightLogs.data,
+    };
+  }
+
   async getUserByEmail(email: string): Promise<User | null> {
     const { data } = await supabaseAdmin
       .from('users')

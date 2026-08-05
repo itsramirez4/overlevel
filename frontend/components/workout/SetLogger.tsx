@@ -14,6 +14,7 @@ export interface SetLoggerProps {
   onSetLogged: () => void;
   previousSet?: any;
   supersetGroup?: string;
+  shouldRest?: boolean;
 }
 
 export const SetLogger = ({
@@ -23,6 +24,7 @@ export const SetLogger = ({
   onSetLogged,
   previousSet,
   supersetGroup,
+  shouldRest = true,
 }: SetLoggerProps) => {
   const [reps, setReps] = useState(previousSet?.reps?.toString() || '');
   const [weight, setWeight] = useState(previousSet?.weight?.toString() || '');
@@ -63,7 +65,7 @@ export const SetLogger = ({
       setIsWarmup(false);
 
       const restSeconds = rest ? parseInt(rest) : 0;
-      if (restSeconds > 0) {
+      if (shouldRest && restSeconds > 0) {
         workoutStore.getState().startRest(restSeconds);
         scheduleRestTimerNotification(restSeconds);
       }
