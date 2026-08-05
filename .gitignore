@@ -1,6 +1,10 @@
 node_modules/
 dist/
 coverage/
+
+# Stray lockfile created when a command accidentally runs from the repo
+# root instead of backend/ or frontend/ — there's no root package.json.
+/package-lock.json
 .env
 .env.local
 *.log

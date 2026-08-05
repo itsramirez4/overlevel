@@ -22,12 +22,12 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
+// Dev backend reachable from localhost, LAN IPs (phone testing), and native
+// clients (no Origin header at all) — there's no fixed production origin to
+// pin down, and auth uses Bearer tokens rather than cookies, so reflecting
+// any origin here doesn't weaken anything.
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:19000', // Expo
-    'http://localhost:8081',  // React Native Packager
-  ],
+  origin: true,
   credentials: true,
 }));
 
