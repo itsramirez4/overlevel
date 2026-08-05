@@ -3,7 +3,7 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Dumbbell, Flame, ListChecks, Trash2, Trophy } from 'lucide-react-native';
+import { ChevronLeft, Dumbbell, Flame, Link2, ListChecks, Trash2, Trophy } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { StatCard } from '../../../components/analytics/StatCard';
@@ -118,6 +118,7 @@ export default function WorkoutDetailScreen() {
                   {set.weight}kg × {set.reps} reps
                 </Text>
                 {set.is_warmup ? <Text style={styles.warmupTag}>Calentamiento</Text> : null}
+                {set.superset_group ? <Link2 size={12} color={colors.accent.ember} strokeWidth={2.2} /> : null}
                 {set.is_pr && <Trophy size={14} color={colors.accent.ember} strokeWidth={2.2} />}
                 {set.rpe ? <Text style={styles.setRpe}>RPE {set.rpe}</Text> : null}
               </View>

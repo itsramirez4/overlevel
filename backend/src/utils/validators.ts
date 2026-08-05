@@ -69,6 +69,7 @@ export const logSetSchema = z.object({
   tempo: z.string().optional(),
   form_notes: z.string().optional(),
   is_warmup: z.boolean().optional(),
+  superset_group: z.string().optional(),
 });
 
 export const updateSetSchema = z.object({
@@ -79,6 +80,7 @@ export const updateSetSchema = z.object({
   tempo: z.string().optional(),
   form_notes: z.string().optional(),
   is_warmup: z.boolean().optional(),
+  superset_group: z.string().optional(),
 });
 
 export const changePasswordSchema = z.object({

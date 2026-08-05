@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, Dumbbell } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { EmptyState } from '../../../components/common/EmptyState';
+import { Card } from '../../../components/ui/Card';
+import { WorkoutHeatmap } from '../../../components/analytics/WorkoutHeatmap';
 
 export default function WorkoutHistoryScreen() {
   const router = useRouter();
@@ -13,6 +15,11 @@ export default function WorkoutHistoryScreen() {
   const { data: workouts, isLoading } = useQuery({
     queryKey: ['workouts', 'history'],
     queryFn: () => api.get('/workouts').then((r) => r.data),
+  });
+
+  const { data: heatmapData } = useQuery({
+    queryKey: ['analytics', 'heatmap'],
+    queryFn: () => api.get('/analytics/heatmap?weeks=10').then((r) => r.data),
   });
 
   return (
@@ -28,6 +35,14 @@ export default function WorkoutHistoryScreen() {
         data={workouts || []}
         keyExtractor={(item: any) => item.id}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          heatmapData?.length ? (
+            <Card style={styles.heatmapCard}>
+              <Text style={styles.heatmapTitle}>Constancia</Text>
+              <WorkoutHeatmap data={heatmapData} />
+            </Card>
+          ) : null
+        }
         ListEmptyComponent={
           isLoading ? null : (
             <EmptyState icon={Dumbbell} title="Sin entrenamientos" message="Aún no has completado ninguno." />
@@ -83,6 +98,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxl,
     flexGrow: 1,
+  },
+  heatmapCard: {
+    marginBottom: spacing.lg,
+  },
+  heatmapTitle: {
+    ...typography.h3,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
   },
   card: {
     flexDirection: 'row',

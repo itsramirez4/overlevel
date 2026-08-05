@@ -18,6 +18,25 @@ export default function WorkoutLogScreen() {
   const { currentWorkout, completeWorkout } = useWorkout();
   const sessionExercises = workoutStore((state) => state.sessionExercises);
   const removeSessionExercise = workoutStore((state) => state.removeSessionExercise);
+  const linkedToPrevious = workoutStore((state) => state.linkedToPrevious);
+  const toggleSupersetLink = workoutStore((state) => state.toggleSupersetLink);
+
+  // A chain of 2+ consecutive linked exercises shares a superset group, keyed by the chain's first exercise id.
+  const supersetGroups: Record<string, string> = {};
+  let chain: string[] = [];
+  const flushChain = () => {
+    if (chain.length > 1) chain.forEach((id) => (supersetGroups[id] = chain[0]));
+    chain = [];
+  };
+  sessionExercises.forEach((exercise) => {
+    if (linkedToPrevious[exercise.id] && chain.length > 0) {
+      chain.push(exercise.id);
+    } else {
+      flushChain();
+      chain = [exercise.id];
+    }
+  });
+  flushChain();
 
   const { data: sets, refetch } = useQuery({
     queryKey: ['sets', currentWorkout?.id],
@@ -67,7 +86,7 @@ export default function WorkoutLogScreen() {
             message="Añade el primer ejercicio para empezar a registrar series."
           />
         ) : (
-          sessionExercises.map((exercise) => (
+          sessionExercises.map((exercise, index) => (
             <ExerciseLogSection
               key={exercise.id}
               workoutId={currentWorkout.id}
@@ -75,6 +94,10 @@ export default function WorkoutLogScreen() {
               loggedSets={(sets || []).filter((s: any) => s.exercise_id === exercise.id)}
               onSetLogged={() => refetch()}
               onRemove={() => removeSessionExercise(exercise.id)}
+              isFirst={index === 0}
+              isLinkedToPrevious={!!linkedToPrevious[exercise.id]}
+              onToggleLink={() => toggleSupersetLink(exercise.id)}
+              supersetGroup={supersetGroups[exercise.id]}
             />
           ))
         )}

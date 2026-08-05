@@ -24,6 +24,12 @@ export class AnalyticsController {
     const distribution = await analyticsService.getMuscleGroupDistribution(req.userId!, weeks);
     res.json(distribution);
   }
+
+  async heatmap(req: AuthRequest, res: Response) {
+    const weeks = req.query.weeks ? parseInt(req.query.weeks as string) : 10;
+    const heatmap = await analyticsService.getWorkoutHeatmap(req.userId!, weeks);
+    res.json(heatmap);
+  }
 }
 
 export const analyticsController = new AnalyticsController();

@@ -13,6 +13,7 @@ export interface SetLoggerProps {
   setNumber: number;
   onSetLogged: () => void;
   previousSet?: any;
+  supersetGroup?: string;
 }
 
 export const SetLogger = ({
@@ -21,6 +22,7 @@ export const SetLogger = ({
   setNumber,
   onSetLogged,
   previousSet,
+  supersetGroup,
 }: SetLoggerProps) => {
   const [reps, setReps] = useState(previousSet?.reps?.toString() || '');
   const [weight, setWeight] = useState(previousSet?.weight?.toString() || '');
@@ -54,6 +56,7 @@ export const SetLogger = ({
         tempo: tempo || undefined,
         form_notes: formNotes || undefined,
         is_warmup: isWarmup,
+        superset_group: supersetGroup,
       });
 
       setFormNotes('');

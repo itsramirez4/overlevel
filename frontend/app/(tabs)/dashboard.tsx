@@ -2,7 +2,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, Dumbbell, Flame, CalendarDays } from 'lucide-react-native';
+import { ChevronRight, Dumbbell, Flame, CalendarDays, Zap } from 'lucide-react-native';
 import { api } from '../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { useWorkout } from '../../hooks/useWorkout';
@@ -49,6 +49,11 @@ export default function DashboardScreen() {
             label="Volumen total"
             value={statsLoading ? '—' : `${Math.round(stats?.total_volume || 0)}kg`}
             icon={Flame}
+          />
+          <StatCard
+            label="Racha"
+            value={statsLoading ? '—' : `${stats?.current_streak ?? 0}d`}
+            icon={Zap}
           />
         </View>
 

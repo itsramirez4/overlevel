@@ -83,6 +83,7 @@ export interface Set {
   form_notes?: string;
   is_pr: boolean;
   is_warmup: boolean;
+  superset_group?: string;
   created_at: string;
 }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Pencil, Trophy, X } from 'lucide-react-native';
+import { Link2, Pencil, Trophy, X } from 'lucide-react-native';
 import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
 import { Input } from '../ui/Input';
@@ -76,6 +76,7 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
         {set.weight}kg × {set.reps} reps
       </Text>
       {set.is_warmup ? <Text style={styles.warmupTag}>Calentamiento</Text> : null}
+      {set.superset_group ? <Link2 size={12} color={colors.accent.ember} strokeWidth={2.2} /> : null}
       {set.is_pr && <Trophy size={14} color={colors.accent.ember} strokeWidth={2.2} />}
       {set.rpe ? <Text style={styles.rpe}>RPE {set.rpe}</Text> : null}
       <TouchableOpacity

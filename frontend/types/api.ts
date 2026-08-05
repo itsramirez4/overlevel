@@ -8,4 +8,5 @@ export interface AnalyticsSummary {
   workouts_this_month: number;
   total_volume: number;
   recommended_routine: import('./index').Routine | null;
+  current_streak: number;
 }
