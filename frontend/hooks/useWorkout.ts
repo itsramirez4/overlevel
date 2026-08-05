@@ -1,5 +1,6 @@
 import { workoutStore } from '../stores/workoutStore';
 import { api } from '../services/api';
+import { requestNotificationPermissions } from '../services/notifications';
 
 export const useWorkout = () => {
   const currentWorkout = workoutStore((state) => state.currentWorkout);
@@ -9,6 +10,9 @@ export const useWorkout = () => {
   const startWorkout = async (routineId?: string) => {
     const { data } = await api.post('/workouts', { routine_id: routineId });
     setCurrentWorkout(data);
+
+    // Best-effort — the rest timer's countdown works regardless of this.
+    requestNotificationPermissions();
 
     if (routineId) {
       const { data: routine } = await api.get(`/routines/${routineId}`);

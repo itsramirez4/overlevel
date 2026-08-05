@@ -59,7 +59,7 @@ export const SetLogger = ({
       const restSeconds = rest ? parseInt(rest) : 0;
       if (restSeconds > 0) {
         workoutStore.getState().startRest(restSeconds);
-        scheduleRestTimerNotification(restSeconds).catch(() => {});
+        scheduleRestTimerNotification(restSeconds);
       }
 
       onSetLogged();
