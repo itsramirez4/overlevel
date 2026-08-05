@@ -23,6 +23,11 @@ export class WorkoutController {
     const workout = await workoutService.complete(req.params.id, req.userId!, req.body);
     res.json(workout);
   }
+
+  async remove(req: AuthRequest, res: Response) {
+    await workoutService.remove(req.params.id, req.userId!);
+    res.status(204).send();
+  }
 }
 
 export const workoutController = new WorkoutController();

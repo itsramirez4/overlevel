@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, Dumbbell, Flame, ListChecks, Trophy } from 'lucide-react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronLeft, Dumbbell, Flame, ListChecks, Trash2, Trophy } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { StatCard } from '../../../components/analytics/StatCard';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Loader } from '../../../components/ui/Loader';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 
 const feltLikeLabel: Record<string, string> = {
   terrible: 'Terrible',
@@ -20,12 +22,21 @@ const feltLikeLabel: Record<string, string> = {
 export default function WorkoutDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { data: workout, isLoading } = useQuery({
     queryKey: ['workouts', id],
     queryFn: () => api.get(`/workouts/${id}`).then((r) => r.data),
     enabled: !!id,
   });
+
+  const confirmDelete = async () => {
+    setDeleteOpen(false);
+    await api.delete(`/workouts/${id}`);
+    await queryClient.invalidateQueries({ queryKey: ['workouts'] });
+    router.back();
+  };
 
   if (isLoading || !workout) {
     return (
@@ -55,13 +66,21 @@ export default function WorkoutDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>
+        <Text style={styles.title} numberOfLines={1}>
           {new Date(workout.started_at).toLocaleDateString('es-ES', {
             weekday: 'long',
             day: 'numeric',
             month: 'long',
           })}
         </Text>
+        <TouchableOpacity
+          onPress={() => setDeleteOpen(true)}
+          hitSlop={10}
+          style={styles.deleteButton}
+          accessibilityLabel="Borrar entrenamiento"
+        >
+          <Trash2 size={18} color={colors.semantic.error} />
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -100,6 +119,16 @@ export default function WorkoutDetailScreen() {
           </View>
         )}
       />
+
+      <ConfirmDialog
+        visible={deleteOpen}
+        title="Borrar entrenamiento"
+        message="¿Seguro que quieres borrar este entrenamiento y todas sus series? Esta acción no se puede deshacer."
+        confirmLabel="Borrar"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -123,7 +152,15 @@ const styles = StyleSheet.create({
     ...typography.h2,
     color: colors.text.primary,
     textTransform: 'capitalize',
-    flexShrink: 1,
+    flex: 1,
+  },
+  deleteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    backgroundColor: colors.bg.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   listContent: {
     paddingHorizontal: spacing.lg,

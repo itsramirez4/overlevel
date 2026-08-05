@@ -55,6 +55,16 @@ export class WorkoutService {
     if (error || !data) throw new AppError('Failed to complete workout');
     return data as Workout;
   }
+
+  async remove(id: string, userId: string): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('workouts')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) throw new AppError('Failed to delete workout');
+  }
 }
 
 export const workoutService = new WorkoutService();
