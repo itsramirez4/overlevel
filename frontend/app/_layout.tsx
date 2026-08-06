@@ -3,17 +3,15 @@ import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
-import { authStore } from '../stores/authStore';
 import { Loader } from '../components/ui/Loader';
 
 const queryClient = new QueryClient();
 
 export default function RootLayout() {
+  // useAuth() already calls authStore.checkAuth() internally and tracks
+  // isLoading against it — a second direct call here just fired the same
+  // /users/me request twice on every app launch.
   const { isLoading, isSignedIn } = useAuth();
-
-  useEffect(() => {
-    authStore.getState().checkAuth();
-  }, []);
 
   useEffect(() => {
     // Mobile browsers size `html`/`body`/`#root` off the *layout* viewport,

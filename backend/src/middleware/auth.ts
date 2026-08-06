@@ -16,6 +16,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
 
   try {
     const decoded = verifyToken(token);
+    if (decoded.type !== 'access') throw new Error('Not an access token');
     req.userId = decoded.userId;
     next();
   } catch (error) {

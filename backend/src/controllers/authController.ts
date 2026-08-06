@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { supabase, supabaseAdmin } from '../config/supabase';
-import { createTokens } from '../config/auth';
+import { createTokens, verifyToken } from '../config/auth';
 import { AppError } from '../middleware/errorHandler';
 
 export class AuthController {
@@ -53,9 +53,28 @@ export class AuthController {
     }
   }
 
+  /**
+   * Was a stub that never issued new tokens — with a 15-minute access token
+   * and no working refresh, the frontend's 401 handler was logging users out
+   * every 15 minutes during normal use. Access tokens are short-lived by
+   * design; this is what's supposed to renew them transparently.
+   */
   async refresh(req: Request, res: Response) {
-    // Implementation
-    res.json({ message: 'Refresh token logic here' });
+    const { refresh_token } = req.body;
+
+    if (!refresh_token) {
+      return res.status(401).json({ error: 'UNAUTHORIZED', message: 'No refresh token provided' });
+    }
+
+    try {
+      const decoded = verifyToken(refresh_token);
+      if (decoded.type !== 'refresh') throw new Error('Not a refresh token');
+
+      const { accessToken, refreshToken } = createTokens(decoded.userId);
+      res.json({ access_token: accessToken, refresh_token: refreshToken });
+    } catch {
+      res.status(401).json({ error: 'UNAUTHORIZED', message: 'Invalid refresh token' });
+    }
   }
 
   async logout(req: AuthRequest, res: Response) {
