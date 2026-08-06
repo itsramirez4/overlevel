@@ -3,22 +3,15 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Dumbbell, Flame, Shield, Skull, Sparkles, Swords } from 'lucide-react-native';
+import { ChevronLeft, Dumbbell, Flame, Sparkles } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
+import { CharacterAvatar } from '../../../components/character/CharacterAvatar';
 import { CharacterTypeDef } from '../../../types';
-
-const typeIcon: Record<string, typeof Swords> = {
-  powerlifter: Swords,
-  bodybuilder: Flame,
-  crossfitter: Sparkles,
-  calisthenics: Shield,
-  fracasado: Skull,
-};
 
 // What redeeming this does is still TBD — for now it just validates the
 // code itself; the actual effect gets wired in once it's decided.
@@ -90,11 +83,8 @@ export default function CharacterScreen() {
           <>
             <Card style={styles.sheetCard}>
               <View style={styles.sheetHeader}>
-                <View style={styles.iconBadge}>
-                  {(() => {
-                    const Icon = typeIcon[character.character_type] || Swords;
-                    return <Icon size={28} color={colors.accent.fire} strokeWidth={2} />;
-                  })()}
+                <View style={styles.avatarBadge}>
+                  <CharacterAvatar type={character.character_type} size={72} />
                 </View>
                 <View style={styles.sheetHeaderText}>
                   <Text style={styles.name}>{character.name}</Text>
@@ -149,7 +139,6 @@ export default function CharacterScreen() {
             <Text style={styles.sectionTitle}>Elige tu clase</Text>
             {(types || []).map((type) => {
               const selected = type.id === selectedType;
-              const Icon = typeIcon[type.id] || Swords;
               return (
                 <TouchableOpacity
                   key={type.id}
@@ -157,8 +146,8 @@ export default function CharacterScreen() {
                   onPress={() => setSelectedType(type.id)}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.iconBadge}>
-                    <Icon size={24} color={colors.accent.fire} strokeWidth={2} />
+                  <View style={styles.avatarBadge}>
+                    <CharacterAvatar type={type.id} size={56} />
                   </View>
                   <View style={styles.typeCardText}>
                     <Text style={styles.typeName}>{type.name}</Text>
@@ -265,14 +254,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  iconBadge: {
-    width: 48,
-    height: 48,
+  avatarBadge: {
     borderRadius: radius.pill,
-    backgroundColor: colors.bg.elevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
+    overflow: 'hidden',
+    marginRight: spacing.md,
   },
   sheetHeaderText: {
     flex: 1,

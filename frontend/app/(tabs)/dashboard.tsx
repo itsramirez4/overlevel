@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, Dumbbell, Flame, CalendarDays, Swords, Zap } from 'lucide-react-native';
+import { ChevronRight, Dumbbell, Flame, CalendarDays, Zap } from 'lucide-react-native';
 import { api } from '../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { useWorkout } from '../../hooks/useWorkout';
@@ -11,6 +11,7 @@ import { authStore } from '../../stores/authStore';
 import { StatCard } from '../../components/analytics/StatCard';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
+import { CharacterAvatar } from '../../components/character/CharacterAvatar';
 import { getWorkoutName } from '../../utils/workoutName';
 import { kgToUnit } from '../../utils/units';
 import { scheduleTrainingReminder, cancelTrainingReminder } from '../../services/notifications';
@@ -69,7 +70,7 @@ export default function DashboardScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.characterIconBadge}>
-              <Swords size={20} color={colors.accent.fire} strokeWidth={2} />
+              <CharacterAvatar type={character.character_type} size={36} />
             </View>
             <View style={styles.characterInfo}>
               <Text style={styles.characterName} numberOfLines={1}>
@@ -182,12 +183,8 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   characterIconBadge: {
-    width: 36,
-    height: 36,
     borderRadius: radius.pill,
-    backgroundColor: colors.bg.elevated,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
     marginRight: spacing.sm,
   },
   characterInfo: {
