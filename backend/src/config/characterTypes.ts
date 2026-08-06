@@ -42,7 +42,8 @@ export const CHARACTER_TYPES: CharacterTypeDef[] = [
     id: 'fracasado',
     name: 'Fracasado',
     tagline: 'Leyenda del gimnasio (a su manera)',
-    description: 'Entre series a medias y excusas legendarias, se ha ganado el título a pulso.',
+    description:
+      'Anacoreta de lo mediocridad, Entregado al fracaso a la enesima potencia.\n\nNo deberias ni estar aqui, el progreso es lo contrario a lo que  proclamas.',
   },
 ];
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -20,10 +20,9 @@ const typeIcon: Record<string, typeof Swords> = {
   fracasado: Skull,
 };
 
-// Purely a visual easter egg — never touches the character's real type/stats.
+// What redeeming this does is still TBD — for now it just validates the
+// code itself; the actual effect gets wired in once it's decided.
 const SECRET_CODE = 'soyunputofracasadoymelapela';
-const ROAST_TAGLINE = 'Anacoreta de la mediocridad, entregado al fracaso a la enésima potencia.';
-const ROAST_MESSAGE = 'No deberías ni estar aquí, el progreso es lo contrario a lo que proclamas.';
 
 export default function CharacterScreen() {
   const router = useRouter();
@@ -33,7 +32,6 @@ export default function CharacterScreen() {
   const [error, setError] = useState('');
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');
-  const [roastActive, setRoastActive] = useState(false);
 
   const { data: character, isLoading: characterLoading } = useQuery({
     queryKey: ['character'],
@@ -49,9 +47,8 @@ export default function CharacterScreen() {
   const handleRedeemCode = () => {
     setCodeError('');
     if (codeInput.trim().toLowerCase() === SECRET_CODE) {
-      setRoastActive(true);
+      // TODO: wire up the actual effect once it's decided.
       setCodeInput('');
-      Alert.alert('...', ROAST_MESSAGE);
     } else {
       setCodeError('Código no válido');
     }
@@ -101,7 +98,7 @@ export default function CharacterScreen() {
                 </View>
                 <View style={styles.sheetHeaderText}>
                   <Text style={styles.name}>{character.name}</Text>
-                  <Text style={styles.tagline}>{roastActive ? ROAST_TAGLINE : character.type_info?.tagline}</Text>
+                  <Text style={styles.tagline}>{character.type_info?.tagline}</Text>
                 </View>
                 <View style={styles.levelBadge}>
                   <Text style={styles.levelBadgeLabel}>NIVEL</Text>
