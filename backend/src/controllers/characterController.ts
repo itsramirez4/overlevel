@@ -16,6 +16,11 @@ export class CharacterController {
     const character = await characterService.create(req.userId!, req.body.character_type);
     res.status(201).json(character);
   }
+
+  async changeType(req: AuthRequest, res: Response) {
+    const character = await characterService.changeType(req.userId!, req.body.character_type);
+    res.json(character);
+  }
 }
 
 export const characterController = new CharacterController();

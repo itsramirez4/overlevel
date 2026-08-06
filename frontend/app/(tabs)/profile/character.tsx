@@ -23,6 +23,7 @@ export default function CharacterScreen() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [changingType, setChangingType] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');
 
@@ -31,10 +32,12 @@ export default function CharacterScreen() {
     queryFn: () => api.get('/characters/me').then((r) => r.data),
   });
 
+  const showPicker = !character || changingType;
+
   const { data: types, isLoading: typesLoading } = useQuery<CharacterTypeDef[]>({
     queryKey: ['character', 'types'],
     queryFn: () => api.get('/characters/types').then((r) => r.data),
-    enabled: !characterLoading && !character,
+    enabled: !characterLoading && showPicker,
   });
 
   const handleRedeemCode = () => {
@@ -52,10 +55,16 @@ export default function CharacterScreen() {
     setError('');
     setCreating(true);
     try {
-      await api.post('/characters', { character_type: selectedType });
+      if (changingType) {
+        await api.put('/characters/me', { character_type: selectedType });
+        setChangingType(false);
+      } else {
+        await api.post('/characters', { character_type: selectedType });
+      }
+      setSelectedType(null);
       await queryClient.invalidateQueries({ queryKey: ['character'] });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'No se pudo crear el personaje');
+      setError(err.response?.data?.message || 'No se pudo guardar el personaje');
     } finally {
       setCreating(false);
     }
@@ -79,7 +88,7 @@ export default function CharacterScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
-        {character ? (
+        {character && !changingType ? (
           <>
             <Card style={styles.sheetCard}>
               <View style={styles.sheetHeader}>
@@ -117,6 +126,16 @@ export default function CharacterScreen() {
               Las estadísticas y la experiencia se calculan automáticamente a partir de tus entrenamientos reales.
             </Text>
 
+            <Button
+              label="CAMBIAR DE CLASE"
+              variant="outline"
+              onPress={() => {
+                setSelectedType(character.character_type);
+                setChangingType(true);
+              }}
+              style={styles.changeClassButton}
+            />
+
             <View style={styles.codeSection}>
               <Input
                 label="¿Tienes un código?"
@@ -136,7 +155,7 @@ export default function CharacterScreen() {
           <Loader />
         ) : (
           <>
-            <Text style={styles.sectionTitle}>Elige tu clase</Text>
+            <Text style={styles.sectionTitle}>{changingType ? 'Elige tu nueva clase' : 'Elige tu clase'}</Text>
             {(types || []).map((type) => {
               const selected = type.id === selectedType;
               return (
@@ -161,12 +180,24 @@ export default function CharacterScreen() {
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <Button
-              label={creating ? 'Creando…' : 'CREAR PERSONAJE'}
+              label={creating ? 'Guardando…' : changingType ? 'CONFIRMAR CAMBIO' : 'CREAR PERSONAJE'}
               loading={creating}
               disabled={!selectedType}
               onPress={handleCreate}
               style={styles.createButton}
             />
+
+            {changingType && (
+              <Button
+                label="CANCELAR"
+                variant="ghost"
+                onPress={() => {
+                  setChangingType(false);
+                  setSelectedType(null);
+                  setError('');
+                }}
+              />
+            )}
           </>
         )}
       </ScrollView>
@@ -315,6 +346,9 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
     textAlign: 'center',
     marginTop: spacing.sm,
+  },
+  changeClassButton: {
+    marginTop: spacing.lg,
   },
   codeSection: {
     marginTop: spacing.xl,

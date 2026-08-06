@@ -83,6 +83,32 @@ export class CharacterService {
     return this.getMyCharacter(userId);
   }
 
+  /** Switch class after creation — level/xp are earned from real training
+   * history and stay untouched, only the class (and its display name) changes. */
+  async changeType(userId: string, characterType: string) {
+    if (!isCharacterType(characterType)) {
+      throw new AppError('Invalid character type', 400);
+    }
+
+    const { data: existing } = await supabaseAdmin
+      .from('characters')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!existing) throw new AppError('No tienes ningún personaje todavía', 404);
+
+    const typeDef = CHARACTER_TYPES.find((t) => t.id === characterType)!;
+
+    const { error } = await supabaseAdmin
+      .from('characters')
+      .update({ character_type: characterType, name: typeDef.name, updated_at: new Date().toISOString() })
+      .eq('id', existing.id);
+
+    if (error) throw new AppError('Failed to change character type');
+    return this.getMyCharacter(userId);
+  }
+
   /** Called when a workout is completed — no-op if the user has no character yet. */
   async awardXpForWorkout(userId: string, workoutId: string): Promise<void> {
     const { data: character } = await supabaseAdmin
