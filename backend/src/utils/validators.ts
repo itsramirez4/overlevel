@@ -91,3 +91,9 @@ export const changePasswordSchema = z.object({
 export const importHevySchema = z.object({
   csv: z.string().min(1),
 });
+
+export const updateWorkoutSchema = z.object({
+  title: z.string().max(200).optional(),
+  notes: z.string().optional(),
+  felt_like: z.enum(['terrible', 'bad', 'ok', 'good', 'amazing']).optional(),
+});

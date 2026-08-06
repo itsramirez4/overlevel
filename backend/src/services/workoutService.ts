@@ -69,6 +69,21 @@ export class WorkoutService {
     return data as Workout;
   }
 
+  /** Editing title/notes/felt_like after the fact — deliberately separate from
+   * complete() so it never touches completed_at/duration_minutes. */
+  async update(id: string, userId: string, updates: Partial<Workout>): Promise<Workout> {
+    const { data, error } = await supabaseAdmin
+      .from('workouts')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error || !data) throw new AppError('Failed to update workout');
+    return data as Workout;
+  }
+
   async remove(id: string, userId: string): Promise<void> {
     const { error } = await supabaseAdmin
       .from('workouts')

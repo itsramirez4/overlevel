@@ -24,6 +24,11 @@ export class WorkoutController {
     res.json(workout);
   }
 
+  async update(req: AuthRequest, res: Response) {
+    const workout = await workoutService.update(req.params.id, req.userId!, req.body);
+    res.json(workout);
+  }
+
   async remove(req: AuthRequest, res: Response) {
     await workoutService.remove(req.params.id, req.userId!);
     res.status(204).send();

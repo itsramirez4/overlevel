@@ -3,13 +3,14 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Clock, Dumbbell, Flame, Link2, ListChecks, Trash2, Trophy } from 'lucide-react-native';
+import { ChevronLeft, Clock, Dumbbell, Flame, Link2, ListChecks, Pencil, Trash2, Trophy } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { StatCard } from '../../../components/analytics/StatCard';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Loader } from '../../../components/ui/Loader';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { EditWorkoutDialog } from '../../../components/workout/EditWorkoutDialog';
 import { getWorkoutName } from '../../../utils/workoutName';
 import { feltLikeLabel } from '../../../utils/feltLike';
 import { formatWeight, kgToUnit } from '../../../utils/units';
@@ -21,6 +22,7 @@ export default function WorkoutDetailScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
 
   const { data: workout, isLoading } = useQuery({
@@ -34,6 +36,13 @@ export default function WorkoutDetailScreen() {
     await api.delete(`/workouts/${id}`);
     await queryClient.invalidateQueries({ queryKey: ['workouts'] });
     router.back();
+  };
+
+  const handleSaveEdit = async (title?: string, notes?: string, feltLike?: string) => {
+    setEditOpen(false);
+    await api.put(`/workouts/${id}`, { title, notes, felt_like: feltLike });
+    await queryClient.invalidateQueries({ queryKey: ['workouts', id] });
+    await queryClient.invalidateQueries({ queryKey: ['workouts'] });
   };
 
   if (isLoading || !workout) {
@@ -84,6 +93,14 @@ export default function WorkoutDetailScreen() {
             </Text>
           )}
         </View>
+        <TouchableOpacity
+          onPress={() => setEditOpen(true)}
+          hitSlop={10}
+          style={styles.deleteButton}
+          accessibilityLabel="Editar entrenamiento"
+        >
+          <Pencil size={18} color={colors.text.secondary} />
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setDeleteOpen(true)}
           hitSlop={10}
@@ -150,6 +167,15 @@ export default function WorkoutDetailScreen() {
         onConfirm={confirmDelete}
         onCancel={() => setDeleteOpen(false)}
       />
+
+      <EditWorkoutDialog
+        visible={editOpen}
+        initialTitle={workout.title}
+        initialNotes={workout.notes}
+        initialFeltLike={workout.felt_like}
+        onSave={handleSaveEdit}
+        onCancel={() => setEditOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -197,6 +223,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.elevated,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: spacing.sm,
   },
   listContent: {
     paddingHorizontal: spacing.lg,
