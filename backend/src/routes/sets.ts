@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.use(authMiddleware);
 router.get('/workout/:workoutId', setController.listByWorkout);
+router.get('/exercise/:exerciseId/last-session', setController.lastSession);
 router.post('/', validateBody(logSetSchema), setController.log);
 router.put('/:id', validateBody(updateSetSchema), setController.update);
 router.delete('/:id', setController.remove);

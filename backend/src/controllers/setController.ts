@@ -8,6 +8,12 @@ export class SetController {
     res.json(sets);
   }
 
+  async lastSession(req: AuthRequest, res: Response) {
+    const excludeWorkoutId = req.query.excludeWorkoutId as string | undefined;
+    const session = await setService.getLastSession(req.params.exerciseId, req.userId!, excludeWorkoutId);
+    res.json(session);
+  }
+
   async log(req: AuthRequest, res: Response) {
     const set = await setService.log(req.userId!, req.body);
     res.status(201).json(set);

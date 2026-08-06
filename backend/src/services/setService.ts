@@ -115,6 +115,44 @@ export class SetService {
     return data as Set;
   }
 
+  /**
+   * The last time this exercise was trained (excluding the in-progress
+   * workout, if any) — shown while logging so the previous session's numbers
+   * are visible without leaving the screen.
+   */
+  async getLastSession(exerciseId: string, userId: string, excludeWorkoutId?: string) {
+    let query = supabaseAdmin
+      .from('sets')
+      .select('workout_id, set_number, weight, reps, rpe, workouts!inner(started_at, user_id)')
+      .eq('exercise_id', exerciseId)
+      .eq('workouts.user_id', userId)
+      .eq('is_warmup', false);
+
+    if (excludeWorkoutId) query = query.neq('workout_id', excludeWorkoutId);
+
+    // PostgREST's foreignTable ordering only sorts *within* an embedded
+    // resource — since sets→workouts is many-to-one, it can't reorder the
+    // outer rows by the related workout's date, so we sort client-side
+    // instead. 500 comfortably covers even a very frequently trained
+    // exercise's full history while staying under the project's row cap.
+    const { data, error } = await query.limit(500);
+
+    if (error) throw new AppError('Failed to fetch last session');
+    if (!data || data.length === 0) return null;
+
+    const sorted = (data as any[]).sort(
+      (a, b) => new Date(b.workouts.started_at).getTime() - new Date(a.workouts.started_at).getTime()
+    );
+
+    const lastWorkoutId = sorted[0].workout_id;
+    const sets = sorted
+      .filter((s) => s.workout_id === lastWorkoutId)
+      .sort((a, b) => a.set_number - b.set_number)
+      .map((s) => ({ set_number: s.set_number, weight: s.weight, reps: s.reps, rpe: s.rpe }));
+
+    return { date: sorted[0].workouts.started_at, sets };
+  }
+
   async remove(id: string, userId: string): Promise<void> {
     const { data: set } = await supabaseAdmin
       .from('sets')

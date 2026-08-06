@@ -1,10 +1,17 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
 import { Link2, X } from 'lucide-react-native';
 import { colors, radius, spacing, typography } from '../../utils/theme';
+import { api } from '../../services/api';
 import { Card } from '../ui/Card';
 import { SetLogger } from './SetLogger';
 import { LoggedSetRow } from './LoggedSetRow';
 import { Exercise, Set } from '../../types';
+
+interface LastSession {
+  date: string;
+  sets: { set_number: number; weight: number; reps: number; rpe: number | null }[];
+}
 
 interface ExerciseLogSectionProps {
   workoutId: string;
@@ -34,6 +41,14 @@ export const ExerciseLogSection = ({
   const sortedSets = [...loggedSets].sort((a, b) => a.set_number - b.set_number);
   const lastSet = sortedSets[sortedSets.length - 1];
 
+  const { data: lastSession } = useQuery<LastSession | null>({
+    queryKey: ['sets', 'last-session', exercise.id, workoutId],
+    queryFn: () =>
+      api
+        .get(`/sets/exercise/${exercise.id}/last-session`, { params: { excludeWorkoutId: workoutId } })
+        .then((r) => r.data),
+  });
+
   return (
     <Card style={[styles.card, !!supersetGroup && styles.cardSuperset]}>
       {!isFirst && (
@@ -55,6 +70,12 @@ export const ExerciseLogSection = ({
           <X size={18} color={colors.text.muted} />
         </TouchableOpacity>
       </View>
+
+      {lastSession && lastSession.sets.length > 0 && (
+        <Text style={styles.lastSession} numberOfLines={1}>
+          Última vez: {lastSession.sets.map((s) => `${s.weight}kg×${s.reps}`).join(', ')}
+        </Text>
+      )}
 
       {sortedSets.length > 0 && (
         <View style={styles.loggedSets}>
@@ -95,6 +116,11 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text.primary,
     flex: 1,
+  },
+  lastSession: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+    marginBottom: spacing.md,
   },
   loggedSets: {
     marginBottom: spacing.md,
