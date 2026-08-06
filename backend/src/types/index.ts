@@ -61,12 +61,14 @@ export interface Workout {
   id: string;
   user_id: string;
   routine_id?: string;
+  title?: string;
   started_at: string;
   completed_at?: string;
   duration_minutes?: number;
   felt_like?: 'terrible' | 'bad' | 'ok' | 'good' | 'amazing';
   notes?: string;
   sets?: Set[];
+  routines?: { name: string };
   created_at: string;
 }
 

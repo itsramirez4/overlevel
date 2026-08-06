@@ -10,6 +10,7 @@ import { StatCard } from '../../../components/analytics/StatCard';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Loader } from '../../../components/ui/Loader';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { getWorkoutName } from '../../../utils/workoutName';
 
 const feltLikeLabel: Record<string, string> = {
   terrible: 'Terrible',
@@ -62,19 +63,30 @@ export default function WorkoutDetailScreen() {
 
   exerciseGroups.forEach((g) => g.sets.sort((a, b) => a.set_number - b.set_number));
 
+  const name = getWorkoutName(workout);
+  const hasExplicitName = !!(workout.title || workout.routines?.name);
+  const formattedDate = new Date(workout.started_at).toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>
-          {new Date(workout.started_at).toLocaleDateString('es-ES', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          })}
-        </Text>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.title} numberOfLines={1}>
+            {name}
+          </Text>
+          {hasExplicitName && (
+            <Text style={styles.dateSubtitle} numberOfLines={1}>
+              {formattedDate}
+            </Text>
+          )}
+        </View>
         <TouchableOpacity
           onPress={() => setDeleteOpen(true)}
           hitSlop={10}
@@ -84,6 +96,8 @@ export default function WorkoutDetailScreen() {
           <Trash2 size={18} color={colors.semantic.error} />
         </TouchableOpacity>
       </View>
+
+      {workout.notes ? <Text style={styles.description}>{workout.notes}</Text> : null}
 
       <FlatList
         data={exerciseGroups}
@@ -155,11 +169,26 @@ const styles = StyleSheet.create({
   backButton: {
     marginRight: spacing.sm,
   },
+  headerTextContainer: {
+    flex: 1,
+  },
   title: {
     ...typography.h2,
     color: colors.text.primary,
     textTransform: 'capitalize',
-    flex: 1,
+  },
+  dateSubtitle: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+    textTransform: 'capitalize',
+    marginTop: 2,
+  },
+  description: {
+    ...typography.small,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
   deleteButton: {
     width: 36,

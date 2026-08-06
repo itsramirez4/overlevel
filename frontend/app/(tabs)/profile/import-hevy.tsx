@@ -15,6 +15,7 @@ interface ImportResult {
   exercises_created: number;
   sets_created: number;
   rows_skipped: number;
+  duplicate_workouts_skipped: number;
 }
 
 export default function ImportHevyScreen() {
@@ -116,6 +117,11 @@ export default function ImportHevyScreen() {
             <Text style={styles.resultLine}>Series creadas: {result.sets_created}</Text>
             {result.rows_skipped > 0 && (
               <Text style={styles.resultLine}>Filas omitidas: {result.rows_skipped}</Text>
+            )}
+            {result.duplicate_workouts_skipped > 0 && (
+              <Text style={styles.resultLine}>
+                Entrenamientos ya importados (omitidos): {result.duplicate_workouts_skipped}
+              </Text>
             )}
           </Card>
         )}

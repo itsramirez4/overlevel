@@ -34,6 +34,7 @@ export interface HevyImportResult {
   exercises_created: number;
   sets_created: number;
   rows_skipped: number;
+  duplicate_workouts_skipped: number;
 }
 
 export class ImportService {
@@ -71,9 +72,30 @@ export class ImportService {
     const { data: existing } = await supabaseAdmin.from('exercises').select('id, name').eq('user_id', userId);
     const exerciseIdByName = new Map((existing || []).map((e) => [e.name.toLowerCase(), e.id as string]));
 
-    const result: HevyImportResult = { workouts_created: 0, exercises_created: 0, sets_created: 0, rows_skipped: 0 };
+    // A previous (or concurrently-running) import of the same file would
+    // otherwise create exact duplicates — same user, same started_at — so
+    // skip any workout whose start time we've already recorded.
+    const { data: existingWorkouts } = await supabaseAdmin
+      .from('workouts')
+      .select('started_at')
+      .eq('user_id', userId);
+    const existingStartTimes = new Set((existingWorkouts || []).map((w) => new Date(w.started_at).getTime()));
+
+    const result: HevyImportResult = {
+      workouts_created: 0,
+      exercises_created: 0,
+      sets_created: 0,
+      rows_skipped: 0,
+      duplicate_workouts_skipped: 0,
+    };
 
     for (const group of groups) {
+      if (existingStartTimes.has(group.startedAt.getTime())) {
+        result.duplicate_workouts_skipped++;
+        continue;
+      }
+      existingStartTimes.add(group.startedAt.getTime());
+
       const first = group.rows[0];
       const completedAt = parseHevyDate(first.end_time) || group.startedAt;
 
@@ -83,13 +105,22 @@ export class ImportService {
           user_id: userId,
           started_at: group.startedAt.toISOString(),
           completed_at: completedAt.toISOString(),
-          notes: first.description || first.title || undefined,
+          title: first.title || undefined,
+          notes: first.description || undefined,
         })
         .select()
         .single();
 
       if (workoutError || !workout) {
-        result.rows_skipped += group.rows.length;
+        // 23505 = unique_violation on (user_id, started_at) — another request
+        // (e.g. a concurrent double-submit of this same import) already
+        // inserted this workout between our in-memory check above and this
+        // insert, so it's a duplicate, not a real failure.
+        if (workoutError?.code === '23505') {
+          result.duplicate_workouts_skipped++;
+        } else {
+          result.rows_skipped += group.rows.length;
+        }
         continue;
       }
       result.workouts_created++;

@@ -72,6 +72,8 @@ export interface Workout {
   user_id: string;
   routine_id?: string;
   routine?: Routine;
+  routines?: { name: string };
+  title?: string;
   started_at: string;
   completed_at?: string;
   duration_minutes?: number;

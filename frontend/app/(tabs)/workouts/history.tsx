@@ -10,6 +10,7 @@ import { EmptyState } from '../../../components/common/EmptyState';
 import { Card } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
 import { WorkoutHeatmap } from '../../../components/analytics/WorkoutHeatmap';
+import { getWorkoutName } from '../../../utils/workoutName';
 
 export default function WorkoutHistoryScreen() {
   const router = useRouter();
@@ -40,6 +41,8 @@ export default function WorkoutHistoryScreen() {
       .toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
       .toLowerCase();
     if (dateLabel.includes(query)) return true;
+    if (getWorkoutName(w).toLowerCase().includes(query)) return true;
+    if (w.notes && w.notes.toLowerCase().includes(query)) return true;
     return exerciseNames(w).some((name) => name.toLowerCase().includes(query));
   });
 
@@ -77,30 +80,44 @@ export default function WorkoutHistoryScreen() {
             />
           )
         }
-        renderItem={({ item }: any) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => router.push(`/workouts/detail?id=${item.id}`)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconBadge}>
-              <Dumbbell size={16} color={colors.accent.fire} strokeWidth={2} />
-            </View>
-            <View style={styles.cardInfo}>
-              <Text style={styles.date}>
-                {new Date(item.started_at).toLocaleDateString('es-ES', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'short',
-                })}
-              </Text>
-              <Text style={styles.sets} numberOfLines={1}>
-                {item.sets?.length || 0} sets{exerciseNames(item).length ? ` · ${exerciseNames(item).join(', ')}` : ''}
-              </Text>
-            </View>
-            <ChevronRight size={18} color={colors.text.muted} />
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }: any) => {
+          const name = getWorkoutName(item);
+          const hasExplicitName = !!(item.title || item.routines?.name);
+          return (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/workouts/detail?id=${item.id}`)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconBadge}>
+                <Dumbbell size={16} color={colors.accent.fire} strokeWidth={2} />
+              </View>
+              <View style={styles.cardInfo}>
+                <Text style={styles.date} numberOfLines={1}>
+                  {name}
+                </Text>
+                {hasExplicitName && (
+                  <Text style={styles.dateSecondary}>
+                    {new Date(item.started_at).toLocaleDateString('es-ES', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </Text>
+                )}
+                {item.notes ? (
+                  <Text style={styles.description} numberOfLines={1}>
+                    {item.notes}
+                  </Text>
+                ) : null}
+                <Text style={styles.sets} numberOfLines={1}>
+                  {item.sets?.length || 0} sets{exerciseNames(item).length ? ` · ${exerciseNames(item).join(', ')}` : ''}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.text.muted} />
+            </TouchableOpacity>
+          );
+        }}
       />
     </SafeAreaView>
   );
@@ -169,6 +186,18 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontWeight: '600',
     textTransform: 'capitalize',
+  },
+  dateSecondary: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+    textTransform: 'capitalize',
+    marginTop: 1,
+  },
+  description: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   sets: {
     ...typography.tiny,

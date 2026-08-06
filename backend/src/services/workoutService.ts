@@ -6,7 +6,7 @@ export class WorkoutService {
   async list(userId: string, limit = 20): Promise<Workout[]> {
     const { data, error } = await supabaseAdmin
       .from('workouts')
-      .select('*, sets(*, exercises(name))')
+      .select('*, sets(*, exercises(name)), routines(name)')
       .eq('user_id', userId)
       .order('started_at', { ascending: false })
       .limit(limit);
@@ -18,7 +18,7 @@ export class WorkoutService {
   async getById(id: string, userId: string): Promise<Workout> {
     const { data, error } = await supabaseAdmin
       .from('workouts')
-      .select('*, sets(*, exercises(*))')
+      .select('*, sets(*, exercises(*)), routines(name)')
       .eq('id', id)
       .eq('user_id', userId)
       .single();
