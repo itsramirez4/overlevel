@@ -97,3 +97,7 @@ export const updateWorkoutSchema = z.object({
   notes: z.string().optional(),
   felt_like: z.enum(['terrible', 'bad', 'ok', 'good', 'amazing']).optional(),
 });
+
+export const createCharacterSchema = z.object({
+  character_type: z.enum(['powerlifter', 'bodybuilder', 'crossfitter', 'calisthenics']),
+});

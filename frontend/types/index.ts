@@ -72,6 +72,34 @@ export interface Set {
   created_at: string;
 }
 
+export type CharacterType = 'powerlifter' | 'bodybuilder' | 'crossfitter' | 'calisthenics';
+
+export interface CharacterTypeDef {
+  id: CharacterType;
+  name: string;
+  tagline: string;
+  description: string;
+}
+
+export interface Character {
+  id: string;
+  user_id: string;
+  character_type: CharacterType;
+  name: string;
+  level: number;
+  xp: number;
+  xp_for_current_level: number;
+  xp_for_next_level: number;
+  progress: number;
+  stats: {
+    fuerza: number;
+    resistencia: number;
+    constancia: number;
+  };
+  type_info?: CharacterTypeDef;
+  created_at: string;
+}
+
 export interface Workout {
   id: string;
   user_id: string;

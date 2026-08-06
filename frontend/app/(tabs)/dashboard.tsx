@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, Dumbbell, Flame, CalendarDays, Zap } from 'lucide-react-native';
+import { ChevronRight, Dumbbell, Flame, CalendarDays, Swords, Zap } from 'lucide-react-native';
 import { api } from '../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { useWorkout } from '../../hooks/useWorkout';
@@ -31,6 +31,11 @@ export default function DashboardScreen() {
     queryFn: () => api.get('/workouts?limit=3').then((r) => r.data),
   });
 
+  const { data: character } = useQuery({
+    queryKey: ['character'],
+    queryFn: () => api.get('/characters/me').then((r) => r.data),
+  });
+
   useEffect(() => {
     if (workoutsLoading) return;
     const trainedToday = (workouts || []).some(
@@ -56,6 +61,27 @@ export default function DashboardScreen() {
           <Text style={styles.greeting}>Hola{username ? `, ${username}` : ''}</Text>
           <Text style={styles.title}>Tu progreso</Text>
         </View>
+
+        {character && (
+          <TouchableOpacity
+            style={styles.characterBanner}
+            onPress={() => router.push('/profile/character')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.characterIconBadge}>
+              <Swords size={20} color={colors.accent.fire} strokeWidth={2} />
+            </View>
+            <View style={styles.characterInfo}>
+              <Text style={styles.characterName} numberOfLines={1}>
+                {character.name} · Nivel {character.level}
+              </Text>
+              <View style={styles.characterXpTrack}>
+                <View style={[styles.characterXpFill, { width: `${Math.round(character.progress * 100)}%` }]} />
+              </View>
+            </View>
+            <ChevronRight size={18} color={colors.text.muted} />
+          </TouchableOpacity>
+        )}
 
         <View style={styles.statsGrid}>
           <StatCard
@@ -143,6 +169,45 @@ const styles = StyleSheet.create({
   title: {
     ...typography.h1,
     color: colors.text.primary,
+  },
+  characterBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bg.secondary,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+    ...shadow.card,
+  },
+  characterIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    backgroundColor: colors.bg.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  characterInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  characterName: {
+    ...typography.small,
+    color: colors.text.primary,
+    fontWeight: '700',
+  },
+  characterXpTrack: {
+    height: 5,
+    backgroundColor: colors.bg.tertiary,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  characterXpFill: {
+    height: '100%',
+    backgroundColor: colors.accent.fire,
   },
   statsGrid: {
     flexDirection: 'row',

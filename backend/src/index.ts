@@ -14,6 +14,7 @@ import routineRoutes from './routes/routines';
 import workoutRoutes from './routes/workouts';
 import setRoutes from './routes/sets';
 import analyticsRoutes from './routes/analytics';
+import characterRoutes from './routes/characters';
 
 // Cron Jobs
 import { initCronJobs } from './services/cronService';
@@ -43,6 +44,7 @@ app.use('/api/routines', routineRoutes);
 app.use('/api/workouts', workoutRoutes);
 app.use('/api/sets', setRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/characters', characterRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

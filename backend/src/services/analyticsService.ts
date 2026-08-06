@@ -40,7 +40,7 @@ export class AnalyticsService {
    * If today has no workout yet, counting starts from yesterday instead —
    * an in-progress day shouldn't zero out an otherwise-intact streak.
    */
-  private async getCurrentStreak(userId: string): Promise<number> {
+  async getCurrentStreak(userId: string): Promise<number> {
     const { data, error } = await supabaseAdmin
       .from('workouts')
       .select('started_at')

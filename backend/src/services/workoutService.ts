@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../config/supabase';
 import { Workout } from '../types';
 import { AppError } from '../middleware/errorHandler';
+import { characterService } from './characterService';
 
 export class WorkoutService {
   async list(userId: string, limit = 20): Promise<Workout[]> {
@@ -66,6 +67,11 @@ export class WorkoutService {
       .single();
 
     if (error || !data) throw new AppError('Failed to complete workout');
+
+    // No-op if the user hasn't created a character — the RPG layer is
+    // additive and never required for the tracker itself to work.
+    await characterService.awardXpForWorkout(userId, id);
+
     return data as Workout;
   }
 
