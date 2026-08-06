@@ -21,7 +21,12 @@ export default function EditRoutineScreen() {
     queryFn: () => api.get(`/routines/${id}`).then((r) => r.data),
   });
 
-  const handleSave = async (data: { name: string; day_of_week?: string; notes?: string }) => {
+  const handleSave = async (data: {
+    name: string;
+    day_of_week?: string;
+    pattern?: 'fixed_day' | 'alternating_ab' | 'alternating_abc';
+    notes?: string;
+  }) => {
     if (!data.name) {
       setError('El nombre es obligatorio');
       return;
@@ -61,6 +66,7 @@ export default function EditRoutineScreen() {
             initialValues={{
               name: routine?.name || '',
               day_of_week: routine?.day_of_week || '',
+              pattern: routine?.pattern,
               notes: routine?.notes || '',
             }}
           />

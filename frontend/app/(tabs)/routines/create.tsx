@@ -12,7 +12,12 @@ export default function CreateRoutineScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleCreate = async (data: { name: string; day_of_week?: string; notes?: string }) => {
+  const handleCreate = async (data: {
+    name: string;
+    day_of_week?: string;
+    pattern?: 'fixed_day' | 'alternating_ab' | 'alternating_abc';
+    notes?: string;
+  }) => {
     if (!data.name) {
       setError('El nombre es obligatorio');
       return;
