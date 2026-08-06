@@ -43,7 +43,11 @@ export class WorkoutService {
     return data as Workout;
   }
 
-  async complete(id: string, userId: string, updates: Partial<Workout>): Promise<Workout> {
+  async complete(
+    id: string,
+    userId: string,
+    updates: Partial<Workout>
+  ): Promise<Workout & { xp_award?: { xpGained: number; leveledUp: boolean; previousLevel: number; newLevel: number } }> {
     const { data: existing } = await supabaseAdmin
       .from('workouts')
       .select('started_at')
@@ -68,11 +72,11 @@ export class WorkoutService {
 
     if (error || !data) throw new AppError('Failed to complete workout');
 
-    // No-op if the user hasn't created a character — the RPG layer is
-    // additive and never required for the tracker itself to work.
-    await characterService.awardXpForWorkout(userId, id);
+    // No-op (returns null) if the user hasn't created a character — the RPG
+    // layer is additive and never required for the tracker itself to work.
+    const xpAward = await characterService.awardXpForWorkout(userId, id);
 
-    return data as Workout;
+    return { ...(data as Workout), xp_award: xpAward || undefined };
   }
 
   /** Editing title/notes/felt_like after the fact — deliberately separate from

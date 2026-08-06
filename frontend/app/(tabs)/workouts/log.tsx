@@ -12,6 +12,7 @@ import { ExerciseLogSection } from '../../../components/workout/ExerciseLogSecti
 import { SessionTimer } from '../../../components/workout/SessionTimer';
 import { RestTimer } from '../../../components/workout/RestTimer';
 import { CompleteWorkoutDialog } from '../../../components/workout/CompleteWorkoutDialog';
+import { XpRewardDialog } from '../../../components/workout/XpRewardDialog';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Button } from '../../../components/ui/Button';
 
@@ -19,6 +20,11 @@ export default function WorkoutLogScreen() {
   const router = useRouter();
   const { currentWorkout, completeWorkout } = useWorkout();
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [xpAward, setXpAward] = useState<{
+    xpGained: number;
+    leveledUp: boolean;
+    newLevel: number;
+  } | null>(null);
   const sessionExercises = workoutStore((state) => state.sessionExercises);
   const removeSessionExercise = workoutStore((state) => state.removeSessionExercise);
   const linkedToPrevious = workoutStore((state) => state.linkedToPrevious);
@@ -77,7 +83,16 @@ export default function WorkoutLogScreen() {
 
   const handleComplete = async (feltLike?: string, notes?: string) => {
     setCompleteDialogOpen(false);
-    await completeWorkout(feltLike, notes);
+    const result = await completeWorkout(feltLike, notes);
+    if (result?.xp_award) {
+      setXpAward(result.xp_award);
+    } else {
+      router.replace('/(tabs)/dashboard');
+    }
+  };
+
+  const handleXpAwardClose = () => {
+    setXpAward(null);
     router.replace('/(tabs)/dashboard');
   };
 
@@ -145,6 +160,16 @@ export default function WorkoutLogScreen() {
         onConfirm={handleComplete}
         onCancel={() => setCompleteDialogOpen(false)}
       />
+
+      {xpAward && (
+        <XpRewardDialog
+          visible
+          xpGained={xpAward.xpGained}
+          leveledUp={xpAward.leveledUp}
+          newLevel={xpAward.newLevel}
+          onClose={handleXpAwardClose}
+        />
+      )}
     </SafeAreaView>
   );
 }

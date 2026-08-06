@@ -109,15 +109,20 @@ export class CharacterService {
     return this.getMyCharacter(userId);
   }
 
-  /** Called when a workout is completed — no-op if the user has no character yet. */
-  async awardXpForWorkout(userId: string, workoutId: string): Promise<void> {
+  /** Called when a workout is completed — no-op (returns null) if the user
+   * has no character yet. Returns the award so the completion screen can
+   * show "+XX XP" / a level-up moment instead of this happening silently. */
+  async awardXpForWorkout(
+    userId: string,
+    workoutId: string
+  ): Promise<{ xpGained: number; leveledUp: boolean; previousLevel: number; newLevel: number } | null> {
     const { data: character } = await supabaseAdmin
       .from('characters')
       .select('id, xp')
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (!character) return;
+    if (!character) return null;
 
     const { data: sets } = await supabaseAdmin
       .from('sets')
@@ -129,11 +134,16 @@ export class CharacterService {
     const prCount = nonWarmup.filter((s) => s.is_pr).length;
     const xpGained = computeWorkoutXp(volume, nonWarmup.length, prCount);
 
+    const previousLevel = levelForXp(character.xp);
     const newXp = character.xp + xpGained;
+    const newLevel = levelForXp(newXp);
+
     await supabaseAdmin
       .from('characters')
-      .update({ xp: newXp, level: levelForXp(newXp), updated_at: new Date().toISOString() })
+      .update({ xp: newXp, level: newLevel, updated_at: new Date().toISOString() })
       .eq('id', character.id);
+
+    return { xpGained, leveledUp: newLevel > previousLevel, previousLevel, newLevel };
   }
 
   private async computeTotalXpFromHistory(userId: string): Promise<number> {

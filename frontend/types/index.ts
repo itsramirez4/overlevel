@@ -114,4 +114,7 @@ export interface Workout {
   notes?: string;
   sets?: Set[];
   created_at: string;
+  // Only present in the response to PUT /workouts/:id/complete, and only
+  // when the user has a character — the RPG layer is fully optional.
+  xp_award?: { xpGained: number; leveledUp: boolean; previousLevel: number; newLevel: number };
 }
