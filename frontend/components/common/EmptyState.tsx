@@ -16,7 +16,7 @@ export const EmptyState = ({ title, message, icon: Icon }: EmptyStateProps) => (
       </View>
     )}
     <Text style={styles.title}>{title}</Text>
-    {message && <Text style={styles.message}>{message}</Text>}
+    {!!message && <Text style={styles.message}>{message}</Text>}
   </View>
 );
 

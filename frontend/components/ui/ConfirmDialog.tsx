@@ -26,7 +26,7 @@ export const ConfirmDialog = ({
 }: ConfirmDialogProps) => (
   <Modal visible={visible} onClose={onCancel}>
     <Text style={styles.title}>{title}</Text>
-    {message && <Text style={styles.message}>{message}</Text>}
+    {!!message && <Text style={styles.message}>{message}</Text>}
     <View style={styles.actions}>
       <View style={styles.actionButton}>
         <Button label={cancelLabel} variant="ghost" onPress={onCancel} />

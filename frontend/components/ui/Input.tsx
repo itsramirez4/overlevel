@@ -12,7 +12,7 @@ export const Input = ({ label, error, style, onFocus, onBlur, ...props }: InputP
 
   return (
     <View style={styles.container}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {!!label && <Text style={styles.label}>{label}</Text>}
       <TextInput
         style={[
           styles.input,
@@ -31,7 +31,7 @@ export const Input = ({ label, error, style, onFocus, onBlur, ...props }: InputP
         }}
         {...props}
       />
-      {error && <Text style={styles.error}>{error}</Text>}
+      {!!error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
 };
