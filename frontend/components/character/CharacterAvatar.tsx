@@ -96,16 +96,33 @@ const CalisthenicsFace = () => (
   </G>
 );
 
-/** El Fracasado — ojos a media asta, móvil pegado a la cara, donut en vez de mancuerna. */
+/** El Fracasado — la broma: pese al nombre, está fortísimo, ganando y feliz de verdad. */
 const FracasadoFace = () => (
   <G>
-    <Path d="M18 94 Q50 74 82 94 Z" fill="#3f3f46" />
-    <Circle cx="50" cy="53" r="26" fill={SKIN} opacity="0.95" />
-    <Line x1="34" y1="49" x2="44" y2="49" stroke="#6b3f22" strokeWidth="3" strokeLinecap="round" />
-    <Line x1="56" y1="49" x2="66" y2="49" stroke="#6b3f22" strokeWidth="3" strokeLinecap="round" />
-    <Path d="M42 68 Q50 67 58 68" stroke="#6b3f22" strokeWidth="3" fill="none" strokeLinecap="round" />
-    <Rect x="66" y="34" width="16" height="26" rx="3" fill="#111" stroke="#444" strokeWidth="1.5" />
-    <Circle cx="20" cy="76" r="8" fill="#a9622c" />
-    <Circle cx="20" cy="76" r="3" fill={BG.fracasado} />
+    {/* cuello y trapecios enormes, como el powerlifter pero sin sufrir */}
+    <Path d="M14 96 Q50 62 86 96 Z" fill="#111" />
+    <Path d="M30 78 Q50 88 70 78" stroke="#3f3f46" strokeWidth="4" fill="none" strokeLinecap="round" />
+    <Circle cx="50" cy="51" r="27" fill={SKIN} />
+    {/* cejas levantadas, ojos bien abiertos y felices */}
+    <Path d="M30 40 Q38 34 46 39" stroke="#5a3418" strokeWidth="3" fill="none" strokeLinecap="round" />
+    <Path d="M54 39 Q62 34 70 40" stroke="#5a3418" strokeWidth="3" fill="none" strokeLinecap="round" />
+    <Circle cx="38" cy="47" r="4" fill="#111" />
+    <Circle cx="62" cy="47" r="4" fill="#111" />
+    <Circle cx="39.5" cy="45.5" r="1.2" fill="#fff" />
+    <Circle cx="63.5" cy="45.5" r="1.2" fill="#fff" />
+    {/* sonrisa enorme y genuina, con dientes */}
+    <Path d="M34 60 Q50 76 66 60 Q50 68 34 60 Z" fill="#fff" />
+    <Path d="M34 60 Q50 76 66 60" stroke="#7a2a20" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+    {/* mofletes de felicidad */}
+    <Circle cx="27" cy="56" r="4" fill="#d97a4a" opacity="0.5" />
+    <Circle cx="73" cy="56" r="4" fill="#d97a4a" opacity="0.5" />
+    {/* medalla de oro en vez de mancuerna */}
+    <Line x1="18" y1="72" x2="24" y2="86" stroke="#e5342b" strokeWidth="4" />
+    <Line x1="30" y1="72" x2="24" y2="86" stroke="#3f3f46" strokeWidth="4" />
+    <Circle cx="24" cy="90" r="8" fill="#f2c14e" stroke="#c99a2e" strokeWidth="1.5" />
+    <Path d="M20 88 L23 92 L29 86" stroke="#8a6a1e" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    {/* brillos de triunfo */}
+    <Path d="M80 30 L82 36 L88 38 L82 40 L80 46 L78 40 L72 38 L78 36 Z" fill="#f2c14e" />
+    <Circle cx="14" cy="34" r="2.5" fill="#f2c14e" />
   </G>
 );
