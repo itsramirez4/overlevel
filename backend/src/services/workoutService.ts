@@ -2,6 +2,7 @@ import { supabaseAdmin } from '../config/supabase';
 import { Workout } from '../types';
 import { AppError } from '../middleware/errorHandler';
 import { characterService } from './characterService';
+import { battleService } from './battleService';
 
 export class WorkoutService {
   async list(userId: string, limit = 20): Promise<Workout[]> {
@@ -75,6 +76,10 @@ export class WorkoutService {
     // No-op (returns null) if the user hasn't created a character — the RPG
     // layer is additive and never required for the tracker itself to work.
     const xpAward = await characterService.awardXpForWorkout(userId, id);
+
+    // The kill guarantee: whatever HP any battle from this workout has left,
+    // finish it off now.
+    await battleService.finishForWorkout(id, userId);
 
     return { ...(data as Workout), xp_award: xpAward || undefined };
   }

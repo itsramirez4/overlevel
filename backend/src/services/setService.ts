@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../config/supabase';
 import { Set } from '../types';
 import { AppError } from '../middleware/errorHandler';
+import { battleService, ExerciseBattle } from './battleService';
 
 /**
  * A set is a PR when it beats every other set of this exercise on weight,
@@ -98,7 +99,7 @@ export class SetService {
     return (data || []) as Set[];
   }
 
-  async log(userId: string, input: Partial<Set>): Promise<Set> {
+  async log(userId: string, input: Partial<Set>): Promise<Set & { battle?: ExerciseBattle }> {
     await this.assertWorkoutOwnership(input.workout_id!, userId);
 
     const { data: exercise } = await supabaseAdmin
@@ -121,7 +122,13 @@ export class SetService {
       .single();
 
     if (error || !data) throw new AppError('Failed to log set');
-    return data as Set;
+
+    // Warmups don't land hits — no-op if the exercise doesn't have a battle yet either.
+    const battle = input.is_warmup
+      ? undefined
+      : await battleService.applyDamage(input.workout_id!, input.exercise_id!, userId, input.weight!, input.reps!);
+
+    return { ...(data as Set), battle };
   }
 
   async update(id: string, userId: string, updates: Partial<Set>): Promise<Set> {

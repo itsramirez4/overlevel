@@ -8,7 +8,8 @@ import { formatWeight } from '../../utils/units';
 import { Card } from '../ui/Card';
 import { SetLogger } from './SetLogger';
 import { LoggedSetRow } from './LoggedSetRow';
-import { Exercise, Set } from '../../types';
+import { EnemyCard } from './EnemyCard';
+import { Exercise, ExerciseBattle, Set } from '../../types';
 
 interface LastSession {
   date: string;
@@ -19,6 +20,7 @@ interface ExerciseLogSectionProps {
   workoutId: string;
   exercise: Exercise;
   loggedSets: Set[];
+  battle?: ExerciseBattle;
   onSetLogged: () => void;
   onRemove: () => void;
   isFirst: boolean;
@@ -32,6 +34,7 @@ export const ExerciseLogSection = ({
   workoutId,
   exercise,
   loggedSets,
+  battle,
   onSetLogged,
   onRemove,
   isFirst,
@@ -80,6 +83,8 @@ export const ExerciseLogSection = ({
           <X size={18} color={colors.text.muted} />
         </TouchableOpacity>
       </View>
+
+      <EnemyCard enemyName={exercise.name} battle={battle} />
 
       {targetLabel && (
         <Text style={styles.target} numberOfLines={1}>

@@ -61,6 +61,12 @@ export default function WorkoutLogScreen() {
     enabled: !!currentWorkout,
   });
 
+  const { data: battles, refetch: refetchBattles } = useQuery({
+    queryKey: ['battles', currentWorkout?.id],
+    queryFn: () => api.get(`/battles/workout/${currentWorkout!.id}`).then((r) => r.data),
+    enabled: !!currentWorkout,
+  });
+
   if (!currentWorkout) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -127,7 +133,11 @@ export default function WorkoutLogScreen() {
               workoutId={currentWorkout.id}
               exercise={exercise}
               loggedSets={(sets || []).filter((s: any) => s.exercise_id === exercise.id)}
-              onSetLogged={() => refetch()}
+              battle={(battles || []).find((b: any) => b.exercise_id === exercise.id)}
+              onSetLogged={() => {
+                refetch();
+                refetchBattles();
+              }}
               onRemove={() => removeSessionExercise(exercise.id)}
               isFirst={index === 0}
               isLinkedToPrevious={!!linkedToPrevious[exercise.id]}

@@ -70,6 +70,8 @@ export interface Set {
   is_warmup: boolean;
   superset_group?: string;
   created_at: string;
+  // Only present in the response to POST /sets (not on stored/fetched sets).
+  battle?: ExerciseBattle;
 }
 
 export type CharacterType = 'powerlifter' | 'bodybuilder' | 'crossfitter' | 'calisthenics' | 'fracasado';
@@ -98,6 +100,17 @@ export interface Character {
   };
   type_info?: CharacterTypeDef;
   created_at: string;
+}
+
+export interface ExerciseBattle {
+  id: string;
+  workout_id: string;
+  exercise_id: string;
+  user_id: string;
+  hp_max: number;
+  hp_current: number;
+  defeated: boolean;
+  defeated_at: string | null;
 }
 
 export interface Workout {
