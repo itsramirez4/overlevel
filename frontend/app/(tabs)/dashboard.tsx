@@ -10,6 +10,7 @@ import { authStore } from '../../stores/authStore';
 import { StatCard } from '../../components/analytics/StatCard';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
+import { getWorkoutName } from '../../utils/workoutName';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -57,6 +58,12 @@ export default function DashboardScreen() {
           />
         </View>
 
+        {stats?.recommended_routine && (
+          <Text style={styles.recommendation}>
+            Hoy toca: <Text style={styles.recommendationName}>{stats.recommended_routine.name}</Text>
+          </Text>
+        )}
+
         <Button
           label="EMPEZAR ENTRENAMIENTO"
           onPress={handleStartWorkout}
@@ -88,12 +95,8 @@ const WorkoutRow = ({ workout, onPress }: any) => (
       <Dumbbell size={18} color={colors.accent.fire} strokeWidth={2} />
     </View>
     <View style={styles.workoutInfo}>
-      <Text style={styles.workoutDate}>
-        {new Date(workout.started_at).toLocaleDateString('es-ES', {
-          weekday: 'short',
-          day: 'numeric',
-          month: 'short',
-        })}
+      <Text style={styles.workoutDate} numberOfLines={1}>
+        {getWorkoutName(workout)}
       </Text>
       <Text style={styles.workoutSets}>{workout.sets?.length || 0} sets registrados</Text>
     </View>
@@ -128,6 +131,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  recommendation: {
+    ...typography.small,
+    color: colors.text.secondary,
+    marginBottom: spacing.sm,
+  },
+  recommendationName: {
+    color: colors.text.primary,
+    fontWeight: '700',
   },
   startButton: {
     marginBottom: spacing.xl,
