@@ -72,7 +72,7 @@ export interface Set {
   created_at: string;
 }
 
-export type CharacterType = 'powerlifter' | 'bodybuilder' | 'crossfitter' | 'calisthenics';
+export type CharacterType = 'powerlifter' | 'bodybuilder' | 'crossfitter' | 'calisthenics' | 'fracasado';
 
 export interface CharacterTypeDef {
   id: CharacterType;

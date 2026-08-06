@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Dumbbell, Flame, Shield, Sparkles, Swords } from 'lucide-react-native';
+import { ChevronLeft, Dumbbell, Flame, Shield, Skull, Sparkles, Swords } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { Card } from '../../../components/ui/Card';
@@ -16,6 +16,7 @@ const typeIcon: Record<string, typeof Swords> = {
   bodybuilder: Flame,
   crossfitter: Sparkles,
   calisthenics: Shield,
+  fracasado: Skull,
 };
 
 export default function CharacterScreen() {

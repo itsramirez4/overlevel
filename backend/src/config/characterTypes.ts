@@ -1,4 +1,4 @@
-export type CharacterType = 'powerlifter' | 'bodybuilder' | 'crossfitter' | 'calisthenics';
+export type CharacterType = 'powerlifter' | 'bodybuilder' | 'crossfitter' | 'calisthenics' | 'fracasado';
 
 export interface CharacterTypeDef {
   id: CharacterType;
@@ -37,6 +37,12 @@ export const CHARACTER_TYPES: CharacterTypeDef[] = [
     name: 'Calistenia',
     tagline: 'Control del propio cuerpo',
     description: 'Domina su propio peso corporal: agilidad, control y fuerza relativa por encima de todo.',
+  },
+  {
+    id: 'fracasado',
+    name: 'Fracasado',
+    tagline: 'Leyenda del gimnasio (a su manera)',
+    description: 'Entre series a medias y excusas legendarias, se ha ganado el título a pulso. Broma privada con su entrenador.',
   },
 ];
 

@@ -99,5 +99,5 @@ export const updateWorkoutSchema = z.object({
 });
 
 export const createCharacterSchema = z.object({
-  character_type: z.enum(['powerlifter', 'bodybuilder', 'crossfitter', 'calisthenics']),
+  character_type: z.enum(['powerlifter', 'bodybuilder', 'crossfitter', 'calisthenics', 'fracasado']),
 });
