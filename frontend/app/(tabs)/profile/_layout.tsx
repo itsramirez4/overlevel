@@ -5,6 +5,7 @@ export default function ProfileLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="character" />
+      <Stack.Screen name="bestiary" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="exercises" />
       <Stack.Screen name="exercise-edit" />

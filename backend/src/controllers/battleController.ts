@@ -7,6 +7,11 @@ export class BattleController {
     const battles = await battleService.getForWorkout(req.params.workoutId, req.userId!);
     res.json(battles);
   }
+
+  async bestiary(req: AuthRequest, res: Response) {
+    const entries = await battleService.getBestiary(req.userId!);
+    res.json(entries);
+  }
 }
 
 export const battleController = new BattleController();

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
+import { fetchAllRows } from '../utils/pagination';
 
 const HP_MAX = 100;
 // A set with no exercise history yet is judged against this baseline
@@ -19,6 +20,15 @@ export interface ExerciseBattle {
   defeated_at: string | null;
 }
 
+export interface BestiaryEntry {
+  exercise_id: string;
+  exercise_name: string;
+  category: string;
+  times_defeated: number;
+  first_defeated_at: string;
+  last_defeated_at: string;
+}
+
 export class BattleService {
   async getForWorkout(workoutId: string, userId: string): Promise<ExerciseBattle[]> {
     const { data, error } = await supabaseAdmin
@@ -29,6 +39,63 @@ export class BattleService {
 
     if (error) throw new AppError('Failed to fetch battles');
     return (data || []) as ExerciseBattle[];
+  }
+
+  /**
+   * Trophy list — every exercise ever defeated, with how many times and
+   * when. Reuses the one-way `defeated` ratchet already guaranteed by
+   * finishForWorkout(), so a kill recorded here never gets un-recorded by
+   * later editing/deleting sets from that workout.
+   */
+  async getBestiary(userId: string): Promise<BestiaryEntry[]> {
+    const battles = await fetchAllRows<{ exercise_id: string; defeated_at: string | null }>((from, to) =>
+      supabaseAdmin
+        .from('exercise_battles')
+        .select('exercise_id, defeated_at')
+        .eq('user_id', userId)
+        .eq('defeated', true)
+        .range(from, to)
+    );
+
+    if (battles.length === 0) return [];
+
+    const byExercise = new Map<string, { count: number; first: string; last: string }>();
+    for (const b of battles) {
+      const defeatedAt = b.defeated_at || new Date(0).toISOString();
+      const existing = byExercise.get(b.exercise_id);
+      if (!existing) {
+        byExercise.set(b.exercise_id, { count: 1, first: defeatedAt, last: defeatedAt });
+      } else {
+        existing.count += 1;
+        if (defeatedAt < existing.first) existing.first = defeatedAt;
+        if (defeatedAt > existing.last) existing.last = defeatedAt;
+      }
+    }
+
+    const exerciseIds = [...byExercise.keys()];
+    const { data: exercises, error } = await supabaseAdmin
+      .from('exercises')
+      .select('id, name, category')
+      .in('id', exerciseIds);
+
+    if (error) throw new AppError('Failed to fetch exercises for bestiary');
+
+    const exerciseById = new Map((exercises || []).map((e) => [e.id, e]));
+
+    return exerciseIds
+      .map((exerciseId) => {
+        const agg = byExercise.get(exerciseId)!;
+        const exercise = exerciseById.get(exerciseId);
+        return {
+          exercise_id: exerciseId,
+          exercise_name: exercise?.name || 'Ejercicio eliminado',
+          category: exercise?.category || 'compound',
+          times_defeated: agg.count,
+          first_defeated_at: agg.first,
+          last_defeated_at: agg.last,
+        };
+      })
+      .sort((a, b) => b.times_defeated - a.times_defeated);
   }
 
   /**

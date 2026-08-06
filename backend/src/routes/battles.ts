@@ -5,6 +5,7 @@ import { battleController } from '../controllers/battleController';
 const router = express.Router();
 
 router.use(authMiddleware);
+router.get('/bestiary', battleController.bestiary);
 router.get('/workout/:workoutId', battleController.listForWorkout);
 
 export default router;
