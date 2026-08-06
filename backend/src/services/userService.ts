@@ -1,6 +1,7 @@
 import { supabase, supabaseAdmin } from '../config/supabase';
 import { BodyWeightLog, User } from '../types';
 import { AppError } from '../middleware/errorHandler';
+import { fetchAllRows } from '../utils/pagination';
 
 export class UserService {
   async getUserById(userId: string): Promise<User> {
@@ -72,18 +73,27 @@ export class UserService {
   async exportData(userId: string) {
     const user = await this.getUserById(userId);
 
-    const [exercises, routines, workouts, bodyWeightLogs] = await Promise.all([
+    const [exercises, routines, bodyWeightLogs] = await Promise.all([
       supabaseAdmin.from('exercises').select('*').eq('user_id', userId),
       supabaseAdmin.from('routines').select('*, routine_exercises(*)').eq('user_id', userId),
-      supabaseAdmin
-        .from('workouts')
-        .select('*, sets(*)')
-        .eq('user_id', userId)
-        .order('started_at', { ascending: true }),
       supabaseAdmin.from('body_weight_logs').select('*').eq('user_id', userId).order('logged_at', { ascending: true }),
     ]);
 
-    if (exercises.error || routines.error || workouts.error || bodyWeightLogs.error) {
+    if (exercises.error || routines.error || bodyWeightLogs.error) {
+      throw new AppError('Failed to export data');
+    }
+
+    let workouts: any[];
+    try {
+      workouts = await fetchAllRows((from, to) =>
+        supabaseAdmin
+          .from('workouts')
+          .select('*, sets(*)')
+          .eq('user_id', userId)
+          .order('started_at', { ascending: true })
+          .range(from, to)
+      );
+    } catch {
       throw new AppError('Failed to export data');
     }
 
@@ -92,7 +102,7 @@ export class UserService {
       user: { email: user.email, username: user.username, full_name: user.full_name },
       exercises: exercises.data,
       routines: routines.data,
-      workouts: workouts.data,
+      workouts,
       body_weight_logs: bodyWeightLogs.data,
     };
   }

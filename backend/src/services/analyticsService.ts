@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
+import { fetchAllRows } from '../utils/pagination';
 
 export class AnalyticsService {
   async getSummary(userId: string) {
@@ -287,19 +288,25 @@ export class AnalyticsService {
    * recent PR set per exercise is necessarily today's best.
    */
   async getPersonalRecords(userId: string) {
-    const { data, error } = await supabaseAdmin
-      .from('sets')
-      .select('weight, reps, exercise_id, exercises!inner(name, user_id), workouts!inner(started_at)')
-      .eq('exercises.user_id', userId)
-      .eq('is_pr', true);
-
-    if (error) throw new AppError('Failed to compute personal records');
+    let data: any[];
+    try {
+      data = await fetchAllRows((from, to) =>
+        supabaseAdmin
+          .from('sets')
+          .select('weight, reps, exercise_id, exercises!inner(name, user_id), workouts!inner(started_at)')
+          .eq('exercises.user_id', userId)
+          .eq('is_pr', true)
+          .range(from, to)
+      );
+    } catch {
+      throw new AppError('Failed to compute personal records');
+    }
 
     const bestByExercise = new Map<
       string,
       { exercise_id: string; exercise_name: string; weight: number; reps: number; estimated_1rm: number; date: string }
     >();
-    for (const s of (data || []) as any[]) {
+    for (const s of data as any[]) {
       const date = s.workouts.started_at;
       const existing = bestByExercise.get(s.exercise_id);
       if (!existing || date > existing.date) {
