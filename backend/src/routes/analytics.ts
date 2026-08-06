@@ -10,5 +10,6 @@ router.get('/volume-history', analyticsController.volumeHistory);
 router.get('/muscle-distribution', analyticsController.muscleDistribution);
 router.get('/heatmap', analyticsController.heatmap);
 router.get('/exercise/:id', analyticsController.exerciseStats);
+router.get('/exercise/:id/progress', analyticsController.exerciseProgress);
 
 export default router;

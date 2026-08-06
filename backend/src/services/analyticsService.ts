@@ -248,6 +248,38 @@ export class AnalyticsService {
     if (error || !data) throw new AppError('Exercise stats not found', 404);
     return data;
   }
+
+  /**
+   * One point per workout session that included this exercise: the best
+   * non-warmup set (by estimated 1RM) that session, so the trend reflects
+   * genuine effort rather than every individual set logged.
+   */
+  async getExerciseProgressHistory(exerciseId: string, userId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('sets')
+      .select('weight, reps, workouts!inner(id, started_at, user_id)')
+      .eq('exercise_id', exerciseId)
+      .eq('workouts.user_id', userId)
+      .eq('is_warmup', false);
+
+    if (error) throw new AppError('Failed to compute exercise progress');
+
+    const bestBySession = new Map<string, { date: string; weight: number; reps: number; estimated_1rm: number }>();
+    for (const s of (data || []) as any[]) {
+      const estimated1rm = Math.round(s.weight * (1 + s.reps / 30) * 100) / 100;
+      const existing = bestBySession.get(s.workouts.id);
+      if (!existing || estimated1rm > existing.estimated_1rm) {
+        bestBySession.set(s.workouts.id, {
+          date: s.workouts.started_at,
+          weight: s.weight,
+          reps: s.reps,
+          estimated_1rm: estimated1rm,
+        });
+      }
+    }
+
+    return Array.from(bestBySession.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }
 }
 
 export const analyticsService = new AnalyticsService();

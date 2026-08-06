@@ -1,20 +1,39 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Activity, ChevronLeft, Dumbbell, Flame, Trophy } from 'lucide-react-native';
 import { api } from '../../../../services/api';
-import { colors, spacing, typography } from '../../../../utils/theme';
+import { colors, radius, spacing, typography } from '../../../../utils/theme';
 import { StatCard } from '../../../../components/analytics/StatCard';
+import { Card } from '../../../../components/ui/Card';
+import { ProgressChart } from '../../../../components/analytics/ProgressChart';
+
+type Metric = 'estimated_1rm' | 'weight';
+
+const metricLabel: Record<Metric, string> = {
+  estimated_1rm: '1RM estimado',
+  weight: 'Peso máximo',
+};
 
 export default function ExerciseAnalyticsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const [metric, setMetric] = useState<Metric>('estimated_1rm');
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['analytics', 'exercise', id],
     queryFn: () => api.get(`/analytics/exercise/${id}`).then((r) => r.data),
   });
+
+  const { data: progress } = useQuery({
+    queryKey: ['analytics', 'exercise', id, 'progress'],
+    queryFn: () => api.get(`/analytics/exercise/${id}/progress`).then((r) => r.data),
+    enabled: !!id,
+  });
+
+  const chartPoints = (progress || []).map((p: any) => ({ date: p.date, value: p[metric] }));
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -25,7 +44,7 @@ export default function ExerciseAnalyticsScreen() {
         <Text style={styles.title}>{isLoading ? 'Ejercicio' : stats?.name}</Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
         <View style={styles.statsRow}>
           <StatCard
             label="1RM estimado"
@@ -46,7 +65,30 @@ export default function ExerciseAnalyticsScreen() {
           />
           <StatCard label="RPE medio" value={stats?.avg_rpe ?? '—'} icon={Activity} />
         </View>
-      </View>
+
+        {chartPoints.length > 0 && (
+          <Card style={styles.chartCard}>
+            <View style={styles.chartHeader}>
+              <Text style={styles.chartTitle}>Progreso</Text>
+              <View style={styles.metricToggle}>
+                {(Object.keys(metricLabel) as Metric[]).map((m) => (
+                  <TouchableOpacity
+                    key={m}
+                    onPress={() => setMetric(m)}
+                    style={[styles.metricOption, metric === m && styles.metricOptionActive]}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.metricOptionText, metric === m && styles.metricOptionTextActive]}>
+                      {metricLabel[m]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <ProgressChart points={chartPoints} />
+          </Card>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -74,9 +116,46 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.lg,
   },
+  contentInner: {
+    paddingBottom: spacing.xxl,
+  },
   statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.sm,
+  },
+  chartCard: {
+    marginTop: spacing.sm,
+  },
+  chartHeader: {
+    marginBottom: spacing.md,
+  },
+  chartTitle: {
+    ...typography.h3,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
+  },
+  metricToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.bg.tertiary,
+    borderRadius: radius.md,
+    padding: 3,
+  },
+  metricOption: {
+    flex: 1,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+  },
+  metricOptionActive: {
+    backgroundColor: colors.accent.fire,
+  },
+  metricOptionText: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+    fontWeight: '600',
+  },
+  metricOptionTextActive: {
+    color: colors.text.primary,
   },
 });

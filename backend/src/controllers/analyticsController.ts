@@ -13,6 +13,11 @@ export class AnalyticsController {
     res.json(stats);
   }
 
+  async exerciseProgress(req: AuthRequest, res: Response) {
+    const progress = await analyticsService.getExerciseProgressHistory(req.params.id, req.userId!);
+    res.json(progress);
+  }
+
   async volumeHistory(req: AuthRequest, res: Response) {
     const weeks = req.query.weeks ? parseInt(req.query.weeks as string) : 8;
     const history = await analyticsService.getWeeklyVolumeHistory(req.userId!, weeks);
