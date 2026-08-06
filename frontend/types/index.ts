@@ -23,6 +23,11 @@ export interface Exercise {
   notes?: string;
   is_custom: boolean;
   created_at: string;
+  // Only set when this exercise came from starting a routine — the
+  // per-exercise target that routine defined, if any.
+  target_sets?: number;
+  target_weight?: number;
+  target_reps?: number;
 }
 
 export interface RoutineExercise {

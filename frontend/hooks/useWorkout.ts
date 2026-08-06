@@ -19,8 +19,13 @@ export const useWorkout = () => {
       const exercises = (routine.routine_exercises || [])
         .slice()
         .sort((a: any, b: any) => a.order_num - b.order_num)
-        .map((re: any) => re.exercises)
-        .filter(Boolean);
+        .filter((re: any) => re.exercises)
+        .map((re: any) => ({
+          ...re.exercises,
+          target_sets: re.target_sets,
+          target_weight: re.target_weight,
+          target_reps: re.target_reps,
+        }));
       setSessionExercises(exercises);
     } else {
       setSessionExercises([]);

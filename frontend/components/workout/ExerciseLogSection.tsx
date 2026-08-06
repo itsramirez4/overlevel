@@ -41,6 +41,13 @@ export const ExerciseLogSection = ({
   const sortedSets = [...loggedSets].sort((a, b) => a.set_number - b.set_number);
   const lastSet = sortedSets[sortedSets.length - 1];
 
+  const targetParts = [
+    exercise.target_sets ? `${exercise.target_sets} series` : null,
+    exercise.target_weight ? `${exercise.target_weight}kg` : null,
+    exercise.target_reps ? `${exercise.target_reps} reps` : null,
+  ].filter(Boolean);
+  const targetLabel = targetParts.length > 0 ? targetParts.join(' × ') : null;
+
   const { data: lastSession } = useQuery<LastSession | null>({
     queryKey: ['sets', 'last-session', exercise.id, workoutId],
     queryFn: () =>
@@ -70,6 +77,12 @@ export const ExerciseLogSection = ({
           <X size={18} color={colors.text.muted} />
         </TouchableOpacity>
       </View>
+
+      {targetLabel && (
+        <Text style={styles.target} numberOfLines={1}>
+          Objetivo: {targetLabel}
+        </Text>
+      )}
 
       {lastSession && lastSession.sets.length > 0 && (
         <Text style={styles.lastSession} numberOfLines={1}>
@@ -116,6 +129,11 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text.primary,
     flex: 1,
+  },
+  target: {
+    ...typography.tiny,
+    color: colors.accent.ember,
+    marginBottom: 2,
   },
   lastSession: {
     ...typography.tiny,
