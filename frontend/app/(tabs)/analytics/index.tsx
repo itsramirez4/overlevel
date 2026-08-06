@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -8,15 +9,21 @@ import { colors, radius, shadow, spacing, typography } from '../../../utils/them
 import { Header } from '../../../components/common/Header';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Card } from '../../../components/ui/Card';
+import { Input } from '../../../components/ui/Input';
 import { VolumeChart } from '../../../components/analytics/VolumeChart';
 
 export default function AnalyticsScreen() {
   const router = useRouter();
+  const [search, setSearch] = useState('');
 
   const { data: exercises, isLoading } = useQuery({
-    queryKey: ['exercises'],
-    queryFn: () => api.get('/exercises').then((r) => r.data),
+    queryKey: ['analytics', 'trained-exercises'],
+    queryFn: () => api.get('/analytics/trained-exercises').then((r) => r.data),
   });
+
+  const filteredExercises = (exercises || []).filter((e: any) =>
+    e.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
 
   const { data: volumeHistory } = useQuery({
     queryKey: ['analytics', 'volume-history'],
@@ -48,33 +55,43 @@ export default function AnalyticsScreen() {
         <Header title="Analíticas" subtitle="Progreso por ejercicio" />
 
         <FlatList
-          data={exercises || []}
+          data={filteredExercises}
           keyExtractor={(item: any) => item.id}
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
-            hasVolume || hasMuscleDistribution ? (
-              <>
-                {hasVolume && (
-                  <Card style={styles.chartCard}>
-                    <Text style={styles.chartTitle}>Volumen semanal</Text>
-                    <VolumeChart data={chartData} />
-                  </Card>
-                )}
-                {hasMuscleDistribution && (
-                  <Card style={styles.chartCard}>
-                    <Text style={styles.chartTitle}>Distribución por grupo muscular</Text>
-                    <VolumeChart data={muscleChartData} />
-                  </Card>
-                )}
-              </>
-            ) : null
+            <>
+              {(hasVolume || hasMuscleDistribution) && (
+                <>
+                  {hasVolume && (
+                    <Card style={styles.chartCard}>
+                      <Text style={styles.chartTitle}>Volumen semanal</Text>
+                      <VolumeChart data={chartData} />
+                    </Card>
+                  )}
+                  {hasMuscleDistribution && (
+                    <Card style={styles.chartCard}>
+                      <Text style={styles.chartTitle}>Distribución por grupo muscular</Text>
+                      <VolumeChart data={muscleChartData} />
+                    </Card>
+                  )}
+                </>
+              )}
+              {(exercises || []).length > 0 && (
+                <Input
+                  placeholder="Buscar ejercicio…"
+                  value={search}
+                  onChangeText={setSearch}
+                  style={styles.search}
+                />
+              )}
+            </>
           }
           ListEmptyComponent={
             isLoading ? null : (
               <EmptyState
                 icon={BarChart3}
-                title="Sin ejercicios todavía"
-                message="Registra sets para ver tu progreso aquí."
+                title={search ? 'Sin resultados' : 'Sin ejercicios todavía'}
+                message={search ? 'Prueba con otro nombre.' : 'Registra sets para ver tu progreso aquí.'}
               />
             )
           }
@@ -109,6 +126,9 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
     paddingBottom: spacing.xxl,
+  },
+  search: {
+    marginBottom: spacing.md,
   },
   chartCard: {
     marginBottom: spacing.lg,

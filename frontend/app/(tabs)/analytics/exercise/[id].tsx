@@ -9,6 +9,8 @@ import { colors, radius, spacing, typography } from '../../../../utils/theme';
 import { StatCard } from '../../../../components/analytics/StatCard';
 import { Card } from '../../../../components/ui/Card';
 import { ProgressChart } from '../../../../components/analytics/ProgressChart';
+import { authStore } from '../../../../stores/authStore';
+import { kgToUnit } from '../../../../utils/units';
 
 type Metric = 'estimated_1rm' | 'weight';
 
@@ -21,6 +23,7 @@ export default function ExerciseAnalyticsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [metric, setMetric] = useState<Metric>('estimated_1rm');
+  const unit = authStore((s) => s.user?.weight_unit) || 'kg';
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['analytics', 'exercise', id],
@@ -33,7 +36,7 @@ export default function ExerciseAnalyticsScreen() {
     enabled: !!id,
   });
 
-  const chartPoints = (progress || []).map((p: any) => ({ date: p.date, value: p[metric] }));
+  const chartPoints = (progress || []).map((p: any) => ({ date: p.date, value: kgToUnit(p[metric], unit) }));
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -48,19 +51,19 @@ export default function ExerciseAnalyticsScreen() {
         <View style={styles.statsRow}>
           <StatCard
             label="1RM estimado"
-            value={stats?.estimated_1rm ? `${Math.round(stats.estimated_1rm)}kg` : '—'}
+            value={stats?.estimated_1rm ? `${Math.round(kgToUnit(stats.estimated_1rm, unit))}${unit}` : '—'}
             icon={Trophy}
           />
           <StatCard
             label="Peso máximo"
-            value={stats?.max_weight ? `${stats.max_weight}kg` : '—'}
+            value={stats?.max_weight ? `${kgToUnit(stats.max_weight, unit)}${unit}` : '—'}
             icon={Dumbbell}
           />
         </View>
         <View style={styles.statsRow}>
           <StatCard
             label="Volumen total"
-            value={stats?.total_volume ? `${Math.round(stats.total_volume)}kg` : '—'}
+            value={stats?.total_volume ? `${Math.round(kgToUnit(stats.total_volume, unit))}${unit}` : '—'}
             icon={Flame}
           />
           <StatCard label="RPE medio" value={stats?.avg_rpe ?? '—'} icon={Activity} />
@@ -85,7 +88,7 @@ export default function ExerciseAnalyticsScreen() {
                 ))}
               </View>
             </View>
-            <ProgressChart points={chartPoints} />
+            <ProgressChart points={chartPoints} unit={unit} />
           </Card>
         )}
       </ScrollView>

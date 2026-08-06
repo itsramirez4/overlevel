@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,10 +12,13 @@ import { StatCard } from '../../components/analytics/StatCard';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
 import { getWorkoutName } from '../../utils/workoutName';
+import { kgToUnit } from '../../utils/units';
+import { scheduleTrainingReminder, cancelTrainingReminder } from '../../services/notifications';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const username = authStore((state) => state.user?.username);
+  const unit = authStore((state) => state.user?.weight_unit) || 'kg';
   const { startWorkout } = useWorkout();
 
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -26,6 +30,15 @@ export default function DashboardScreen() {
     queryKey: ['workouts'],
     queryFn: () => api.get('/workouts?limit=3').then((r) => r.data),
   });
+
+  useEffect(() => {
+    if (workoutsLoading) return;
+    const trainedToday = (workouts || []).some(
+      (w: any) => new Date(w.started_at).toDateString() === new Date().toDateString()
+    );
+    if (trainedToday) cancelTrainingReminder();
+    else scheduleTrainingReminder();
+  }, [workoutsLoading, workouts]);
 
   const handleStartWorkout = async () => {
     await startWorkout(stats?.recommended_routine?.id);
@@ -48,7 +61,7 @@ export default function DashboardScreen() {
           />
           <StatCard
             label="Volumen total"
-            value={statsLoading ? '—' : `${Math.round(stats?.total_volume || 0)}kg`}
+            value={statsLoading ? '—' : `${Math.round(kgToUnit(stats?.total_volume || 0, unit))}${unit}`}
             icon={Flame}
           />
           <StatCard

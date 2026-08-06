@@ -23,6 +23,11 @@ export class AnalyticsController {
     res.json(records);
   }
 
+  async trainedExercises(req: AuthRequest, res: Response) {
+    const exercises = await analyticsService.getTrainedExercises(req.userId!);
+    res.json(exercises);
+  }
+
   async volumeHistory(req: AuthRequest, res: Response) {
     const weeks = req.query.weeks ? parseInt(req.query.weeks as string) : 8;
     const history = await analyticsService.getWeeklyVolumeHistory(req.userId!, weeks);

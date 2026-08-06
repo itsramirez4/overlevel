@@ -11,6 +11,7 @@ import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { VolumeChart } from '../../../components/analytics/VolumeChart';
 import { downloadOrShareJson } from '../../../services/dataExport';
+import { authStore } from '../../../stores/authStore';
 
 type WeightUnit = 'kg' | 'lbs';
 
@@ -60,6 +61,7 @@ export default function SettingsScreen() {
         weight_unit: weightUnit,
       });
       await queryClient.invalidateQueries({ queryKey: ['users', 'body-weight-history'] });
+      authStore.setState((s) => ({ user: s.user ? { ...s.user, weight_unit: weightUnit } : s.user }));
       setSaved(true);
     } finally {
       setSaving(false);

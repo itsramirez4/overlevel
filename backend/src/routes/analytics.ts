@@ -12,5 +12,6 @@ router.get('/heatmap', analyticsController.heatmap);
 router.get('/exercise/:id', analyticsController.exerciseStats);
 router.get('/exercise/:id/progress', analyticsController.exerciseProgress);
 router.get('/records', analyticsController.personalRecords);
+router.get('/trained-exercises', analyticsController.trainedExercises);
 
 export default router;

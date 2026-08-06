@@ -10,11 +10,14 @@ import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { ExerciseForm } from '../../../components/forms/ExerciseForm';
 import { EmptyState } from '../../../components/common/EmptyState';
+import { authStore } from '../../../stores/authStore';
+import { unitToKg } from '../../../utils/units';
 
 export default function AddExerciseScreen() {
   const { routineId } = useLocalSearchParams<{ routineId: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const unit = authStore((s) => s.user?.weight_unit) || 'kg';
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
@@ -70,7 +73,7 @@ export default function AddExerciseScreen() {
         exercise_id: selectedId,
         order_num: nextOrder,
         target_sets: parseInt(targetSets) || undefined,
-        target_weight: parseFloat(targetWeight) || undefined,
+        target_weight: targetWeight ? unitToKg(parseFloat(targetWeight), unit) : undefined,
         target_reps: parseInt(targetReps) || undefined,
       });
       await queryClient.invalidateQueries({ queryKey: ['routines', routineId] });
@@ -153,7 +156,7 @@ export default function AddExerciseScreen() {
                 </View>
                 <View style={styles.targetInput}>
                   <Input
-                    label="Kg"
+                    label={unit === 'lbs' ? 'Lbs' : 'Kg'}
                     value={targetWeight}
                     onChangeText={setTargetWeight}
                     keyboardType="decimal-pad"

@@ -9,11 +9,23 @@ import { colors, radius, shadow, spacing, typography } from '../../../utils/them
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Button } from '../../../components/ui/Button';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { authStore } from '../../../stores/authStore';
+import { formatWeight } from '../../../utils/units';
+
+const formatTarget = (item: any, unit: 'kg' | 'lbs'): string =>
+  [
+    item.target_sets ? `${item.target_sets} sets` : null,
+    item.target_weight ? formatWeight(item.target_weight, unit) : null,
+    item.target_reps ? `${item.target_reps} reps` : null,
+  ]
+    .filter(Boolean)
+    .join(' × ') || 'Sin objetivo definido';
 
 export default function RoutineDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const unit = authStore((s) => s.user?.weight_unit) || 'kg';
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deleteRoutineOpen, setDeleteRoutineOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
@@ -124,9 +136,7 @@ export default function RoutineDetailScreen() {
             </View>
             <View style={styles.exerciseInfo}>
               <Text style={styles.exerciseName}>{item.exercises?.name}</Text>
-              <Text style={styles.exerciseMeta}>
-                {item.target_sets} sets × {item.target_weight}kg × {item.target_reps} reps
-              </Text>
+              <Text style={styles.exerciseMeta}>{formatTarget(item, unit)}</Text>
             </View>
             <View style={styles.exerciseControls}>
               <TouchableOpacity

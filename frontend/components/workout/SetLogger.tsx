@@ -3,7 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
 import { workoutStore } from '../../stores/workoutStore';
+import { authStore } from '../../stores/authStore';
 import { scheduleRestTimerNotification } from '../../services/notifications';
+import { kgToUnit, unitToKg } from '../../utils/units';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 
@@ -26,8 +28,11 @@ export const SetLogger = ({
   supersetGroup,
   shouldRest = true,
 }: SetLoggerProps) => {
+  const unit = authStore((s) => s.user?.weight_unit) || 'kg';
   const [reps, setReps] = useState(previousSet?.reps?.toString() || '');
-  const [weight, setWeight] = useState(previousSet?.weight?.toString() || '');
+  const [weight, setWeight] = useState(
+    previousSet?.weight != null ? kgToUnit(previousSet.weight, unit).toString() : ''
+  );
   const [rpe, setRpe] = useState(previousSet?.rpe?.toString() || '');
   const [rest, setRest] = useState(previousSet?.rest_seconds?.toString() || '90');
   const [tempo, setTempo] = useState(previousSet?.tempo || '');
@@ -52,7 +57,7 @@ export const SetLogger = ({
         exercise_id: exercise.id,
         set_number: setNumber,
         reps: parseInt(reps),
-        weight: parseFloat(weight),
+        weight: unitToKg(parseFloat(weight), unit),
         rpe: rpe ? parseInt(rpe) : undefined,
         rest_seconds: rest ? parseInt(rest) : undefined,
         tempo: tempo || undefined,
@@ -86,7 +91,7 @@ export const SetLogger = ({
         </View>
         <View style={styles.half}>
           <Input
-            placeholder="Kg"
+            placeholder={unit === 'lbs' ? 'Lbs' : 'Kg'}
             value={weight}
             onChangeText={setWeight}
             keyboardType="decimal-pad"

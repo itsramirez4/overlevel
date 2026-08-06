@@ -9,6 +9,8 @@ import { colors, radius, shadow, spacing, typography } from '../../../utils/them
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
+import { authStore } from '../../../stores/authStore';
+import { formatWeight, kgToUnit } from '../../../utils/units';
 
 interface PersonalRecord {
   exercise_id: string;
@@ -22,6 +24,7 @@ interface PersonalRecord {
 export default function PersonalRecordsScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
+  const unit = authStore((s) => s.user?.weight_unit) || 'kg';
 
   const { data: records, isLoading } = useQuery<PersonalRecord[]>({
     queryKey: ['analytics', 'records'],
@@ -71,7 +74,8 @@ export default function PersonalRecordsScreen() {
                   {item.exercise_name}
                 </Text>
                 <Text style={styles.meta}>
-                  {item.weight}kg × {item.reps} reps · 1RM est. {Math.round(item.estimated_1rm)}kg
+                  {formatWeight(item.weight, unit)} × {item.reps} reps · 1RM est.{' '}
+                  {Math.round(kgToUnit(item.estimated_1rm, unit))}{unit}
                 </Text>
                 <Text style={styles.date}>
                   {new Date(item.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}

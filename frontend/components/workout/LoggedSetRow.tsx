@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Link2, Pencil, Trophy, X } from 'lucide-react-native';
 import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
+import { authStore } from '../../stores/authStore';
+import { formatWeight, kgToUnit, unitToKg } from '../../utils/units';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -14,9 +16,10 @@ interface LoggedSetRowProps {
 }
 
 export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
+  const unit = authStore((s) => s.user?.weight_unit) || 'kg';
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [weight, setWeight] = useState(set.weight.toString());
+  const [weight, setWeight] = useState(kgToUnit(set.weight, unit).toString());
   const [reps, setReps] = useState(set.reps.toString());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +32,7 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
     setError('');
     setSaving(true);
     try {
-      await api.put(`/sets/${set.id}`, { weight: parseFloat(weight), reps: parseInt(reps) });
+      await api.put(`/sets/${set.id}`, { weight: unitToKg(parseFloat(weight), unit), reps: parseInt(reps) });
       setEditing(false);
       onChanged();
     } catch (err: any) {
@@ -50,7 +53,12 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
       <View style={styles.editRow}>
         <View style={styles.editInputs}>
           <View style={styles.editInput}>
-            <Input placeholder="Kg" value={weight} onChangeText={setWeight} keyboardType="decimal-pad" />
+            <Input
+              placeholder={unit === 'lbs' ? 'Lbs' : 'Kg'}
+              value={weight}
+              onChangeText={setWeight}
+              keyboardType="decimal-pad"
+            />
           </View>
           <View style={styles.editInput}>
             <Input placeholder="Reps" value={reps} onChangeText={setReps} keyboardType="number-pad" />
@@ -73,7 +81,7 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
     <View style={[styles.row, set.is_pr && styles.rowPr, set.is_warmup && styles.rowWarmup]}>
       <Text style={styles.number}>{set.set_number}</Text>
       <Text style={[styles.value, set.is_warmup && styles.valueWarmup]}>
-        {set.weight}kg × {set.reps} reps
+        {formatWeight(set.weight, unit)} × {set.reps} reps
       </Text>
       {set.is_warmup ? <Text style={styles.warmupTag}>Calentamiento</Text> : null}
       {set.superset_group ? <Link2 size={12} color={colors.accent.ember} strokeWidth={2.2} /> : null}
@@ -99,7 +107,7 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
       <ConfirmDialog
         visible={confirmingDelete}
         title="Borrar serie"
-        message={`¿Borrar la serie ${set.set_number} (${set.weight}kg × ${set.reps} reps)?`}
+        message={`¿Borrar la serie ${set.set_number} (${formatWeight(set.weight, unit)} × ${set.reps} reps)?`}
         confirmLabel="Borrar"
         destructive
         onConfirm={handleDelete}

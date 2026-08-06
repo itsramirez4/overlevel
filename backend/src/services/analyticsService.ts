@@ -316,6 +316,19 @@ export class AnalyticsService {
 
     return Array.from(bestByExercise.values()).sort((a, b) => a.exercise_name.localeCompare(b.exercise_name));
   }
+
+  /** Exercises with at least one logged set — the Analíticas tab shouldn't list untrained catalog entries. */
+  async getTrainedExercises(userId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('user_exercise_stats')
+      .select('exercise_id, name, set_count')
+      .eq('user_id', userId)
+      .gt('set_count', 0)
+      .order('name');
+
+    if (error) throw new AppError('Failed to fetch trained exercises');
+    return (data || []).map((e) => ({ id: e.exercise_id, name: e.name, set_count: e.set_count }));
+  }
 }
 
 export const analyticsService = new AnalyticsService();

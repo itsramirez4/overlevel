@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link2, X } from 'lucide-react-native';
 import { colors, radius, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
+import { authStore } from '../../stores/authStore';
+import { formatWeight } from '../../utils/units';
 import { Card } from '../ui/Card';
 import { SetLogger } from './SetLogger';
 import { LoggedSetRow } from './LoggedSetRow';
@@ -38,12 +40,13 @@ export const ExerciseLogSection = ({
   supersetGroup,
   shouldRest,
 }: ExerciseLogSectionProps) => {
+  const unit = authStore((s) => s.user?.weight_unit) || 'kg';
   const sortedSets = [...loggedSets].sort((a, b) => a.set_number - b.set_number);
   const lastSet = sortedSets[sortedSets.length - 1];
 
   const targetParts = [
     exercise.target_sets ? `${exercise.target_sets} series` : null,
-    exercise.target_weight ? `${exercise.target_weight}kg` : null,
+    exercise.target_weight ? formatWeight(exercise.target_weight, unit) : null,
     exercise.target_reps ? `${exercise.target_reps} reps` : null,
   ].filter(Boolean);
   const targetLabel = targetParts.length > 0 ? targetParts.join(' × ') : null;
@@ -86,7 +89,7 @@ export const ExerciseLogSection = ({
 
       {lastSession && lastSession.sets.length > 0 && (
         <Text style={styles.lastSession} numberOfLines={1}>
-          Última vez: {lastSession.sets.map((s) => `${s.weight}kg×${s.reps}`).join(', ')}
+          Última vez: {lastSession.sets.map((s) => `${formatWeight(s.weight, unit)}×${s.reps}`).join(', ')}
         </Text>
       )}
 

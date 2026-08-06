@@ -12,12 +12,15 @@ import { Loader } from '../../../components/ui/Loader';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { getWorkoutName } from '../../../utils/workoutName';
 import { feltLikeLabel } from '../../../utils/feltLike';
+import { formatWeight, kgToUnit } from '../../../utils/units';
+import { authStore } from '../../../stores/authStore';
 
 export default function WorkoutDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const unit = authStore((s) => s.user?.weight_unit) || 'kg';
 
   const { data: workout, isLoading } = useQuery({
     queryKey: ['workouts', id],
@@ -99,7 +102,7 @@ export default function WorkoutDetailScreen() {
         ListHeaderComponent={
           <View style={styles.statsRow}>
             <StatCard label="Series" value={sets.length} icon={ListChecks} />
-            <StatCard label="Volumen" value={`${Math.round(totalVolume)}kg`} icon={Flame} />
+            <StatCard label="Volumen" value={`${Math.round(kgToUnit(totalVolume, unit))}${unit}`} icon={Flame} />
           </View>
         }
         ListFooterComponent={
@@ -122,7 +125,7 @@ export default function WorkoutDetailScreen() {
               >
                 <Text style={styles.setNumber}>{set.set_number}</Text>
                 <Text style={styles.setValue}>
-                  {set.weight}kg × {set.reps} reps
+                  {formatWeight(set.weight, unit)} × {set.reps} reps
                 </Text>
                 {set.is_warmup ? <Text style={styles.warmupTag}>Calentamiento</Text> : null}
                 {set.superset_group ? <Link2 size={12} color={colors.accent.ember} strokeWidth={2.2} /> : null}
