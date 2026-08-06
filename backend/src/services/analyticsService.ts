@@ -280,6 +280,42 @@ export class AnalyticsService {
 
     return Array.from(bestBySession.values()).sort((a, b) => a.date.localeCompare(b.date));
   }
+
+  /**
+   * The current standing record per exercise: since `is_pr` is only set true
+   * when a set beat every prior one at the time it was logged, the most
+   * recent PR set per exercise is necessarily today's best.
+   */
+  async getPersonalRecords(userId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('sets')
+      .select('weight, reps, exercise_id, exercises!inner(name, user_id), workouts!inner(started_at)')
+      .eq('exercises.user_id', userId)
+      .eq('is_pr', true);
+
+    if (error) throw new AppError('Failed to compute personal records');
+
+    const bestByExercise = new Map<
+      string,
+      { exercise_id: string; exercise_name: string; weight: number; reps: number; estimated_1rm: number; date: string }
+    >();
+    for (const s of (data || []) as any[]) {
+      const date = s.workouts.started_at;
+      const existing = bestByExercise.get(s.exercise_id);
+      if (!existing || date > existing.date) {
+        bestByExercise.set(s.exercise_id, {
+          exercise_id: s.exercise_id,
+          exercise_name: s.exercises.name,
+          weight: s.weight,
+          reps: s.reps,
+          estimated_1rm: Math.round(s.weight * (1 + s.reps / 30) * 100) / 100,
+          date,
+        });
+      }
+    }
+
+    return Array.from(bestByExercise.values()).sort((a, b) => a.exercise_name.localeCompare(b.exercise_name));
+  }
 }
 
 export const analyticsService = new AnalyticsService();
