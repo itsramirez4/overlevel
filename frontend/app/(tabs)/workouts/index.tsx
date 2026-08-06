@@ -13,7 +13,7 @@ import { EmptyState } from '../../../components/common/EmptyState';
 
 export default function WorkoutsScreen() {
   const router = useRouter();
-  const { startWorkout } = useWorkout();
+  const { currentWorkout, startWorkout } = useWorkout();
 
   const { data: routines, isLoading } = useQuery({
     queryKey: ['routines'],
@@ -61,41 +61,60 @@ export default function WorkoutsScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Header title="Entrenamientos" subtitle="Elige una rutina o improvisa" />
 
-        <Button
-          label="ENTRENAMIENTO LIBRE"
-          onPress={() => handleStart()}
-          style={styles.freestyleButton}
-        />
-
-        {lastWorkoutDetail?.sets?.length > 0 && (
-          <TouchableOpacity style={styles.repeatButton} onPress={handleRepeatLast} activeOpacity={0.7}>
-            <Repeat size={18} color={colors.text.secondary} strokeWidth={2} />
-            <Text style={styles.repeatButtonText}>Repetir último entrenamiento</Text>
+        {currentWorkout ? (
+          <TouchableOpacity
+            style={styles.resumeBanner}
+            onPress={() => router.push('/workouts/log')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.routineIconBadge}>
+              <Zap size={18} color={colors.accent.fire} strokeWidth={2} />
+            </View>
+            <View style={styles.resumeBannerText}>
+              <Text style={styles.resumeBannerTitle}>Entrenamiento en curso</Text>
+              <Text style={styles.resumeBannerSubtitle}>Toca para continuar</Text>
+            </View>
+            <ChevronRight size={18} color={colors.accent.fire} />
           </TouchableOpacity>
-        )}
-
-        <Text style={styles.sectionTitle}>Tus rutinas</Text>
-        {isLoading ? null : !routines?.length ? (
-          <EmptyState
-            icon={ListChecks}
-            title="Sin rutinas todavía"
-            message="Crea una desde la pestaña Rutinas para verla aquí."
-          />
         ) : (
-          routines.map((routine: any) => (
-            <TouchableOpacity
-              key={routine.id}
-              style={styles.routineCard}
-              onPress={() => handleStart(routine.id)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.routineIconBadge}>
-                <Zap size={18} color={colors.accent.fire} strokeWidth={2} />
-              </View>
-              <Text style={styles.routineName}>{routine.name}</Text>
-              <ChevronRight size={18} color={colors.text.muted} />
-            </TouchableOpacity>
-          ))
+          <>
+            <Button
+              label="ENTRENAMIENTO LIBRE"
+              onPress={() => handleStart()}
+              style={styles.freestyleButton}
+            />
+
+            {lastWorkoutDetail?.sets?.length > 0 && (
+              <TouchableOpacity style={styles.repeatButton} onPress={handleRepeatLast} activeOpacity={0.7}>
+                <Repeat size={18} color={colors.text.secondary} strokeWidth={2} />
+                <Text style={styles.repeatButtonText}>Repetir último entrenamiento</Text>
+              </TouchableOpacity>
+            )}
+
+            <Text style={styles.sectionTitle}>Tus rutinas</Text>
+            {isLoading ? null : !routines?.length ? (
+              <EmptyState
+                icon={ListChecks}
+                title="Sin rutinas todavía"
+                message="Crea una desde la pestaña Rutinas para verla aquí."
+              />
+            ) : (
+              routines.map((routine: any) => (
+                <TouchableOpacity
+                  key={routine.id}
+                  style={styles.routineCard}
+                  onPress={() => handleStart(routine.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.routineIconBadge}>
+                    <Zap size={18} color={colors.accent.fire} strokeWidth={2} />
+                  </View>
+                  <Text style={styles.routineName}>{routine.name}</Text>
+                  <ChevronRight size={18} color={colors.text.muted} />
+                </TouchableOpacity>
+              ))
+            )}
+          </>
         )}
 
         <TouchableOpacity
@@ -143,6 +162,30 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text.primary,
     marginBottom: spacing.md,
+  },
+  resumeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${colors.accent.fire}1a`,
+    borderWidth: 1.5,
+    borderColor: colors.accent.fire,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    marginBottom: spacing.xl,
+  },
+  resumeBannerText: {
+    flex: 1,
+  },
+  resumeBannerTitle: {
+    ...typography.body,
+    color: colors.text.primary,
+    fontWeight: '700',
+  },
+  resumeBannerSubtitle: {
+    ...typography.tiny,
+    color: colors.accent.fire,
+    fontWeight: '600',
+    marginTop: 2,
   },
   routineCard: {
     flexDirection: 'row',

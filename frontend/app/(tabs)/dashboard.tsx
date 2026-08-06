@@ -19,7 +19,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const username = authStore((state) => state.user?.username);
   const unit = authStore((state) => state.user?.weight_unit) || 'kg';
-  const { startWorkout } = useWorkout();
+  const { currentWorkout, startWorkout } = useWorkout();
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['stats'],
@@ -41,6 +41,10 @@ export default function DashboardScreen() {
   }, [workoutsLoading, workouts]);
 
   const handleStartWorkout = async () => {
+    if (currentWorkout) {
+      router.push('/workouts/log');
+      return;
+    }
     await startWorkout(stats?.recommended_routine?.id);
     router.push('/workouts/log');
   };
@@ -78,7 +82,7 @@ export default function DashboardScreen() {
         )}
 
         <Button
-          label="EMPEZAR ENTRENAMIENTO"
+          label={currentWorkout ? 'CONTINUAR ENTRENAMIENTO' : 'EMPEZAR ENTRENAMIENTO'}
           onPress={handleStartWorkout}
           style={styles.startButton}
         />
