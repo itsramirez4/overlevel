@@ -11,14 +11,7 @@ import { EmptyState } from '../../../components/common/EmptyState';
 import { Loader } from '../../../components/ui/Loader';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { getWorkoutName } from '../../../utils/workoutName';
-
-const feltLikeLabel: Record<string, string> = {
-  terrible: 'Terrible',
-  bad: 'Mal',
-  ok: 'Normal',
-  good: 'Bien',
-  amazing: 'Genial',
-};
+import { feltLikeLabel } from '../../../utils/feltLike';
 
 export default function WorkoutDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -10,12 +11,14 @@ import { workoutStore } from '../../../stores/workoutStore';
 import { ExerciseLogSection } from '../../../components/workout/ExerciseLogSection';
 import { SessionTimer } from '../../../components/workout/SessionTimer';
 import { RestTimer } from '../../../components/workout/RestTimer';
+import { CompleteWorkoutDialog } from '../../../components/workout/CompleteWorkoutDialog';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Button } from '../../../components/ui/Button';
 
 export default function WorkoutLogScreen() {
   const router = useRouter();
   const { currentWorkout, completeWorkout } = useWorkout();
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const sessionExercises = workoutStore((state) => state.sessionExercises);
   const removeSessionExercise = workoutStore((state) => state.removeSessionExercise);
   const linkedToPrevious = workoutStore((state) => state.linkedToPrevious);
@@ -72,8 +75,9 @@ export default function WorkoutLogScreen() {
     );
   }
 
-  const handleComplete = async () => {
-    await completeWorkout();
+  const handleComplete = async (feltLike?: string, notes?: string) => {
+    setCompleteDialogOpen(false);
+    await completeWorkout(feltLike, notes);
     router.replace('/(tabs)/dashboard');
   };
 
@@ -128,8 +132,19 @@ export default function WorkoutLogScreen() {
           <Text style={styles.addExerciseText}>Añadir ejercicio</Text>
         </TouchableOpacity>
 
-        <Button label="TERMINAR ENTRENAMIENTO" variant="outline" onPress={handleComplete} style={styles.endButton} />
+        <Button
+          label="TERMINAR ENTRENAMIENTO"
+          variant="outline"
+          onPress={() => setCompleteDialogOpen(true)}
+          style={styles.endButton}
+        />
       </ScrollView>
+
+      <CompleteWorkoutDialog
+        visible={completeDialogOpen}
+        onConfirm={handleComplete}
+        onCancel={() => setCompleteDialogOpen(false)}
+      />
     </SafeAreaView>
   );
 }
