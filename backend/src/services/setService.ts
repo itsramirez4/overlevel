@@ -33,6 +33,46 @@ export async function computeSetIsPr(
   return !priorBest || weight > priorBest.weight || (weight === priorBest.weight && reps > priorBest.reps);
 }
 
+/**
+ * computeSetIsPr only checks a set against whatever else already exists —
+ * correct for a brand-new set (nothing later can exist yet), but editing or
+ * deleting an *older* set can change which sets after it were genuinely PRs
+ * at the time. Recomputes is_pr for the whole exercise history in true
+ * chronological order so it stays consistent no matter what got edited.
+ */
+export async function recomputeIsPrForExercise(exerciseId: string, userId: string): Promise<void> {
+  const { data } = await supabaseAdmin
+    .from('sets')
+    .select('id, weight, reps, is_warmup, is_pr, set_number, workouts!inner(started_at, user_id)')
+    .eq('exercise_id', exerciseId)
+    .eq('workouts.user_id', userId)
+    .limit(500);
+
+  if (!data) return;
+
+  const sorted = (data as any[])
+    .filter((s) => !s.is_warmup)
+    .sort((a, b) => {
+      const dateDiff = new Date(a.workouts.started_at).getTime() - new Date(b.workouts.started_at).getTime();
+      return dateDiff !== 0 ? dateDiff : a.set_number - b.set_number;
+    });
+
+  let bestWeight = -Infinity;
+  let bestReps = -Infinity;
+  const changed: { id: string; is_pr: boolean }[] = [];
+
+  for (const s of sorted) {
+    const isPr = s.weight > bestWeight || (s.weight === bestWeight && s.reps > bestReps);
+    if (isPr) {
+      bestWeight = s.weight;
+      bestReps = s.reps;
+    }
+    if (isPr !== s.is_pr) changed.push({ id: s.id, is_pr: isPr });
+  }
+
+  await Promise.all(changed.map((s) => supabaseAdmin.from('sets').update({ is_pr: s.is_pr }).eq('id', s.id)));
+}
+
 export class SetService {
   private async assertWorkoutOwnership(workoutId: string, userId: string): Promise<void> {
     const { data } = await supabaseAdmin
@@ -94,24 +134,27 @@ export class SetService {
 
     if (!existing) throw new AppError('Set not found', 404);
 
-    const nextWeight = updates.weight ?? existing.weight;
-    const nextReps = updates.reps ?? existing.reps;
     const nextIsWarmup = updates.is_warmup ?? existing.is_warmup;
-
-    const isPr = nextIsWarmup
-      ? false
-      : updates.weight !== undefined || updates.reps !== undefined || updates.is_warmup === false
-        ? await computeSetIsPr(existing.exercise_id, userId, nextWeight, nextReps, id)
-        : existing.is_pr;
+    const affectsRanking =
+      updates.weight !== undefined || updates.reps !== undefined || updates.is_warmup !== undefined;
 
     const { data, error } = await supabaseAdmin
       .from('sets')
-      .update({ ...updates, is_pr: isPr })
+      .update({ ...updates, is_pr: nextIsWarmup ? false : existing.is_pr })
       .eq('id', id)
       .select()
       .single();
 
     if (error || !data) throw new AppError('Failed to update set');
+
+    // Editing weight/reps/warmup status on this set can change whether
+    // later sets of the same exercise still count as PRs, not just this one.
+    if (affectsRanking) {
+      await recomputeIsPrForExercise(existing.exercise_id, userId);
+      const { data: refreshed } = await supabaseAdmin.from('sets').select('*').eq('id', id).single();
+      return (refreshed || data) as Set;
+    }
+
     return data as Set;
   }
 
@@ -156,7 +199,7 @@ export class SetService {
   async remove(id: string, userId: string): Promise<void> {
     const { data: set } = await supabaseAdmin
       .from('sets')
-      .select('id, workouts!inner(user_id)')
+      .select('id, exercise_id, is_warmup, workouts!inner(user_id)')
       .eq('id', id)
       .eq('workouts.user_id', userId)
       .single();
@@ -165,6 +208,13 @@ export class SetService {
 
     const { error } = await supabaseAdmin.from('sets').delete().eq('id', id);
     if (error) throw new AppError('Failed to delete set');
+
+    // Removing a set can change which of the remaining ones were genuinely
+    // PRs at the time (e.g. deleting the current record un-hides whichever
+    // set was the real best before it).
+    if (!set.is_warmup) {
+      await recomputeIsPrForExercise(set.exercise_id, userId);
+    }
   }
 }
 
