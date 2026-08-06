@@ -33,7 +33,12 @@ export class ExerciseService {
       .select()
       .single();
 
-    if (error || !data) throw new AppError('Failed to create exercise');
+    if (error || !data) {
+      if (error?.code === '23505') {
+        throw new AppError(`Ya tienes un ejercicio llamado "${input.name}"`, 409);
+      }
+      throw new AppError('Failed to create exercise');
+    }
     return data as Exercise;
   }
 
@@ -46,7 +51,12 @@ export class ExerciseService {
       .select()
       .single();
 
-    if (error || !data) throw new AppError('Failed to update exercise');
+    if (error || !data) {
+      if (error?.code === '23505') {
+        throw new AppError(`Ya tienes un ejercicio llamado "${updates.name}"`, 409);
+      }
+      throw new AppError('Failed to update exercise');
+    }
     return data as Exercise;
   }
 
