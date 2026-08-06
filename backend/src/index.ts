@@ -3,7 +3,7 @@ import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import { errorHandler } from './middleware/errorHandler';
-import { rateLimiter } from './middleware/rateLimiter';
+import { authRateLimiter, apiRateLimiter } from './middleware/rateLimiter';
 import { logger } from './utils/logger';
 
 // Routes
@@ -33,10 +33,10 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(rateLimiter);
+app.use(apiRateLimiter);
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/routines', routineRoutes);

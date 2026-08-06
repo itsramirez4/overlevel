@@ -15,9 +15,16 @@ export const config = {
     expireRefresh: process.env.JWT_EXPIRE_REFRESH || '7d',
   },
 
+  // Kept strict for auth (brute-force protection matters there even for a
+  // single-user app). Everything else sits behind a valid JWT already and
+  // a single active workout-logging session can legitimately fire dozens
+  // of requests in a few minutes, so it gets a much more generous cap.
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'),
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
+  },
+  apiRateLimit: {
+    maxRequests: parseInt(process.env.API_RATE_LIMIT_MAX_REQUESTS || '2000'),
   },
 
   cron: {
