@@ -98,6 +98,7 @@ export class ImportService {
 
       const first = group.rows[0];
       const completedAt = parseHevyDate(first.end_time) || group.startedAt;
+      const durationMinutes = Math.round((completedAt.getTime() - group.startedAt.getTime()) / 60000);
 
       const { data: workout, error: workoutError } = await supabaseAdmin
         .from('workouts')
@@ -105,6 +106,7 @@ export class ImportService {
           user_id: userId,
           started_at: group.startedAt.toISOString(),
           completed_at: completedAt.toISOString(),
+          duration_minutes: durationMinutes,
           title: first.title || undefined,
           notes: first.description || undefined,
         })

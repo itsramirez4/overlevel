@@ -11,6 +11,7 @@ import { Card } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
 import { WorkoutHeatmap } from '../../../components/analytics/WorkoutHeatmap';
 import { getWorkoutName } from '../../../utils/workoutName';
+import { formatDuration } from '../../../utils/duration';
 
 export default function WorkoutHistoryScreen() {
   const router = useRouter();
@@ -111,7 +112,9 @@ export default function WorkoutHistoryScreen() {
                   </Text>
                 ) : null}
                 <Text style={styles.sets} numberOfLines={1}>
-                  {item.sets?.length || 0} sets{exerciseNames(item).length ? ` · ${exerciseNames(item).join(', ')}` : ''}
+                  {item.sets?.length || 0} sets
+                  {item.duration_minutes ? ` · ${formatDuration(item.duration_minutes)}` : ''}
+                  {exerciseNames(item).length ? ` · ${exerciseNames(item).join(', ')}` : ''}
                 </Text>
               </View>
               <ChevronRight size={18} color={colors.text.muted} />

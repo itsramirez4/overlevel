@@ -3,7 +3,7 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Dumbbell, Flame, Link2, ListChecks, Trash2, Trophy } from 'lucide-react-native';
+import { ChevronLeft, Clock, Dumbbell, Flame, Link2, ListChecks, Trash2, Trophy } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { StatCard } from '../../../components/analytics/StatCard';
@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { getWorkoutName } from '../../../utils/workoutName';
 import { feltLikeLabel } from '../../../utils/feltLike';
 import { formatWeight, kgToUnit } from '../../../utils/units';
+import { formatDuration } from '../../../utils/duration';
 import { authStore } from '../../../stores/authStore';
 
 export default function WorkoutDetailScreen() {
@@ -103,6 +104,9 @@ export default function WorkoutDetailScreen() {
           <View style={styles.statsRow}>
             <StatCard label="Series" value={sets.length} icon={ListChecks} />
             <StatCard label="Volumen" value={`${Math.round(kgToUnit(totalVolume, unit))}${unit}`} icon={Flame} />
+            {workout.duration_minutes ? (
+              <StatCard label="Duración" value={formatDuration(workout.duration_minutes)} icon={Clock} />
+            ) : null}
           </View>
         }
         ListFooterComponent={

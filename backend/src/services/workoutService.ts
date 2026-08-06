@@ -43,10 +43,23 @@ export class WorkoutService {
   }
 
   async complete(id: string, userId: string, updates: Partial<Workout>): Promise<Workout> {
-    const completedAt = new Date().toISOString();
+    const { data: existing } = await supabaseAdmin
+      .from('workouts')
+      .select('started_at')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (!existing) throw new AppError('Workout not found', 404);
+
+    const completedAt = new Date();
+    const durationMinutes = Math.round(
+      (completedAt.getTime() - new Date(existing.started_at).getTime()) / 60000
+    );
+
     const { data, error } = await supabaseAdmin
       .from('workouts')
-      .update({ ...updates, completed_at: completedAt })
+      .update({ ...updates, completed_at: completedAt.toISOString(), duration_minutes: durationMinutes })
       .eq('id', id)
       .eq('user_id', userId)
       .select()
