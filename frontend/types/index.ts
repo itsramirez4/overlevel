@@ -23,6 +23,8 @@ export interface Exercise {
   notes?: string;
   is_custom: boolean;
   created_at: string;
+  // Set only on trashed exercises (GET /exercises/trash) — null/absent means active.
+  deleted_at?: string | null;
   // Only set when this exercise came from starting a routine — the
   // per-exercise target that routine defined, if any.
   target_sets?: number;

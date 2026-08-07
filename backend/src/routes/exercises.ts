@@ -8,9 +8,12 @@ const router = express.Router();
 
 router.use(authMiddleware);
 router.get('/', exerciseController.list);
+router.get('/trash', exerciseController.listTrash);
 router.get('/:id', exerciseController.get);
 router.post('/', validateBody(createExerciseSchema), exerciseController.create);
 router.put('/:id', validateBody(updateExerciseSchema), exerciseController.update);
 router.delete('/:id', exerciseController.remove);
+router.post('/:id/restore', exerciseController.restore);
+router.delete('/:id/permanent', exerciseController.permanentlyDelete);
 
 export default router;

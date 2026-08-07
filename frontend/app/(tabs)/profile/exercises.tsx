@@ -3,7 +3,7 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Dumbbell, Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Dumbbell, Pencil, Plus, Trash, Trash2 } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { EmptyState } from '../../../components/common/EmptyState';
@@ -45,6 +45,8 @@ export default function ManageExercisesScreen() {
     }
   };
 
+  const goToTrash = () => router.push('/profile/exercise-trash');
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
@@ -52,6 +54,14 @@ export default function ManageExercisesScreen() {
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.title}>Ejercicios</Text>
+        <TouchableOpacity
+          onPress={goToTrash}
+          hitSlop={10}
+          style={[styles.headerActionButton, styles.headerActionButtonSpacing]}
+          accessibilityLabel="Ver papelera"
+        >
+          <Trash size={18} color={colors.text.secondary} strokeWidth={2} />
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => router.push('/profile/exercise-edit')}
           hitSlop={10}
@@ -113,7 +123,7 @@ export default function ManageExercisesScreen() {
       <ConfirmDialog
         visible={!!deleteTarget}
         title="Borrar ejercicio"
-        message={`¿Seguro que quieres borrar "${deleteTarget?.name}"? Se eliminarán también TODAS las series que hayas registrado con él y se quitará de tus rutinas. Esta acción no se puede deshacer.`}
+        message={`"${deleteTarget?.name}" se moverá a la papelera junto con sus series y su sitio en tus rutinas. Podrás restaurarlo desde ahí cuando quieras.`}
         confirmLabel="Borrar"
         destructive
         onConfirm={confirmDelete}
@@ -150,6 +160,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.elevated,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerActionButtonSpacing: {
+    marginRight: spacing.sm,
   },
   searchContainer: {
     paddingHorizontal: spacing.lg,

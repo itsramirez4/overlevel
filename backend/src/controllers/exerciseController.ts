@@ -27,6 +27,21 @@ export class ExerciseController {
     await exerciseService.remove(req.params.id, req.userId!);
     res.status(204).send();
   }
+
+  async listTrash(req: AuthRequest, res: Response) {
+    const exercises = await exerciseService.listTrash(req.userId!);
+    res.json(exercises);
+  }
+
+  async restore(req: AuthRequest, res: Response) {
+    const exercise = await exerciseService.restore(req.params.id, req.userId!);
+    res.json(exercise);
+  }
+
+  async permanentlyDelete(req: AuthRequest, res: Response) {
+    await exerciseService.permanentlyDelete(req.params.id, req.userId!);
+    res.status(204).send();
+  }
 }
 
 export const exerciseController = new ExerciseController();

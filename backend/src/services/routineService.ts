@@ -38,15 +38,19 @@ export class RoutineService {
   }
 
   async update(id: string, userId: string, updates: Partial<Routine>): Promise<Routine> {
+    // .maybeSingle(), not .single() — a not-owned/nonexistent id matches
+    // zero rows, which .single() treats as an error indistinguishable from
+    // a real failure, collapsing what should be a 404 into a generic 500.
     const { data, error } = await supabaseAdmin
       .from('routines')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .eq('user_id', userId)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error || !data) throw new AppError('Failed to update routine');
+    if (error) throw new AppError('Failed to update routine');
+    if (!data) throw new AppError('Routine not found', 404);
     return data as Routine;
   }
 
@@ -73,6 +77,7 @@ export class RoutineService {
       .select('id')
       .eq('id', input.exercise_id)
       .eq('user_id', userId)
+      .is('deleted_at', null)
       .single();
 
     if (!exercise) throw new AppError('Exercise not found', 404);

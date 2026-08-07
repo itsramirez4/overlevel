@@ -97,15 +97,19 @@ export class WorkoutService {
   /** Editing title/notes/felt_like after the fact — deliberately separate from
    * complete() so it never touches completed_at/duration_minutes. */
   async update(id: string, userId: string, updates: Partial<Workout>): Promise<Workout> {
+    // .maybeSingle(), not .single() — same reasoning as workoutService's
+    // sibling update-by-ownership methods elsewhere: zero rows matched
+    // (not-owned/nonexistent) shouldn't collapse into a generic 500.
     const { data, error } = await supabaseAdmin
       .from('workouts')
       .update(updates)
       .eq('id', id)
       .eq('user_id', userId)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error || !data) throw new AppError('Failed to update workout');
+    if (error) throw new AppError('Failed to update workout');
+    if (!data) throw new AppError('Workout not found', 404);
     return data as Workout;
   }
 

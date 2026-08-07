@@ -125,6 +125,7 @@ export class SetService {
       .select('id')
       .eq('id', input.exercise_id)
       .eq('user_id', userId)
+      .is('deleted_at', null)
       .single();
 
     if (!exercise) throw new AppError('Exercise not found', 404);
