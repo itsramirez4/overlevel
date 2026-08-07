@@ -1,7 +1,7 @@
 import { parse } from 'csv-parse/sync';
 import { supabaseAdmin } from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
-import { computeSetIsPr } from './setService';
+import { fetchAllRows } from '../utils/pagination';
 
 // Hevy's date format uses the abbreviation for whatever language the app was
 // set to when the export was made — support English and Spanish.
@@ -55,32 +55,6 @@ export class ImportService {
 
     if (rows.length === 0) throw new AppError('El CSV no tiene filas', 400);
 
-    // Hevy's export lists sets one per row, in order, with every set of a
-    // workout sharing the same start_time — so contiguous same-start_time
-    // rows are one workout. Sorted oldest-first so PR detection sees history
-    // in the same order it would have happened live.
-    const groups: { startedAt: Date; rows: Record<string, string>[] }[] = [];
-    for (const row of rows) {
-      const startedAt = parseHevyDate(row.start_time);
-      if (!startedAt) continue;
-      const last = groups[groups.length - 1];
-      if (last && last.startedAt.getTime() === startedAt.getTime()) last.rows.push(row);
-      else groups.push({ startedAt, rows: [row] });
-    }
-    groups.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
-
-    const { data: existing } = await supabaseAdmin.from('exercises').select('id, name').eq('user_id', userId);
-    const exerciseIdByName = new Map((existing || []).map((e) => [e.name.toLowerCase(), e.id as string]));
-
-    // A previous (or concurrently-running) import of the same file would
-    // otherwise create exact duplicates — same user, same started_at — so
-    // skip any workout whose start time we've already recorded.
-    const { data: existingWorkouts } = await supabaseAdmin
-      .from('workouts')
-      .select('started_at')
-      .eq('user_id', userId);
-    const existingStartTimes = new Set((existingWorkouts || []).map((w) => new Date(w.started_at).getTime()));
-
     const result: HevyImportResult = {
       workouts_created: 0,
       exercises_created: 0,
@@ -88,6 +62,65 @@ export class ImportService {
       rows_skipped: 0,
       duplicate_workouts_skipped: 0,
     };
+
+    // Hevy's export lists sets one per row, in order, with every set of a
+    // workout sharing the same start_time — so contiguous same-start_time
+    // rows are one workout. Sorted oldest-first so PR detection sees history
+    // in the same order it would have happened live.
+    const groups: { startedAt: Date; rows: Record<string, string>[] }[] = [];
+    for (const row of rows) {
+      const startedAt = parseHevyDate(row.start_time);
+      if (!startedAt) {
+        result.rows_skipped++;
+        continue;
+      }
+      const last = groups[groups.length - 1];
+      if (last && last.startedAt.getTime() === startedAt.getTime()) last.rows.push(row);
+      else groups.push({ startedAt, rows: [row] });
+    }
+    groups.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
+
+    // Every row failed to parse a date (e.g. an export made in a locale
+    // parseHevyDate doesn't recognize) — without this, the endpoint would
+    // return a "successful" import with everything at 0 and no indication
+    // the whole file was unreadable.
+    if (groups.length === 0) {
+      throw new AppError('No se pudo leer ninguna fecha del CSV. ¿Es un export de Hevy válido?', 400);
+    }
+
+    const existing = await fetchAllRows<{ id: string; name: string }>((from, to) =>
+      supabaseAdmin.from('exercises').select('id, name').eq('user_id', userId).range(from, to)
+    );
+    const exerciseIdByName = new Map(existing.map((e) => [e.name.toLowerCase(), e.id]));
+
+    // A previous (or concurrently-running) import of the same file would
+    // otherwise create exact duplicates — same user, same started_at — so
+    // skip any workout whose start time we've already recorded.
+    const existingWorkouts = await fetchAllRows<{ started_at: string }>((from, to) =>
+      supabaseAdmin.from('workouts').select('started_at').eq('user_id', userId).range(from, to)
+    );
+    const existingStartTimes = new Set(existingWorkouts.map((w) => new Date(w.started_at).getTime()));
+
+    // Seeds is_pr detection with each exercise's current best (weight, then
+    // reps) so the whole import doesn't need a per-row DB round trip —
+    // rows are already processed oldest-first, so walking forward in memory
+    // and updating this map after each set gives the exact same result
+    // computeSetIsPr would, just without thousands of sequential queries.
+    const existingSets = await fetchAllRows<{ exercise_id: string; weight: number; reps: number }>((from, to) =>
+      supabaseAdmin
+        .from('sets')
+        .select('exercise_id, weight, reps, workouts!inner(user_id)')
+        .eq('workouts.user_id', userId)
+        .eq('is_warmup', false)
+        .range(from, to)
+    );
+    const bestByExercise = new Map<string, { weight: number; reps: number }>();
+    for (const s of existingSets) {
+      const best = bestByExercise.get(s.exercise_id);
+      if (!best || s.weight > best.weight || (s.weight === best.weight && s.reps > best.reps)) {
+        bestByExercise.set(s.exercise_id, { weight: s.weight, reps: s.reps });
+      }
+    }
 
     for (const group of groups) {
       if (existingStartTimes.has(group.startedAt.getTime())) {
@@ -140,19 +173,31 @@ export class ImportService {
         let exerciseId = exerciseIdByName.get(nameKey);
         if (!exerciseId) {
           const looksLikeCardio = !!(row.distance_km || row.distance_miles || row.duration_seconds) && !row.weight_kg && !row.weight_lbs;
-          const { data: newExercise } = await supabaseAdmin
+          const { data: newExercise, error: exerciseError } = await supabaseAdmin
             .from('exercises')
             .insert({ user_id: userId, name: exerciseName, category: looksLikeCardio ? 'cardio' : 'compound' })
             .select()
             .single();
 
-          if (!newExercise?.id) {
-            result.rows_skipped++;
-            continue;
+          if (newExercise?.id) {
+            exerciseId = newExercise.id as string;
+            exerciseIdByName.set(nameKey, exerciseId);
+            result.exercises_created++;
+          } else if (exerciseError?.code === '23505') {
+            // Another row earlier in this same CSV (or a concurrent import)
+            // already created this exercise — recover by looking it up
+            // instead of dropping every remaining row for it.
+            const { data: raced } = await supabaseAdmin
+              .from('exercises')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('name', exerciseName)
+              .maybeSingle();
+            if (raced?.id) {
+              exerciseId = raced.id;
+              exerciseIdByName.set(nameKey, raced.id);
+            }
           }
-          exerciseId = newExercise.id as string;
-          exerciseIdByName.set(nameKey, exerciseId);
-          result.exercises_created++;
         }
 
         if (!exerciseId) {
@@ -169,7 +214,9 @@ export class ImportService {
 
         // Our schema requires weight + reps per set, so distance/duration-only
         // cardio rows (no load logged) can't be represented — skip them.
-        if (!weightKg || !reps) {
+        // Explicit null checks (not falsy checks) so a genuine 0kg
+        // bodyweight set (pull-ups, dips…) isn't treated as missing data.
+        if (weightKg == null || !Number.isFinite(weightKg) || !reps) {
           result.rows_skipped++;
           continue;
         }
@@ -179,7 +226,19 @@ export class ImportService {
         setNumberByExercise.set(exerciseId, setNumber);
 
         const weight = Math.round(weightKg * 100) / 100;
-        const isPr = isWarmup ? false : await computeSetIsPr(exerciseId, userId, weight, reps);
+
+        let isPr = false;
+        if (!isWarmup) {
+          const best = bestByExercise.get(exerciseId);
+          isPr = !best || weight > best.weight || (weight === best.weight && reps > best.reps);
+          if (isPr) bestByExercise.set(exerciseId, { weight, reps });
+        }
+
+        // A rider out-of-range RPE (e.g. a literal 0) would otherwise trip
+        // the sets.rpe CHECK constraint and silently drop the whole set,
+        // not just the RPE value — clamp to "missing" instead.
+        const parsedRpe = row.rpe ? Math.round(parseFloat(row.rpe)) : NaN;
+        const rpe = parsedRpe >= 1 && parsedRpe <= 10 ? parsedRpe : undefined;
 
         const { error: setError } = await supabaseAdmin.from('sets').insert({
           workout_id: workout.id,
@@ -187,7 +246,7 @@ export class ImportService {
           set_number: setNumber,
           reps,
           weight,
-          rpe: row.rpe ? Math.round(parseFloat(row.rpe)) : undefined,
+          rpe,
           form_notes: row.exercise_notes || undefined,
           is_warmup: isWarmup,
           is_pr: isPr,

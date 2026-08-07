@@ -66,15 +66,28 @@ export default function AddExerciseScreen() {
   const handleAddToRoutine = async () => {
     if (!selectedId) return;
     setError('');
+
+    const parsedSets = targetSets.trim() ? parseInt(targetSets, 10) : undefined;
+    const parsedWeight = targetWeight.trim() ? parseFloat(targetWeight) : undefined;
+    const parsedReps = targetReps.trim() ? parseInt(targetReps, 10) : undefined;
+    const invalid =
+      (parsedSets !== undefined && (!Number.isFinite(parsedSets) || parsedSets <= 0)) ||
+      (parsedWeight !== undefined && (!Number.isFinite(parsedWeight) || parsedWeight <= 0)) ||
+      (parsedReps !== undefined && (!Number.isFinite(parsedReps) || parsedReps <= 0));
+    if (invalid) {
+      setError('Sets, peso y reps deben ser números mayores que cero');
+      return;
+    }
+
     setSaving(true);
     try {
       const nextOrder = (routine?.routine_exercises?.length || 0) + 1;
       await api.post(`/routines/${routineId}/exercises`, {
         exercise_id: selectedId,
         order_num: nextOrder,
-        target_sets: parseInt(targetSets) || undefined,
-        target_weight: targetWeight ? unitToKg(parseFloat(targetWeight), unit) : undefined,
-        target_reps: parseInt(targetReps) || undefined,
+        target_sets: parsedSets,
+        target_weight: parsedWeight !== undefined ? unitToKg(parsedWeight, unit) : undefined,
+        target_reps: parsedReps,
       });
       await queryClient.invalidateQueries({ queryKey: ['routines', routineId] });
       router.back();

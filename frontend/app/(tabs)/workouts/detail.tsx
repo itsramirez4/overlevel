@@ -23,6 +23,7 @@ export default function WorkoutDetailScreen() {
   const queryClient = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
 
   const { data: workout, isLoading } = useQuery({
@@ -44,6 +45,8 @@ export default function WorkoutDetailScreen() {
   };
 
   const handleSaveEdit = async (title?: string, notes?: string, feltLike?: string) => {
+    if (savingEdit) return;
+    setSavingEdit(true);
     try {
       await api.put(`/workouts/${id}`, { title, notes, felt_like: feltLike });
       setEditOpen(false);
@@ -51,6 +54,8 @@ export default function WorkoutDetailScreen() {
       await queryClient.invalidateQueries({ queryKey: ['workouts'] });
     } catch {
       Alert.alert('Error', 'No se pudieron guardar los cambios. Inténtalo de nuevo.');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -179,11 +184,12 @@ export default function WorkoutDetailScreen() {
 
       <EditWorkoutDialog
         visible={editOpen}
+        loading={savingEdit}
         initialTitle={workout.title}
         initialNotes={workout.notes}
         initialFeltLike={workout.felt_like}
         onSave={handleSaveEdit}
-        onCancel={() => setEditOpen(false)}
+        onCancel={() => !savingEdit && setEditOpen(false)}
       />
     </SafeAreaView>
   );

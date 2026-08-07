@@ -42,12 +42,19 @@ export const authStore = create<AuthStore>((set) => ({
     try {
       const { data: user } = await api.get('/users/me');
       set({ user });
-    } catch {
-      // Token expired/invalid — drop the session so the user is sent back to login.
-      await storage.removeItem('access_token');
-      await storage.removeItem('refresh_token');
-      delete api.defaults.headers.common['Authorization'];
-      set({ isSignedIn: false, user: null });
+    } catch (error: any) {
+      // A genuine auth failure (401) only reaches here after the api.ts
+      // interceptor already tried refreshing and failed — it has already
+      // cleared storage and redirected via forceLogout(), so just mirror
+      // that state. A network error (no response at all — offline, DNS,
+      // backend down) is NOT a dead session; wiping valid tokens over a
+      // transient connectivity blip would force a real re-login for no reason.
+      if (error?.response?.status === 401) {
+        await storage.removeItem('access_token');
+        await storage.removeItem('refresh_token');
+        delete api.defaults.headers.common['Authorization'];
+        set({ isSignedIn: false, user: null });
+      }
     }
   },
 }));

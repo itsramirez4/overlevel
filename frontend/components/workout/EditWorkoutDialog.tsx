@@ -8,6 +8,7 @@ import { Button } from '../ui/Button';
 
 interface EditWorkoutDialogProps {
   visible: boolean;
+  loading?: boolean;
   initialTitle?: string;
   initialNotes?: string;
   initialFeltLike?: string;
@@ -17,6 +18,7 @@ interface EditWorkoutDialogProps {
 
 export const EditWorkoutDialog = ({
   visible,
+  loading,
   initialTitle,
   initialNotes,
   initialFeltLike,
@@ -74,10 +76,10 @@ export const EditWorkoutDialog = ({
 
       <View style={styles.actions}>
         <View style={styles.actionButton}>
-          <Button label="Cancelar" variant="ghost" onPress={onCancel} />
+          <Button label="Cancelar" variant="ghost" onPress={onCancel} disabled={loading} />
         </View>
         <View style={styles.actionButton}>
-          <Button label="Guardar cambios" onPress={handleSave} />
+          <Button label="Guardar cambios" onPress={handleSave} loading={loading} disabled={loading} />
         </View>
       </View>
     </Modal>

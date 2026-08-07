@@ -66,7 +66,7 @@ export class RoutineService {
     input: Partial<RoutineExercise>
   ): Promise<RoutineExercise> {
     // Ownership checks: both the routine and the exercise being attached must belong to this user.
-    await this.getById(routineId, userId);
+    const routine = await this.getById(routineId, userId);
 
     const { data: exercise } = await supabaseAdmin
       .from('exercises')
@@ -77,9 +77,15 @@ export class RoutineService {
 
     if (!exercise) throw new AppError('Exercise not found', 404);
 
+    // Computed server-side rather than trusting a client-supplied order_num —
+    // nothing enforces uniqueness at the DB level, so two clients (or one
+    // buggy one) could otherwise hand out the same order_num within a routine.
+    const existingOrders = ((routine as any).routine_exercises || []).map((re: any) => re.order_num || 0);
+    const nextOrder = existingOrders.length > 0 ? Math.max(...existingOrders) + 1 : 1;
+
     const { data, error } = await supabaseAdmin
       .from('routine_exercises')
-      .insert({ ...input, routine_id: routineId })
+      .insert({ ...input, order_num: nextOrder, routine_id: routineId })
       .select('*, exercises(*)')
       .single();
 
@@ -102,7 +108,7 @@ export class RoutineService {
   async reorderExercises(routineId: string, userId: string, orderedIds: string[]): Promise<void> {
     await this.getById(routineId, userId);
 
-    await Promise.all(
+    const results = await Promise.all(
       orderedIds.map((routineExerciseId, index) =>
         supabaseAdmin
           .from('routine_exercises')
@@ -111,6 +117,11 @@ export class RoutineService {
           .eq('routine_id', routineId)
       )
     );
+
+    // Otherwise a partial failure (one update hits a transient DB error)
+    // leaves the routine's ordering half-applied while the client, seeing a
+    // 204, has no idea it needs to retry.
+    if (results.some((r) => r.error)) throw new AppError('Failed to reorder exercises');
   }
 }
 

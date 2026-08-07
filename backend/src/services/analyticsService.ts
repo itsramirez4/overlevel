@@ -4,9 +4,13 @@ import { fetchAllRows } from '../utils/pagination';
 
 export class AnalyticsService {
   async getSummary(userId: string) {
+    // UTC, not local server time — same reasoning as getCurrentStreak below:
+    // otherwise this month's cutoff and the streak/heatmap's day buckets in
+    // the very same response could disagree about which calendar day a
+    // workout logged near midnight actually falls on.
     const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    startOfMonth.setUTCDate(1);
+    startOfMonth.setUTCHours(0, 0, 0, 0);
 
     const { data: monthWorkouts, error } = await supabaseAdmin
       .from('workouts')
@@ -94,7 +98,7 @@ export class AnalyticsService {
         .replace(/[̀-ͯ]/g, '');
 
     const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    const today = dayNames[new Date().getDay()];
+    const today = dayNames[new Date().getUTCDay()];
 
     const fixedToday = routines.find(
       (r) => r.pattern === 'fixed_day' && r.day_of_week && normalize(r.day_of_week) === today
