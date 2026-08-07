@@ -6,11 +6,18 @@ interface StatCardProps {
   label: string;
   value: string | number;
   icon?: LucideIcon;
+  /** Override the auto-generated "{label}: {value}" accessibility label with something more specific. */
+  accessibilityLabel?: string;
 }
 
-export const StatCard = ({ label, value, icon: Icon }: StatCardProps) => (
-  <View style={styles.card}>
-    <View style={styles.header}>
+export const StatCard = ({ label, value, icon: Icon, accessibilityLabel }: StatCardProps) => (
+  <View
+    style={styles.card}
+    accessible
+    accessibilityRole="image"
+    accessibilityLabel={accessibilityLabel ?? `${label}: ${value}`}
+  >
+    <View style={styles.header} accessible={false} importantForAccessibility="no-hide-descendants">
       <Text style={styles.label}>{label}</Text>
       {Icon && <Icon size={16} color={colors.accent.fire} strokeWidth={2.2} />}
     </View>

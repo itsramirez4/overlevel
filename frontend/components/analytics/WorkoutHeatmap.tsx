@@ -26,8 +26,18 @@ export const WorkoutHeatmap = ({ data }: WorkoutHeatmapProps) => {
   }
   const todayKey = new Date().toISOString().split('T')[0];
 
+  const mostActive = data.reduce<{ date: string; volume: number } | null>(
+    (best, d) => (d.volume > (best?.volume ?? -Infinity) ? d : best),
+    null
+  );
+  const weeksLabel = `${weeks.length} semana${weeks.length === 1 ? '' : 's'}`;
+  const chartLabel =
+    mostActive && mostActive.volume > 0
+      ? `Mapa de calor de entrenamientos, ${weeksLabel}, día más activo: ${new Date(mostActive.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} con ${mostActive.volume}kg`
+      : `Mapa de calor de entrenamientos, ${weeksLabel}, sin actividad registrada`;
+
   return (
-    <View>
+    <View accessible accessibilityRole="image" accessibilityLabel={chartLabel}>
       <View style={styles.dayLabelsRow}>
         {dayLabels.map((label) => (
           <Text key={label} style={styles.dayLabel}>
@@ -35,21 +45,23 @@ export const WorkoutHeatmap = ({ data }: WorkoutHeatmapProps) => {
           </Text>
         ))}
       </View>
-      {weeks.map((week, i) => (
-        <View key={i} style={styles.week}>
-          {week.map((day) => (
-            <View
-              key={day.date}
-              style={[
-                styles.cell,
-                { backgroundColor: levelColor(day.volume, max) },
-                day.date === todayKey && styles.cellToday,
-                day.date > todayKey && styles.cellFuture,
-              ]}
-            />
-          ))}
-        </View>
-      ))}
+      <View accessible={false} importantForAccessibility="no-hide-descendants">
+        {weeks.map((week, i) => (
+          <View key={i} style={styles.week}>
+            {week.map((day) => (
+              <View
+                key={day.date}
+                style={[
+                  styles.cell,
+                  { backgroundColor: levelColor(day.volume, max) },
+                  day.date === todayKey && styles.cellToday,
+                  day.date > todayKey && styles.cellFuture,
+                ]}
+              />
+            ))}
+          </View>
+        ))}
+      </View>
       <View style={styles.legendRow}>
         <Text style={styles.legendLabel}>Menos</Text>
         {[0, 0.2, 0.4, 0.6, 1].map((r) => (

@@ -38,8 +38,13 @@ export const ProgressChart = ({ points, unit = 'kg' }: ProgressChartProps) => {
   const labelIndices =
     points.length <= 3 ? points.map((_, i) => i) : [0, Math.floor((points.length - 1) / 2), points.length - 1];
 
+  const first = values[0];
+  const last = values[values.length - 1];
+  const trend = last > first ? 'ascendente' : last < first ? 'descendente' : 'estable';
+  const chartLabel = `Progreso de ${points.length} sesión${points.length === 1 ? '' : 'es'}, de ${first}${unit} a ${last}${unit}, mínimo ${min}${unit}, máximo ${max}${unit}, tendencia ${trend}`;
+
   return (
-    <View>
+    <View accessible accessibilityRole="image" accessibilityLabel={chartLabel}>
       <View style={styles.rangeRow}>
         <Text style={styles.rangeLabel}>
           {points.length} sesión{points.length === 1 ? '' : 'es'}
@@ -50,7 +55,12 @@ export const ProgressChart = ({ points, unit = 'kg' }: ProgressChartProps) => {
           {unit}
         </Text>
       </View>
-      <View style={styles.chartBox} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <View
+        style={styles.chartBox}
+        onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
+      >
         {width > 0 && (
           <Svg width={width} height={CHART_HEIGHT}>
             <Line

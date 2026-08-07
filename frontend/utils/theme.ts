@@ -6,17 +6,21 @@ export const colors = {
     surface: '#1c1c1f',
     elevated: '#28282c',
   },
+  // border/text.muted/fire/error were lightened just enough to clear WCAG
+  // AA (4.5:1 text, 3:1 UI components) against every bg.* shade they
+  // actually appear on — the originals ranged 1.06–3.13:1, i.e. borders
+  // that were nearly invisible and muted text that failed AA everywhere.
   border: {
-    subtle: '#2c2c30',
-    default: '#3a3a3f',
+    subtle: '#717175',
+    default: '#83838a',
   },
   text: {
     primary: '#f5f5f7',
     secondary: '#9b9ba3',
-    muted: '#5f5f68',
+    muted: '#8e8e95',
   },
   accent: {
-    fire: '#ff4433',
+    fire: '#ff4f3f',
     fireDim: '#c22c1f',
     fireGlow: 'rgba(255, 68, 51, 0.35)',
     ember: '#ff8a3d',
@@ -24,7 +28,7 @@ export const colors = {
   semantic: {
     success: '#4ade80',
     warning: '#fbbf24',
-    error: '#ff4433',
+    error: '#ff4f3f',
   },
 };
 

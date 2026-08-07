@@ -41,10 +41,18 @@ export default function ExerciseAnalyticsScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>{isLoading ? 'Ejercicio' : stats?.name}</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          {isLoading ? 'Ejercicio' : stats?.name}
+        </Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
@@ -80,6 +88,9 @@ export default function ExerciseAnalyticsScreen() {
                     onPress={() => setMetric(m)}
                     style={[styles.metricOption, metric === m && styles.metricOptionActive]}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: metric === m }}
+                    accessibilityLabel={metricLabel[m]}
                   >
                     <Text style={[styles.metricOptionText, metric === m && styles.metricOptionTextActive]}>
                       {metricLabel[m]}

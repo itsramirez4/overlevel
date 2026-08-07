@@ -63,6 +63,8 @@ export const ExerciseForm = ({ onSubmit, loading, initialValues, submitLabel }: 
               style={[styles.chip, selected && styles.chipSelected]}
               onPress={() => setCategory(c.value)}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
             >
               <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{c.label}</Text>
             </TouchableOpacity>
@@ -80,6 +82,8 @@ export const ExerciseForm = ({ onSubmit, loading, initialValues, submitLabel }: 
               style={[styles.chip, styles.muscleChip, selected && styles.chipSelected]}
               onPress={() => toggleMuscleGroup(group)}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
             >
               <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{group}</Text>
             </TouchableOpacity>

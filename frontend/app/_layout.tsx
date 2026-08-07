@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { Loader } from '../components/ui/Loader';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
 const queryClient = new QueryClient();
 
@@ -27,18 +28,24 @@ export default function RootLayout() {
   }, []);
 
   if (isLoading) {
-    return <Loader />;
+    return (
+      <ErrorBoundary>
+        <Loader />
+      </ErrorBoundary>
+    );
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Stack screenOptions={{ headerShown: false }}>
-        {isSignedIn ? (
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        ) : (
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        )}
-      </Stack>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <Stack screenOptions={{ headerShown: false }}>
+          {isSignedIn ? (
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          ) : (
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          )}
+        </Stack>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

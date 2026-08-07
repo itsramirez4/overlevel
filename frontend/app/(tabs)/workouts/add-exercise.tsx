@@ -60,10 +60,18 @@ export default function WorkoutAddExerciseScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Añadir ejercicio</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Añadir ejercicio
+        </Text>
       </View>
 
       <FlatList

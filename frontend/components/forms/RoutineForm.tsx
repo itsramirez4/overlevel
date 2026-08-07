@@ -53,6 +53,8 @@ export const RoutineForm = ({ onSubmit, loading, initialValues, submitLabel }: R
               style={[styles.chip, selected && styles.chipSelected]}
               onPress={() => handlePatternChange(p.value)}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
             >
               <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{p.label}</Text>
             </TouchableOpacity>
@@ -72,6 +74,8 @@ export const RoutineForm = ({ onSubmit, loading, initialValues, submitLabel }: R
                   style={[styles.chip, styles.dayChip, selected && styles.chipSelected]}
                   onPress={() => setDayOfWeek(day)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                 >
                   <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{day}</Text>
                 </TouchableOpacity>

@@ -30,11 +30,17 @@ export default function BestiaryScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
         <View style={styles.headerText}>
-          <Text style={styles.title}>Bestiario</Text>
+          <Text style={styles.title} accessibilityRole="header">Bestiario</Text>
           {!isLoading && (
             <Text style={styles.subtitle}>
               {totalKills} {totalKills === 1 ? 'enemigo derrotado' : 'enemigos derrotados'} en total
@@ -59,7 +65,7 @@ export default function BestiaryScreen() {
           }
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <View style={styles.iconBadge}>
+              <View style={styles.iconBadge} accessibilityLabel="Enemigo derrotado">
                 <Skull size={18} color={colors.semantic.error} strokeWidth={1.8} />
               </View>
               <View style={styles.info}>

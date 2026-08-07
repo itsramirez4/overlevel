@@ -135,10 +135,16 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Ajustes</Text>
+        <Text style={styles.title} accessibilityRole="header">Ajustes</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
@@ -152,6 +158,8 @@ export default function SettingsScreen() {
                 style={[styles.chip, selected && styles.chipSelected]}
                 onPress={() => handleSelectUnit(unit)}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
               >
                 <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
                   {unit.toUpperCase()}
@@ -173,8 +181,16 @@ export default function SettingsScreen() {
           keyboardType="decimal-pad"
         />
 
-        {saveError ? <Text style={styles.passwordError}>{saveError}</Text> : null}
-        {saved && <Text style={styles.savedText}>Guardado ✓</Text>}
+        {saveError ? (
+          <Text style={styles.passwordError} accessibilityLiveRegion="polite">
+            {saveError}
+          </Text>
+        ) : null}
+        {saved && (
+          <Text style={styles.savedText} accessibilityLiveRegion="polite">
+            Guardado ✓
+          </Text>
+        )}
 
         <Button
           label={saving ? 'Guardando…' : 'GUARDAR'}
@@ -185,7 +201,7 @@ export default function SettingsScreen() {
         {chartData.length > 0 && (
           <Card style={styles.chartCard}>
             <Text style={styles.chartTitle}>Evolución del peso corporal</Text>
-            <VolumeChart data={chartData} unit={weightUnit} />
+            <VolumeChart data={chartData} unit={weightUnit} title="Evolución del peso corporal" />
           </Card>
         )}
 
@@ -220,8 +236,16 @@ export default function SettingsScreen() {
             secureTextEntry
           />
 
-          {passwordError ? <Text style={styles.passwordError}>{passwordError}</Text> : null}
-          {passwordSaved && <Text style={styles.savedText}>Contraseña actualizada ✓</Text>}
+          {passwordError ? (
+            <Text style={styles.passwordError} accessibilityLiveRegion="polite">
+              {passwordError}
+            </Text>
+          ) : null}
+          {passwordSaved && (
+            <Text style={styles.savedText} accessibilityLiveRegion="polite">
+              Contraseña actualizada ✓
+            </Text>
+          )}
 
           <Button
             label={passwordSaving ? 'Guardando…' : 'CAMBIAR CONTRASEÑA'}
@@ -233,7 +257,11 @@ export default function SettingsScreen() {
         <Card style={styles.dataCard}>
           <Text style={styles.chartTitle}>Datos</Text>
 
-          {exportError ? <Text style={styles.passwordError}>{exportError}</Text> : null}
+          {exportError ? (
+            <Text style={styles.passwordError} accessibilityLiveRegion="polite">
+              {exportError}
+            </Text>
+          ) : null}
 
           <Button
             label={exporting ? 'Exportando…' : 'EXPORTAR MIS DATOS'}

@@ -10,6 +10,13 @@ interface InputProps extends TextInputProps {
 export const Input = ({ label, error, style, onFocus, onBlur, ...props }: InputProps) => {
   const [focused, setFocused] = useState(false);
 
+  // RN's TextInput has no HTML-style `<label for>` — an adjacent sibling
+  // Text is purely visual and never gets announced on its own, so the
+  // accessible name has to be set explicitly. The error is folded in too,
+  // since there's no RN equivalent of aria-describedby to associate it
+  // with the field separately.
+  const accessibleLabel = [label || props.placeholder, error].filter(Boolean).join('. ');
+
   return (
     <View style={styles.container}>
       {!!label && <Text style={styles.label}>{label}</Text>}
@@ -21,6 +28,7 @@ export const Input = ({ label, error, style, onFocus, onBlur, ...props }: InputP
           style,
         ]}
         placeholderTextColor={colors.text.muted}
+        accessibilityLabel={accessibleLabel || undefined}
         onFocus={(e) => {
           setFocused(true);
           onFocus?.(e);
@@ -31,7 +39,11 @@ export const Input = ({ label, error, style, onFocus, onBlur, ...props }: InputP
         }}
         {...props}
       />
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {!!error && (
+        <Text style={styles.error} accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      )}
     </View>
   );
 };

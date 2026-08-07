@@ -9,7 +9,7 @@ interface EmptyStateProps {
 }
 
 export const EmptyState = ({ title, message, icon: Icon }: EmptyStateProps) => (
-  <View style={styles.container}>
+  <View style={styles.container} accessible accessibilityLabel={[title, message].filter(Boolean).join('. ')}>
     {Icon && (
       <View style={styles.iconBadge}>
         <Icon size={22} color={colors.text.muted} strokeWidth={1.8} />

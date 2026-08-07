@@ -63,8 +63,13 @@ export const EnemyCard = ({ enemyName, battle, imageSource }: EnemyCardProps) =>
         <Text style={styles.name} numberOfLines={1}>
           {enemyName}
         </Text>
-        <View style={styles.hpTrack}>
+        <View
+          style={styles.hpTrack}
+          accessible
+          accessibilityLabel={`${enemyName}: ${hpCurrent} de ${hpMax} de vida${defeated ? ', derrotado' : ''}`}
+        >
           <View
+            accessible={false}
             style={[
               styles.hpFill,
               { width: `${hpPercent}%` },

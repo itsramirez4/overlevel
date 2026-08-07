@@ -40,7 +40,12 @@ export const RestTimer = () => {
       <Text style={styles.time}>
         {minutes}:{seconds.toString().padStart(2, '0')}
       </Text>
-      <TouchableOpacity onPress={handleSkip} hitSlop={10} accessibilityLabel="Saltar descanso">
+      <TouchableOpacity
+        onPress={handleSkip}
+        hitSlop={10}
+        accessibilityLabel="Saltar descanso"
+        accessibilityRole="button"
+      >
         <X size={20} color={colors.text.secondary} />
       </TouchableOpacity>
     </View>

@@ -101,11 +101,17 @@ export const CharacterAvatar = ({ type, size = 64, animated = true }: CharacterA
   const direction = ROTATION_ORDER[animated ? frameIndex : 0];
 
   return (
-    <View style={[styles.badge, { width: size, height: size, borderRadius: size / 2, backgroundColor: BG[type] }]}>
+    <View
+      style={[styles.badge, { width: size, height: size, borderRadius: size / 2, backgroundColor: BG[type] }]}
+      accessible
+      accessibilityLabel={`Personaje: ${type}`}
+    >
       <Image
         source={FRAMES[type][direction]}
         style={{ width: size * 0.8, height: size * 0.8 }}
         resizeMode="contain"
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
       />
     </View>
   );

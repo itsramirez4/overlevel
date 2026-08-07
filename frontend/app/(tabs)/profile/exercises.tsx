@@ -50,10 +50,16 @@ export default function ManageExercisesScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Ejercicios</Text>
+        <Text style={styles.title} accessibilityRole="header">Ejercicios</Text>
         <TouchableOpacity
           onPress={goToTrash}
           hitSlop={10}
@@ -72,7 +78,11 @@ export default function ManageExercisesScreen() {
         </TouchableOpacity>
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text style={styles.error} accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
 
       <View style={styles.searchContainer}>
         <Input placeholder="Buscar ejercicio…" value={search} onChangeText={setSearch} />

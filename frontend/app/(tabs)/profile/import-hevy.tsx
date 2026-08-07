@@ -76,10 +76,16 @@ export default function ImportHevyScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Importar desde Hevy</Text>
+        <Text style={styles.title} accessibilityRole="header">Importar desde Hevy</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
@@ -107,10 +113,14 @@ export default function ImportHevyScreen() {
           style={styles.csvInput}
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <Text style={styles.error} accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
 
         {result && (
-          <Card style={styles.resultCard}>
+          <Card style={styles.resultCard} accessibilityLiveRegion="polite">
             <Text style={styles.resultTitle}>Importación completa</Text>
             <Text style={styles.resultLine}>Entrenamientos creados: {result.workouts_created}</Text>
             <Text style={styles.resultLine}>Ejercicios nuevos: {result.exercises_created}</Text>

@@ -19,7 +19,7 @@ export const Toast = ({ message, visible, onHide, durationMs = 2000 }: ToastProp
   if (!visible) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessible accessibilityRole="alert" accessibilityLiveRegion="polite">
       <Text style={styles.text}>{message}</Text>
     </View>
   );

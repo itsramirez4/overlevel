@@ -69,7 +69,9 @@ export default function DashboardScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.greeting}>Hola{username ? `, ${username}` : ''}</Text>
-          <Text style={styles.title}>Tu progreso</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            Tu progreso
+          </Text>
         </View>
 
         {character && (

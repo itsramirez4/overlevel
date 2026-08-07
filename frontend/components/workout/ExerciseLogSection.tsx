@@ -69,6 +69,8 @@ export const ExerciseLogSection = ({
           onPress={onToggleLink}
           style={[styles.linkChip, isLinkedToPrevious && styles.linkChipSelected]}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityState={{ selected: isLinkedToPrevious }}
         >
           <Link2 size={12} color={isLinkedToPrevious ? colors.accent.ember : colors.text.secondary} />
           <Text style={[styles.linkChipText, isLinkedToPrevious && styles.linkChipTextSelected]}>
@@ -79,7 +81,12 @@ export const ExerciseLogSection = ({
 
       <View style={styles.header}>
         <Text style={styles.name}>{exercise.name}</Text>
-        <TouchableOpacity onPress={onRemove} hitSlop={10}>
+        <TouchableOpacity
+          onPress={onRemove}
+          hitSlop={10}
+          accessibilityLabel="Quitar ejercicio"
+          accessibilityRole="button"
+        >
           <X size={18} color={colors.text.muted} />
         </TouchableOpacity>
       </View>

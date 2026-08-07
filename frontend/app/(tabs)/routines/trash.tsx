@@ -51,10 +51,18 @@ export default function RoutineTrashScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Papelera</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Papelera
+        </Text>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}

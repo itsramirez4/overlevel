@@ -7,7 +7,11 @@ interface ExerciseRowProps {
 }
 
 export const ExerciseRow = ({ routineExercise }: ExerciseRowProps) => (
-  <View style={styles.row}>
+  <View
+    style={styles.row}
+    accessible
+    accessibilityLabel={`${routineExercise.order_num}. ${routineExercise.exercise?.name}, ${routineExercise.target_sets} series × ${routineExercise.target_weight}kg × ${routineExercise.target_reps} repeticiones`}
+  >
     <Text style={styles.order}>{routineExercise.order_num}</Text>
     <View style={styles.details}>
       <Text style={styles.name}>{routineExercise.exercise?.name}</Text>

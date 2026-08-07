@@ -26,6 +26,12 @@ export const Button = ({ label, onPress, loading, disabled, variant = 'primary',
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={0.85}
+      accessibilityRole="button"
+      // While loading, only the ActivityIndicator renders — without an
+      // explicit label a screen reader would announce nothing at all for
+      // the button's name during that state.
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
     >
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? colors.text.primary : colors.accent.fire} />

@@ -42,10 +42,16 @@ export default function PlateCalculatorScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Calculadora de discos</Text>
+        <Text style={styles.title} accessibilityRole="header">Calculadora de discos</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
@@ -59,6 +65,8 @@ export default function PlateCalculatorScreen() {
                 style={[styles.chip, selected && styles.chipSelected]}
                 onPress={() => handleSelectUnit(u)}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
               >
                 <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{u.toUpperCase()}</Text>
               </TouchableOpacity>
@@ -87,7 +95,7 @@ export default function PlateCalculatorScreen() {
         </View>
 
         {result && (
-          <Card style={styles.resultCard}>
+          <Card style={styles.resultCard} accessibilityLiveRegion="polite">
             {result.perSide.length === 0 ? (
               <Text style={styles.emptyText}>
                 Con {barNum}

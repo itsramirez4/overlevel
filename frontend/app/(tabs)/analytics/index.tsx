@@ -65,13 +65,13 @@ export default function AnalyticsScreen() {
                   {hasVolume && (
                     <Card style={styles.chartCard}>
                       <Text style={styles.chartTitle}>Volumen semanal</Text>
-                      <VolumeChart data={chartData} />
+                      <VolumeChart data={chartData} title="Volumen semanal" />
                     </Card>
                   )}
                   {hasMuscleDistribution && (
                     <Card style={styles.chartCard}>
                       <Text style={styles.chartTitle}>Distribución por grupo muscular</Text>
-                      <VolumeChart data={muscleChartData} />
+                      <VolumeChart data={muscleChartData} title="Distribución por grupo muscular" />
                     </Card>
                   )}
                 </>
@@ -100,6 +100,8 @@ export default function AnalyticsScreen() {
               style={styles.card}
               onPress={() => router.push(`/analytics/exercise/${item.id}`)}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Ver progreso de ${item.name}`}
             >
               <View style={styles.iconBadge}>
                 <BarChart3 size={18} color={colors.accent.fire} strokeWidth={2} />

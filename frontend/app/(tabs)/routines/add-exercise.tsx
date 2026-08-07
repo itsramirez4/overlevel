@@ -101,10 +101,18 @@ export default function AddExerciseScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Añadir ejercicio</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Añadir ejercicio
+        </Text>
       </View>
 
       <FlatList
@@ -150,6 +158,8 @@ export default function AddExerciseScreen() {
               style={[styles.exerciseCard, selectedId === item.id && styles.exerciseCardSelected]}
               onPress={() => setSelectedId(item.id)}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedId === item.id }}
             >
               <View style={styles.iconBadge}>
                 <Dumbbell size={16} color={colors.accent.fire} strokeWidth={2} />

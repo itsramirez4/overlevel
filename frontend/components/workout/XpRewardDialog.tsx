@@ -14,7 +14,7 @@ interface XpRewardDialogProps {
 
 export const XpRewardDialog = ({ visible, xpGained, leveledUp, newLevel, onClose }: XpRewardDialogProps) => (
   <Modal visible={visible} onClose={onClose}>
-    <View style={styles.center}>
+    <View style={styles.center} accessibilityLiveRegion="polite" accessibilityRole="alert">
       <View style={[styles.iconBadge, leveledUp && styles.iconBadgeLevelUp]}>
         {leveledUp ? (
           <Trophy size={32} color={colors.accent.fire} strokeWidth={2} />

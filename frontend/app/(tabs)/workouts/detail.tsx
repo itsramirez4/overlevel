@@ -94,11 +94,17 @@ export default function WorkoutDetailScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
             {name}
           </Text>
           {hasExplicitName && (
@@ -163,8 +169,17 @@ export default function WorkoutDetailScreen() {
                   {formatWeight(set.weight, unit)} × {set.reps} reps
                 </Text>
                 {set.is_warmup ? <Text style={styles.warmupTag}>Calentamiento</Text> : null}
-                {set.superset_group ? <Link2 size={12} color={colors.accent.ember} strokeWidth={2.2} /> : null}
-                {set.is_pr && <Trophy size={14} color={colors.accent.ember} strokeWidth={2.2} />}
+                {set.superset_group ? (
+                  <Link2
+                    size={12}
+                    color={colors.accent.ember}
+                    strokeWidth={2.2}
+                    accessibilityLabel="Serie en superserie"
+                  />
+                ) : null}
+                {set.is_pr && (
+                  <Trophy size={14} color={colors.accent.ember} strokeWidth={2.2} accessibilityLabel="Récord personal" />
+                )}
                 {set.rpe ? <Text style={styles.setRpe}>RPE {set.rpe}</Text> : null}
               </View>
             ))}

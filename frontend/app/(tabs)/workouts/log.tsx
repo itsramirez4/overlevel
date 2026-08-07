@@ -124,7 +124,9 @@ export default function WorkoutLogScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Entrenamiento en curso</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            Entrenamiento en curso
+          </Text>
           <SessionTimer startedAt={currentWorkout.started_at} />
           <TouchableOpacity
             onPress={() => router.push('/profile/plate-calculator')}

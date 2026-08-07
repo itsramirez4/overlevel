@@ -42,6 +42,8 @@ export const CompleteWorkoutDialog = ({ visible, loading, onConfirm, onCancel }:
             onPress={() => setFeltLike(option === feltLike ? undefined : option)}
             style={[styles.option, feltLike === option && styles.optionSelected]}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityState={{ selected: feltLike === option }}
           >
             <Text style={[styles.optionText, feltLike === option && styles.optionTextSelected]}>
               {feltLikeLabel[option]}

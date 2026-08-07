@@ -89,10 +89,16 @@ export default function RoutineDetailScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
           {isLoading ? 'Rutina' : routine?.name}
         </Text>
         {!isLoading && (

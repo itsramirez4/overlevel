@@ -81,17 +81,27 @@ export default function CharacterScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Personaje</Text>
+        <Text style={styles.title} accessibilityRole="header">Personaje</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
         {character && !changingType ? (
           <>
             <Card style={styles.sheetCard}>
-              <View style={styles.avatarBadgeLarge}>
+              <View
+                style={styles.avatarBadgeLarge}
+                accessible
+                accessibilityLabel={`Avatar de personaje: ${character.name}`}
+              >
                 <CharacterAvatar type={character.character_type} size={160} />
               </View>
 
@@ -165,6 +175,8 @@ export default function CharacterScreen() {
                   style={[styles.typeCard, selected && styles.typeCardSelected]}
                   onPress={() => setSelectedType(type.id)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                 >
                   <View style={styles.avatarBadge}>
                     <CharacterAvatar type={type.id} size={88} />
@@ -178,7 +190,11 @@ export default function CharacterScreen() {
               );
             })}
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {error ? (
+              <Text style={styles.error} accessibilityLiveRegion="polite">
+                {error}
+              </Text>
+            ) : null}
 
             <Button
               label={creating ? 'Guardando…' : changingType ? 'CONFIRMAR CAMBIO' : 'CREAR PERSONAJE'}

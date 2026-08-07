@@ -36,10 +36,16 @@ export default function PersonalRecordsScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Récords personales</Text>
+        <Text style={styles.title} accessibilityRole="header">Récords personales</Text>
       </View>
 
       <View style={styles.searchContainer}>
@@ -66,7 +72,7 @@ export default function PersonalRecordsScreen() {
               activeOpacity={0.7}
               onPress={() => router.push(`/analytics/exercise/${item.exercise_id}`)}
             >
-              <View style={styles.iconBadge}>
+              <View style={styles.iconBadge} accessibilityLabel="Récord personal">
                 <Trophy size={16} color={colors.accent.ember} strokeWidth={2} />
               </View>
               <View style={styles.info}>

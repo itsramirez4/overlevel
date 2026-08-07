@@ -25,7 +25,9 @@ export const ConfirmDialog = ({
   onCancel,
 }: ConfirmDialogProps) => (
   <Modal visible={visible} onClose={onCancel}>
-    <Text style={styles.title}>{title}</Text>
+    <Text style={styles.title} accessibilityRole="header">
+      {title}
+    </Text>
     {!!message && <Text style={styles.message}>{message}</Text>}
     <View style={styles.actions}>
       <View style={styles.actionButton}>

@@ -67,7 +67,11 @@ export default function LoginScreen() {
               autoComplete="password"
             />
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {error ? (
+              <Text style={styles.error} accessibilityLiveRegion="polite">
+                {error}
+              </Text>
+            ) : null}
 
             <Button
               label={loading ? 'Entrando…' : 'Iniciar sesión'}

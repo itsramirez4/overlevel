@@ -53,17 +53,29 @@ export default function ExerciseEditScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={22} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>{isEditing ? 'Editar ejercicio' : 'Nuevo ejercicio'}</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          {isEditing ? 'Editar ejercicio' : 'Nuevo ejercicio'}
+        </Text>
       </View>
 
       {isEditing && isLoading ? (
         <Loader />
       ) : (
         <View style={styles.content}>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text style={styles.error} accessibilityLiveRegion="polite">
+              {error}
+            </Text>
+          ) : null}
           <ExerciseForm
             onSubmit={handleSave}
             loading={loading}

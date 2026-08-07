@@ -2,7 +2,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { colors } from '../../utils/theme';
 
 export const Loader = () => (
-  <View style={styles.container}>
+  <View style={styles.container} accessible accessibilityRole="progressbar" accessibilityLabel="Cargando">
     <ActivityIndicator size="large" color={colors.accent.fire} />
   </View>
 );
