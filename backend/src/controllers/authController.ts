@@ -70,6 +70,12 @@ export class AuthController {
       const decoded = verifyToken(refresh_token);
       if (decoded.type !== 'refresh') throw new Error('Not a refresh token');
 
+      // A JWT's signature staying valid doesn't mean the account still does —
+      // without this, a deleted user's refresh token could keep minting new
+      // 15min/7day token pairs indefinitely, forever.
+      const { data: user } = await supabaseAdmin.from('users').select('id').eq('id', decoded.userId).maybeSingle();
+      if (!user) throw new Error('User no longer exists');
+
       const { accessToken, refreshToken } = createTokens(decoded.userId);
       res.json({ access_token: accessToken, refresh_token: refreshToken });
     } catch {

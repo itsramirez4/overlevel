@@ -22,6 +22,18 @@ export const errorHandler = (
     });
   }
 
+  // Body-parser (malformed JSON), and any other middleware/library that sets
+  // its own 4xx status, was otherwise collapsed to a generic 500 — telling
+  // a client to retry a request (as many do for 5xx but not 4xx) that will
+  // never succeed, and misreporting the caller's mistake as a server failure.
+  const status = typeof err?.statusCode === 'number' ? err.statusCode : typeof err?.status === 'number' ? err.status : 500;
+  if (status >= 400 && status < 500) {
+    return res.status(status).json({
+      error: 'BAD_REQUEST',
+      message: err?.message || 'Invalid request',
+    });
+  }
+
   res.status(500).json({
     error: 'INTERNAL_ERROR',
     message: 'Something went wrong',

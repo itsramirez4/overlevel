@@ -29,7 +29,7 @@ export default function ExerciseEditScreen() {
     notes?: string;
     muscle_groups?: string[];
   }) => {
-    if (!data.name) {
+    if (!data.name.trim()) {
       setError('El nombre es obligatorio');
       return;
     }

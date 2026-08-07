@@ -3,11 +3,17 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { X } from 'lucide-react-native';
 import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { workoutStore } from '../../stores/workoutStore';
+import { cancelRestTimerNotification } from '../../services/notifications';
 
 export const RestTimer = () => {
   const restEndsAt = workoutStore((state) => state.restEndsAt);
   const clearRest = workoutStore((state) => state.clearRest);
   const [remaining, setRemaining] = useState(0);
+
+  const handleSkip = () => {
+    clearRest();
+    cancelRestTimerNotification();
+  };
 
   useEffect(() => {
     if (!restEndsAt) return;
@@ -34,7 +40,7 @@ export const RestTimer = () => {
       <Text style={styles.time}>
         {minutes}:{seconds.toString().padStart(2, '0')}
       </Text>
-      <TouchableOpacity onPress={clearRest} hitSlop={10} accessibilityLabel="Saltar descanso">
+      <TouchableOpacity onPress={handleSkip} hitSlop={10} accessibilityLabel="Saltar descanso">
         <X size={20} color={colors.text.secondary} />
       </TouchableOpacity>
     </View>

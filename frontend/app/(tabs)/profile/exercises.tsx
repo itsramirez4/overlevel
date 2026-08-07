@@ -113,7 +113,7 @@ export default function ManageExercisesScreen() {
       <ConfirmDialog
         visible={!!deleteTarget}
         title="Borrar ejercicio"
-        message={`¿Seguro que quieres borrar "${deleteTarget?.name}"? Se quitará también de tus rutinas y no podrás verlo en tus series ya registradas.`}
+        message={`¿Seguro que quieres borrar "${deleteTarget?.name}"? Se eliminarán también TODAS las series que hayas registrado con él y se quitará de tus rutinas. Esta acción no se puede deshacer.`}
         confirmLabel="Borrar"
         destructive
         onConfirm={confirmDelete}

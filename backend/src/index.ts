@@ -20,6 +20,17 @@ import battleRoutes from './routes/battles';
 // Cron Jobs
 import { initCronJobs } from './services/cronService';
 
+// node-cron doesn't await or wrap its callbacks — an unhandled rejection
+// inside a cron job (or anywhere else outside the Express request cycle)
+// would otherwise terminate the whole process by Node's default behavior,
+// taking down the API for every user over one background job's bug.
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection', reason);
+});
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', err);
+});
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 

@@ -16,7 +16,9 @@ export const loginSchema = z.object({
 });
 
 export const createExerciseSchema = z.object({
-  name: z.string().min(1).max(100),
+  // .min(1) alone would let "   " through — trim first so a whitespace-only
+  // name (or one with stray leading/trailing spaces) can't slip in.
+  name: z.string().trim().min(1).max(100),
   category: z.enum(['compound', 'isolation', 'cardio']),
   muscle_groups: z.array(z.string()).optional(),
   equipment: z.array(z.string()).optional(),
@@ -24,7 +26,7 @@ export const createExerciseSchema = z.object({
 });
 
 export const updateExerciseSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
+  name: z.string().trim().min(1).max(100).optional(),
   category: z.enum(['compound', 'isolation', 'cardio']).optional(),
   muscle_groups: z.array(z.string()).optional(),
   equipment: z.array(z.string()).optional(),

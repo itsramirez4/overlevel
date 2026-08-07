@@ -20,6 +20,8 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
   }
 };
 
+const REST_TIMER_ID = 'rest-timer';
+
 export const scheduleRestTimerNotification = async (seconds: number): Promise<void> => {
   if (!isSupported) return;
 
@@ -27,7 +29,14 @@ export const scheduleRestTimerNotification = async (seconds: number): Promise<vo
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return;
 
+    // A fixed identifier + cancel-before-scheduling, same as the training
+    // reminder — without it, logging a set before the previous rest period
+    // finished (common with short rests) stacks up multiple pending
+    // notifications that each fire independently, well after they're relevant.
+    await Notifications.cancelScheduledNotificationAsync(REST_TIMER_ID);
+
     await Notifications.scheduleNotificationAsync({
+      identifier: REST_TIMER_ID,
       content: { title: 'Descanso terminado', body: 'Hora de la siguiente serie' },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds },
     });
@@ -63,6 +72,15 @@ export const scheduleTrainingReminder = async (): Promise<void> => {
       content: { title: '¿Entrenas hoy?', body: 'Todavía no has registrado ningún entrenamiento hoy.' },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: secondsUntilTarget },
     });
+  } catch {
+    // Best-effort.
+  }
+};
+
+export const cancelRestTimerNotification = async (): Promise<void> => {
+  if (!isSupported) return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(REST_TIMER_ID);
   } catch {
     // Best-effort.
   }
