@@ -55,6 +55,8 @@ export interface Routine {
   exercises?: RoutineExercise[];
   created_at: string;
   updated_at: string;
+  // Set only on trashed routines (GET /routines/trash) — null/absent means active.
+  deleted_at?: string | null;
 }
 
 export interface Set {

@@ -8,6 +8,7 @@ export default function RoutinesLayout() {
       <Stack.Screen name="create" />
       <Stack.Screen name="add-exercise" />
       <Stack.Screen name="edit" />
+      <Stack.Screen name="trash" />
     </Stack>
   );
 }

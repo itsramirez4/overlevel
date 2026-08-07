@@ -185,7 +185,7 @@ export default function RoutineDetailScreen() {
       <ConfirmDialog
         visible={deleteRoutineOpen}
         title="Borrar rutina"
-        message={`¿Seguro que quieres borrar "${routine?.name}"? Esta acción no se puede deshacer.`}
+        message={`"${routine?.name}" se moverá a la papelera. Podrás restaurarla desde ahí cuando quieras.`}
         confirmLabel="Borrar"
         destructive
         onConfirm={confirmDeleteRoutine}

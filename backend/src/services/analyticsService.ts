@@ -85,6 +85,7 @@ export class AnalyticsService {
       .select('*')
       .eq('user_id', userId)
       .eq('is_active', true)
+      .is('deleted_at', null)
       .order('created_at', { ascending: true });
 
     const routines = activeRoutines || [];

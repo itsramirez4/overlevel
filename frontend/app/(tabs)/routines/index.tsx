@@ -1,10 +1,10 @@
-import { View, FlatList, StyleSheet } from 'react-native';
+import { TouchableOpacity, View, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ListChecks } from 'lucide-react-native';
+import { ListChecks, Trash } from 'lucide-react-native';
 import { api } from '../../../services/api';
-import { colors, spacing } from '../../../utils/theme';
+import { colors, radius, spacing } from '../../../utils/theme';
 import { Header } from '../../../components/common/Header';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/common/EmptyState';
@@ -21,7 +21,20 @@ export default function RoutinesScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.content}>
-        <Header title="Rutinas" subtitle="Planifica tus sesiones" />
+        <Header
+          title="Rutinas"
+          subtitle="Planifica tus sesiones"
+          action={
+            <TouchableOpacity
+              onPress={() => router.push('/routines/trash')}
+              hitSlop={10}
+              style={styles.trashButton}
+              accessibilityLabel="Ver papelera"
+            >
+              <Trash size={18} color={colors.text.secondary} strokeWidth={2} />
+            </TouchableOpacity>
+          }
+        />
 
         <Button
           label="NUEVA RUTINA"
@@ -62,6 +75,14 @@ const styles = StyleSheet.create({
   },
   createButton: {
     marginBottom: spacing.lg,
+  },
+  trashButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    backgroundColor: colors.bg.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   listContent: {
     flexGrow: 1,

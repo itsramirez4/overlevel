@@ -28,6 +28,21 @@ export class RoutineController {
     res.status(204).send();
   }
 
+  async listTrash(req: AuthRequest, res: Response) {
+    const routines = await routineService.listTrash(req.userId!);
+    res.json(routines);
+  }
+
+  async restore(req: AuthRequest, res: Response) {
+    const routine = await routineService.restore(req.params.id, req.userId!);
+    res.json(routine);
+  }
+
+  async permanentlyDelete(req: AuthRequest, res: Response) {
+    await routineService.permanentlyDelete(req.params.id, req.userId!);
+    res.status(204).send();
+  }
+
   async addExercise(req: AuthRequest, res: Response) {
     const routineExercise = await routineService.addExercise(req.params.id, req.userId!, req.body);
     res.status(201).json(routineExercise);

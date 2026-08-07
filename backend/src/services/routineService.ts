@@ -8,6 +8,7 @@ export class RoutineService {
       .from('routines')
       .select('*, routine_exercises(*, exercises(*))')
       .eq('user_id', userId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) throw new AppError('Failed to fetch routines');
@@ -20,10 +21,23 @@ export class RoutineService {
       .select('*, routine_exercises(*, exercises(*))')
       .eq('id', id)
       .eq('user_id', userId)
+      .is('deleted_at', null)
       .single();
 
     if (error || !data) throw new AppError('Routine not found', 404);
     return data as Routine;
+  }
+
+  async listTrash(userId: string): Promise<Routine[]> {
+    const { data, error } = await supabaseAdmin
+      .from('routines')
+      .select('*')
+      .eq('user_id', userId)
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+
+    if (error) throw new AppError('Failed to fetch trash');
+    return (data || []) as Routine[];
   }
 
   async create(userId: string, input: Partial<Routine>): Promise<Routine> {
@@ -46,6 +60,7 @@ export class RoutineService {
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .eq('user_id', userId)
+      .is('deleted_at', null)
       .select()
       .maybeSingle();
 
@@ -54,14 +69,52 @@ export class RoutineService {
     return data as Routine;
   }
 
+  /** Moves to the trash — the routine and its routine_exercises stay intact
+   * and come back exactly as they were if restored. Only permanentlyDelete()
+   * actually destroys data. */
   async remove(id: string, userId: string): Promise<void> {
-    const { error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
+      .from('routines')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .select('id')
+      .maybeSingle();
+
+    if (error) throw new AppError('Failed to delete routine');
+    if (!data) throw new AppError('Routine not found', 404);
+  }
+
+  async restore(id: string, userId: string): Promise<Routine> {
+    const { data, error } = await supabaseAdmin
+      .from('routines')
+      .update({ deleted_at: null })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .not('deleted_at', 'is', null)
+      .select()
+      .maybeSingle();
+
+    if (error) throw new AppError('Failed to restore routine');
+    if (!data) throw new AppError('Routine not found in trash', 404);
+    return data as Routine;
+  }
+
+  /** Real, irreversible delete — only reachable for something already in the
+   * trash, so it's always a deliberate second step, never an accidental one. */
+  async permanentlyDelete(id: string, userId: string): Promise<void> {
+    const { data, error } = await supabaseAdmin
       .from('routines')
       .delete()
       .eq('id', id)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .not('deleted_at', 'is', null)
+      .select('id')
+      .maybeSingle();
 
-    if (error) throw new AppError('Failed to delete routine');
+    if (error) throw new AppError('Failed to permanently delete routine');
+    if (!data) throw new AppError('Routine not found in trash', 404);
   }
 
   async addExercise(
