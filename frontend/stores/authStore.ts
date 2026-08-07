@@ -26,6 +26,19 @@ export const authStore = create<AuthStore>((set) => ({
   },
 
   logout: async () => {
+    const refreshToken = await storage.getItem('refresh_token');
+    // Best-effort — an offline logout should still clear local state even
+    // if the revoke call can't reach the server. Without this call at all,
+    // the refresh token stayed valid server-side for its full 7-day
+    // lifetime regardless of the user logging out.
+    if (refreshToken) {
+      try {
+        await api.post('/auth/logout', { refresh_token: refreshToken });
+      } catch {
+        // Ignore — local logout proceeds regardless.
+      }
+    }
+
     await storage.removeItem('access_token');
     await storage.removeItem('refresh_token');
     delete api.defaults.headers.common['Authorization'];

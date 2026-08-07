@@ -1,6 +1,5 @@
 import request from 'supertest';
 import app from '../../src/index';
-import { createTokens } from '../../src/config/auth';
 import { createTestUser, deleteTestUser } from '../helpers/testUser';
 
 describe('auth', () => {
@@ -68,6 +67,51 @@ describe('auth', () => {
       const forged = jwt.sign({ userId: 'forged-user-id', type: 'access' }, 'wrong-secret');
       const res = await request(app).get('/api/exercises').set('Authorization', `Bearer ${forged}`);
       expect(res.status).toBe(401);
+    });
+
+    it('rotates on use: the same refresh token cannot be used twice', async () => {
+      const user = await createTestUser('refresh-rotate');
+      try {
+        const first = await request(app).post('/api/auth/refresh').send({ refresh_token: user.refreshToken });
+        expect(first.status).toBe(200);
+
+        const second = await request(app).post('/api/auth/refresh').send({ refresh_token: user.refreshToken });
+        expect(second.status).toBe(401);
+      } finally {
+        await deleteTestUser(user.id);
+      }
+    });
+
+    it('reuse of an already-rotated token revokes every session for that user', async () => {
+      const user = await createTestUser('refresh-reuse');
+      try {
+        const first = await request(app).post('/api/auth/refresh').send({ refresh_token: user.refreshToken });
+        const rotatedToken = first.body.refresh_token;
+
+        // Replay the old (already-rotated) token — this is the theft signal.
+        await request(app).post('/api/auth/refresh').send({ refresh_token: user.refreshToken });
+
+        // Even the legitimately-rotated token from the first call should now be dead too.
+        const afterReuse = await request(app).post('/api/auth/refresh').send({ refresh_token: rotatedToken });
+        expect(afterReuse.status).toBe(401);
+      } finally {
+        await deleteTestUser(user.id);
+      }
+    });
+
+    it('logout revokes the refresh token server-side', async () => {
+      const user = await createTestUser('logout-revoke');
+      try {
+        const logoutRes = await request(app).post('/api/auth/logout').send({ refresh_token: user.refreshToken });
+        expect(logoutRes.status).toBe(200);
+
+        const refreshAfterLogout = await request(app)
+          .post('/api/auth/refresh')
+          .send({ refresh_token: user.refreshToken });
+        expect(refreshAfterLogout.status).toBe(401);
+      } finally {
+        await deleteTestUser(user.id);
+      }
     });
   });
 

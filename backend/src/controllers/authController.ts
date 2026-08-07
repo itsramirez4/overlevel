@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { supabase, supabaseAdmin } from '../config/supabase';
-import { createTokens, verifyToken } from '../config/auth';
+import { verifyToken } from '../config/auth';
+import { issueTokenPair, revokeRefreshToken, rotateRefreshToken, RefreshTokenReuseError } from '../services/tokenService';
 import { AppError } from '../middleware/errorHandler';
+import { logger } from '../utils/logger';
 
 export class AuthController {
   /**
@@ -17,7 +19,7 @@ export class AuthController {
 
       if (error || !data.user) throw new AppError('Invalid credentials', 401);
 
-      const { accessToken, refreshToken } = createTokens(data.user.id);
+      const { accessToken, refreshToken } = await issueTokenPair(data.user.id);
 
       let { data: userData } = await supabaseAdmin
         .from('users')
@@ -76,14 +78,25 @@ export class AuthController {
       const { data: user } = await supabaseAdmin.from('users').select('id').eq('id', decoded.userId).maybeSingle();
       if (!user) throw new Error('User no longer exists');
 
-      const { accessToken, refreshToken } = createTokens(decoded.userId);
+      // Validates against the DB record (not just the JWT signature), and
+      // rotates: this token is marked used, a new pair is issued. Reusing
+      // an already-rotated token past this point revokes every refresh
+      // token this user has outstanding — see tokenService for why.
+      const { accessToken, refreshToken } = await rotateRefreshToken(decoded.userId, refresh_token);
       res.json({ access_token: accessToken, refresh_token: refreshToken });
-    } catch {
+    } catch (error) {
+      if (error instanceof RefreshTokenReuseError) {
+        logger.warn('Refresh token reuse detected — all sessions revoked for user', { error: error.message });
+      }
       res.status(401).json({ error: 'UNAUTHORIZED', message: 'Invalid refresh token' });
     }
   }
 
-  async logout(req: AuthRequest, res: Response) {
+  async logout(req: Request, res: Response) {
+    const { refresh_token } = req.body;
+    if (refresh_token) {
+      await revokeRefreshToken(refresh_token);
+    }
     res.json({ message: 'Logged out' });
   }
 }

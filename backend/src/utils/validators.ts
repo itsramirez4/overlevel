@@ -87,7 +87,10 @@ export const updateSetSchema = z.object({
 
 export const changePasswordSchema = z.object({
   current_password: z.string().min(1),
-  new_password: z.string().min(6),
+  // 8, not 6 — current OWASP/NIST guidance favors a longer minimum over
+  // complexity rules, and 6 is short enough to be within easy brute-force
+  // range if the rate limiter were ever bypassed or misconfigured.
+  new_password: z.string().min(8),
 });
 
 export const importHevySchema = z.object({

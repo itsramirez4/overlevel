@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '../../src/config/supabase';
-import { createTokens } from '../../src/config/auth';
+import { issueTokenPair } from '../../src/services/tokenService';
 
 /**
  * These tests run against the real (dev) Supabase project — there's no
@@ -33,7 +33,10 @@ export async function createTestUser(label = 'test'): Promise<TestUser> {
 
   if (error || !user) throw new Error(`Failed to create test user: ${error?.message}`);
 
-  const { accessToken, refreshToken } = createTokens(user.id);
+  // issueTokenPair, not the bare JWT signer — it also persists the
+  // refresh_tokens row that /auth/refresh now requires (rotation +
+  // reuse detection needs a DB record, not just a valid signature).
+  const { accessToken, refreshToken } = await issueTokenPair(user.id);
   return { id: user.id, email: user.email, token: accessToken, refreshToken };
 }
 

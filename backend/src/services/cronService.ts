@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { generateDailyReport } from '../jobs/generateDailyReport';
 import { generateWeeklyStats } from '../jobs/generateWeeklyStats';
+import { cleanupRefreshTokens } from '../jobs/cleanupRefreshTokens';
 import { logger } from '../utils/logger';
 
 /** Returns the scheduled tasks so callers can .stop() them on shutdown —
@@ -17,5 +18,10 @@ export const initCronJobs = () => {
     await generateWeeklyStats();
   });
 
-  return [dailyReport, weeklyStats];
+  const tokenCleanup = cron.schedule('0 2 * * *', async () => {
+    logger.info('Running cleanupRefreshTokens');
+    await cleanupRefreshTokens();
+  });
+
+  return [dailyReport, weeklyStats, tokenCleanup];
 };
