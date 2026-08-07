@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -21,6 +21,7 @@ export default function DashboardScreen() {
   const username = authStore((state) => state.user?.username);
   const unit = authStore((state) => state.user?.weight_unit) || 'kg';
   const { currentWorkout, startWorkout } = useWorkout();
+  const [startingWorkout, setStartingWorkout] = useState(false);
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['stats'],
@@ -51,8 +52,16 @@ export default function DashboardScreen() {
       router.push('/workouts/log');
       return;
     }
-    await startWorkout(stats?.recommended_routine?.id);
-    router.push('/workouts/log');
+    if (startingWorkout) return;
+    setStartingWorkout(true);
+    try {
+      await startWorkout(stats?.recommended_routine?.id);
+      router.push('/workouts/log');
+    } catch {
+      Alert.alert('Error', 'No se pudo iniciar el entrenamiento. Inténtalo de nuevo.');
+    } finally {
+      setStartingWorkout(false);
+    }
   };
 
   return (
@@ -111,6 +120,8 @@ export default function DashboardScreen() {
         <Button
           label={currentWorkout ? 'CONTINUAR ENTRENAMIENTO' : 'EMPEZAR ENTRENAMIENTO'}
           onPress={handleStartWorkout}
+          loading={startingWorkout}
+          disabled={startingWorkout}
           style={styles.startButton}
         />
 

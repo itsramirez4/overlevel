@@ -18,10 +18,11 @@ export const generateDailyReport = async () => {
     return;
   }
 
-  const byUser = new Map<string, { volume: number; sets: number; reps: number; rpes: number[] }>();
+  const byUser = new Map<string, { workouts: number; volume: number; sets: number; reps: number; rpes: number[] }>();
 
   for (const w of workouts || []) {
-    const entry = byUser.get(w.user_id) || { volume: 0, sets: 0, reps: 0, rpes: [] };
+    const entry = byUser.get(w.user_id) || { workouts: 0, volume: 0, sets: 0, reps: 0, rpes: [] };
+    entry.workouts += 1;
     for (const s of w.sets || []) {
       entry.volume += s.weight * s.reps;
       entry.sets += 1;
@@ -39,7 +40,7 @@ export const generateDailyReport = async () => {
       total_sets: stats.sets,
       total_reps: stats.reps,
       avg_rpe: stats.rpes.length ? stats.rpes.reduce((a, b) => a + b, 0) / stats.rpes.length : null,
-      workout_count: 1,
+      workout_count: stats.workouts,
     }, { onConflict: 'user_id,date' });
   }
 

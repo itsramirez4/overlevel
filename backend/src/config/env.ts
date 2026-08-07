@@ -9,11 +9,8 @@ export const config = {
     serviceKey: process.env.SUPABASE_SERVICE_KEY || '',
   },
 
-  jwt: {
-    secret: process.env.JWT_SECRET || 'dev-secret',
-    expireAccess: process.env.JWT_EXPIRE_ACCESS || '15m',
-    expireRefresh: process.env.JWT_EXPIRE_REFRESH || '7d',
-  },
+  // JWT secret/expiry live in config/auth.ts, the only module that actually
+  // signs/verifies tokens — this used to redeclare them here too, unused.
 
   // Kept strict for auth (brute-force protection matters there even for a
   // single-user app). Everything else sits behind a valid JWT already and

@@ -2,6 +2,7 @@ import { supabaseAdmin } from '../config/supabase';
 import { Set } from '../types';
 import { AppError } from '../middleware/errorHandler';
 import { battleService, ExerciseBattle } from './battleService';
+import { fetchAllRows } from '../utils/pagination';
 
 /**
  * A set is a PR when it beats every other set of this exercise on weight,
@@ -42,16 +43,16 @@ export async function computeSetIsPr(
  * chronological order so it stays consistent no matter what got edited.
  */
 export async function recomputeIsPrForExercise(exerciseId: string, userId: string): Promise<void> {
-  const { data } = await supabaseAdmin
-    .from('sets')
-    .select('id, weight, reps, is_warmup, is_pr, set_number, workouts!inner(started_at, user_id)')
-    .eq('exercise_id', exerciseId)
-    .eq('workouts.user_id', userId)
-    .limit(500);
+  const data = await fetchAllRows<any>((from, to) =>
+    supabaseAdmin
+      .from('sets')
+      .select('id, weight, reps, is_warmup, is_pr, set_number, workouts!inner(started_at, user_id)')
+      .eq('exercise_id', exerciseId)
+      .eq('workouts.user_id', userId)
+      .range(from, to)
+  );
 
-  if (!data) return;
-
-  const sorted = (data as any[])
+  const sorted = data
     .filter((s) => !s.is_warmup)
     .sort((a, b) => {
       const dateDiff = new Date(a.workouts.started_at).getTime() - new Date(b.workouts.started_at).getTime();
@@ -86,6 +87,23 @@ export class SetService {
     if (!data) throw new AppError('Workout not found', 404);
   }
 
+  /**
+   * Logging a set on an already-completed workout would silently create a
+   * new exercise_battles row that nothing ever finishes again (finishForWorkout
+   * already ran) — it'd sit forever un-defeated in that workout's battle list.
+   */
+  private async assertWorkoutWritable(workoutId: string, userId: string): Promise<void> {
+    const { data } = await supabaseAdmin
+      .from('workouts')
+      .select('id, completed_at')
+      .eq('id', workoutId)
+      .eq('user_id', userId)
+      .single();
+
+    if (!data) throw new AppError('Workout not found', 404);
+    if (data.completed_at) throw new AppError('No se pueden añadir series a un entrenamiento ya finalizado', 400);
+  }
+
   async listByWorkout(workoutId: string, userId: string): Promise<Set[]> {
     await this.assertWorkoutOwnership(workoutId, userId);
 
@@ -100,7 +118,7 @@ export class SetService {
   }
 
   async log(userId: string, input: Partial<Set>): Promise<Set & { battle?: ExerciseBattle }> {
-    await this.assertWorkoutOwnership(input.workout_id!, userId);
+    await this.assertWorkoutWritable(input.workout_id!, userId);
 
     const { data: exercise } = await supabaseAdmin
       .from('exercises')

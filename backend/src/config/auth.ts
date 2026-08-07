@@ -1,6 +1,12 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-this';
+// No fallback: a default secret checked into source would let anyone who's
+// read this file forge a valid access token for any user_id. Fail loudly at
+// startup instead of silently signing tokens with a public string.
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRE_ACCESS = process.env.JWT_EXPIRE_ACCESS || '15m';
 const JWT_EXPIRE_REFRESH = process.env.JWT_EXPIRE_REFRESH || '7d';
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -40,10 +40,15 @@ export default function RoutineDetailScreen() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['routines', id] });
 
   const confirmDeleteRoutine = async () => {
-    setDeleteRoutineOpen(false);
-    await api.delete(`/routines/${id}`);
-    await queryClient.invalidateQueries({ queryKey: ['routines'] });
-    router.replace('/routines');
+    try {
+      await api.delete(`/routines/${id}`);
+      setDeleteRoutineOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ['routines'] });
+      router.replace('/routines');
+    } catch {
+      setDeleteRoutineOpen(false);
+      Alert.alert('Error', 'No se pudo borrar la rutina. Inténtalo de nuevo.');
+    }
   };
 
   const confirmRemoveExercise = async () => {
@@ -54,6 +59,8 @@ export default function RoutineDetailScreen() {
     try {
       await api.delete(`/routines/${id}/exercises/${routineExerciseId}`);
       await invalidate();
+    } catch {
+      Alert.alert('Error', 'No se pudo quitar el ejercicio. Inténtalo de nuevo.');
     } finally {
       setBusyId(null);
     }
@@ -72,6 +79,8 @@ export default function RoutineDetailScreen() {
         order: reordered.map((re: any) => re.id),
       });
       await invalidate();
+    } catch {
+      Alert.alert('Error', 'No se pudo reordenar. Inténtalo de nuevo.');
     } finally {
       setBusyId(null);
     }

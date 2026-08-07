@@ -4,6 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Exercise, Workout } from '../types';
 
 interface WorkoutStore {
+  // False until AsyncStorage rehydration finishes. Screens that decide
+  // whether to show "resume workout" vs. "start a new one" must wait for
+  // this — reading currentWorkout before then always sees the default
+  // `null`, even if a real in-progress workout is about to load in, and
+  // could let the user start a duplicate that orphans the real one.
+  hasHydrated: boolean;
+  setHasHydrated: (value: boolean) => void;
   currentWorkout: Workout | null;
   setCurrentWorkout: (workout: Workout | null) => void;
   sessionExercises: Exercise[];
@@ -23,6 +30,9 @@ interface WorkoutStore {
 export const workoutStore = create<WorkoutStore>()(
   persist(
     (set, get) => ({
+      hasHydrated: false,
+      setHasHydrated: (value) => set({ hasHydrated: value }),
+
       currentWorkout: null,
       setCurrentWorkout: (workout) => set({ currentWorkout: workout, restEndsAt: null }),
 
@@ -63,6 +73,9 @@ export const workoutStore = create<WorkoutStore>()(
         restEndsAt: state.restEndsAt,
         linkedToPrevious: state.linkedToPrevious,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

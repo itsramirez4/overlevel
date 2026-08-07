@@ -98,6 +98,15 @@ export const updateWorkoutSchema = z.object({
   felt_like: z.enum(['terrible', 'bad', 'ok', 'good', 'amazing']).optional(),
 });
 
+// Same allowed fields as updateWorkoutSchema — completing a workout can
+// also set how it felt / notes, but must never touch user_id, routine_id,
+// started_at, etc. via mass assignment.
+export const completeWorkoutSchema = updateWorkoutSchema;
+
+export const startWorkoutSchema = z.object({
+  routine_id: z.string().uuid().optional(),
+});
+
 export const createCharacterSchema = z.object({
   character_type: z.enum(['powerlifter', 'bodybuilder', 'crossfitter', 'calisthenics', 'fracasado']),
 });

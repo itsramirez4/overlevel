@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -15,11 +15,13 @@ import { CompleteWorkoutDialog } from '../../../components/workout/CompleteWorko
 import { XpRewardDialog } from '../../../components/workout/XpRewardDialog';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Button } from '../../../components/ui/Button';
+import { Loader } from '../../../components/ui/Loader';
 
 export default function WorkoutLogScreen() {
   const router = useRouter();
-  const { currentWorkout, completeWorkout } = useWorkout();
+  const { hasHydrated, currentWorkout, completeWorkout } = useWorkout();
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [xpAward, setXpAward] = useState<{
     xpGained: number;
     leveledUp: boolean;
@@ -67,6 +69,14 @@ export default function WorkoutLogScreen() {
     enabled: !!currentWorkout,
   });
 
+  if (!hasHydrated) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Loader />
+      </SafeAreaView>
+    );
+  }
+
   if (!currentWorkout) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -88,12 +98,20 @@ export default function WorkoutLogScreen() {
   }
 
   const handleComplete = async (feltLike?: string, notes?: string) => {
-    setCompleteDialogOpen(false);
-    const result = await completeWorkout(feltLike, notes);
-    if (result?.xp_award) {
-      setXpAward(result.xp_award);
-    } else {
-      router.replace('/(tabs)/dashboard');
+    if (completing) return;
+    setCompleting(true);
+    try {
+      const result = await completeWorkout(feltLike, notes);
+      setCompleteDialogOpen(false);
+      if (result?.xp_award) {
+        setXpAward(result.xp_award);
+      } else {
+        router.replace('/(tabs)/dashboard');
+      }
+    } catch {
+      Alert.alert('Error', 'No se pudo terminar el entrenamiento. Inténtalo de nuevo.');
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -167,8 +185,9 @@ export default function WorkoutLogScreen() {
 
       <CompleteWorkoutDialog
         visible={completeDialogOpen}
+        loading={completing}
         onConfirm={handleComplete}
-        onCancel={() => setCompleteDialogOpen(false)}
+        onCancel={() => !completing && setCompleteDialogOpen(false)}
       />
 
       {xpAward && (

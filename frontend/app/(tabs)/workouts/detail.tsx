@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -32,17 +32,26 @@ export default function WorkoutDetailScreen() {
   });
 
   const confirmDelete = async () => {
-    setDeleteOpen(false);
-    await api.delete(`/workouts/${id}`);
-    await queryClient.invalidateQueries({ queryKey: ['workouts'] });
-    router.back();
+    try {
+      await api.delete(`/workouts/${id}`);
+      setDeleteOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ['workouts'] });
+      router.back();
+    } catch {
+      setDeleteOpen(false);
+      Alert.alert('Error', 'No se pudo borrar el entrenamiento. Inténtalo de nuevo.');
+    }
   };
 
   const handleSaveEdit = async (title?: string, notes?: string, feltLike?: string) => {
-    setEditOpen(false);
-    await api.put(`/workouts/${id}`, { title, notes, felt_like: feltLike });
-    await queryClient.invalidateQueries({ queryKey: ['workouts', id] });
-    await queryClient.invalidateQueries({ queryKey: ['workouts'] });
+    try {
+      await api.put(`/workouts/${id}`, { title, notes, felt_like: feltLike });
+      setEditOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ['workouts', id] });
+      await queryClient.invalidateQueries({ queryKey: ['workouts'] });
+    } catch {
+      Alert.alert('Error', 'No se pudieron guardar los cambios. Inténtalo de nuevo.');
+    }
   };
 
   if (isLoading || !workout) {

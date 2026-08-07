@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { analyticsService } from '../services/analyticsService';
+import { parsePositiveIntParam } from '../utils/queryParams';
 
 export class AnalyticsController {
   async summary(req: AuthRequest, res: Response) {
@@ -29,19 +30,19 @@ export class AnalyticsController {
   }
 
   async volumeHistory(req: AuthRequest, res: Response) {
-    const weeks = req.query.weeks ? parseInt(req.query.weeks as string) : 8;
+    const weeks = parsePositiveIntParam(req.query.weeks, 8);
     const history = await analyticsService.getWeeklyVolumeHistory(req.userId!, weeks);
     res.json(history);
   }
 
   async muscleDistribution(req: AuthRequest, res: Response) {
-    const weeks = req.query.weeks ? parseInt(req.query.weeks as string) : 8;
+    const weeks = parsePositiveIntParam(req.query.weeks, 8);
     const distribution = await analyticsService.getMuscleGroupDistribution(req.userId!, weeks);
     res.json(distribution);
   }
 
   async heatmap(req: AuthRequest, res: Response) {
-    const weeks = req.query.weeks ? parseInt(req.query.weeks as string) : 10;
+    const weeks = parsePositiveIntParam(req.query.weeks, 10);
     const heatmap = await analyticsService.getWorkoutHeatmap(req.userId!, weeks);
     res.json(heatmap);
   }

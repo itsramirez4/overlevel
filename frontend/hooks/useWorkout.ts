@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { requestNotificationPermissions } from '../services/notifications';
 
 export const useWorkout = () => {
+  const hasHydrated = workoutStore((state) => state.hasHydrated);
   const currentWorkout = workoutStore((state) => state.currentWorkout);
   const setCurrentWorkout = workoutStore((state) => state.setCurrentWorkout);
   const setSessionExercises = workoutStore((state) => state.setSessionExercises);
@@ -45,5 +46,5 @@ export const useWorkout = () => {
     return data;
   };
 
-  return { currentWorkout, startWorkout, completeWorkout };
+  return { hasHydrated, currentWorkout, startWorkout, completeWorkout };
 };

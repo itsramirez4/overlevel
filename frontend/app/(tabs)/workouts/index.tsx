@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { useState } from 'react';
+import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -10,10 +11,12 @@ import { workoutStore } from '../../../stores/workoutStore';
 import { Header } from '../../../components/common/Header';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/common/EmptyState';
+import { Loader } from '../../../components/ui/Loader';
 
 export default function WorkoutsScreen() {
   const router = useRouter();
-  const { currentWorkout, startWorkout } = useWorkout();
+  const { hasHydrated, currentWorkout, startWorkout } = useWorkout();
+  const [starting, setStarting] = useState(false);
 
   const { data: routines, isLoading } = useQuery({
     queryKey: ['routines'],
@@ -33,27 +36,41 @@ export default function WorkoutsScreen() {
   });
 
   const handleStart = async (routineId?: string) => {
-    await startWorkout(routineId);
-    router.push('/workouts/log');
+    if (starting) return;
+    setStarting(true);
+    try {
+      await startWorkout(routineId);
+      router.push('/workouts/log');
+    } catch {
+      Alert.alert('Error', 'No se pudo iniciar el entrenamiento. Inténtalo de nuevo.');
+    } finally {
+      setStarting(false);
+    }
   };
 
   const handleRepeatLast = async () => {
-    if (!lastWorkoutDetail) return;
+    if (!lastWorkoutDetail || starting) return;
+    setStarting(true);
+    try {
+      const seen = new Set<string>();
+      const exercises = (lastWorkoutDetail.sets || [])
+        .slice()
+        .sort((a: any, b: any) => a.set_number - b.set_number)
+        .map((s: any) => s.exercises)
+        .filter((ex: any) => {
+          if (!ex || seen.has(ex.id)) return false;
+          seen.add(ex.id);
+          return true;
+        });
 
-    const seen = new Set<string>();
-    const exercises = (lastWorkoutDetail.sets || [])
-      .slice()
-      .sort((a: any, b: any) => a.set_number - b.set_number)
-      .map((s: any) => s.exercises)
-      .filter((ex: any) => {
-        if (!ex || seen.has(ex.id)) return false;
-        seen.add(ex.id);
-        return true;
-      });
-
-    await startWorkout();
-    workoutStore.getState().setSessionExercises(exercises);
-    router.push('/workouts/log');
+      await startWorkout();
+      workoutStore.getState().setSessionExercises(exercises);
+      router.push('/workouts/log');
+    } catch {
+      Alert.alert('Error', 'No se pudo iniciar el entrenamiento. Inténtalo de nuevo.');
+    } finally {
+      setStarting(false);
+    }
   };
 
   return (
@@ -61,7 +78,9 @@ export default function WorkoutsScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Header title="Entrenamientos" subtitle="Elige una rutina o improvisa" />
 
-        {currentWorkout ? (
+        {!hasHydrated ? (
+          <Loader />
+        ) : currentWorkout ? (
           <TouchableOpacity
             style={styles.resumeBanner}
             onPress={() => router.push('/workouts/log')}
@@ -81,11 +100,18 @@ export default function WorkoutsScreen() {
             <Button
               label="ENTRENAMIENTO LIBRE"
               onPress={() => handleStart()}
+              loading={starting}
+              disabled={starting}
               style={styles.freestyleButton}
             />
 
             {lastWorkoutDetail?.sets?.length > 0 && (
-              <TouchableOpacity style={styles.repeatButton} onPress={handleRepeatLast} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={styles.repeatButton}
+                onPress={handleRepeatLast}
+                disabled={starting}
+                activeOpacity={0.7}
+              >
                 <Repeat size={18} color={colors.text.secondary} strokeWidth={2} />
                 <Text style={styles.repeatButtonText}>Repetir último entrenamiento</Text>
               </TouchableOpacity>
@@ -104,6 +130,7 @@ export default function WorkoutsScreen() {
                   key={routine.id}
                   style={styles.routineCard}
                   onPress={() => handleStart(routine.id)}
+                  disabled={starting}
                   activeOpacity={0.7}
                 >
                   <View style={styles.routineIconBadge}>

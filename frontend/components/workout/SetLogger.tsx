@@ -43,8 +43,10 @@ export const SetLogger = ({
   const [error, setError] = useState('');
 
   const handleSubmit = async () => {
-    if (!reps || !weight) {
-      setError('Reps y peso son obligatorios');
+    const parsedReps = parseInt(reps, 10);
+    const parsedWeight = parseFloat(weight);
+    if (!Number.isFinite(parsedReps) || parsedReps <= 0 || !Number.isFinite(parsedWeight) || parsedWeight <= 0) {
+      setError('Reps y peso deben ser números mayores que cero');
       return;
     }
 
@@ -56,8 +58,8 @@ export const SetLogger = ({
         workout_id: workoutId,
         exercise_id: exercise.id,
         set_number: setNumber,
-        reps: parseInt(reps),
-        weight: unitToKg(parseFloat(weight), unit),
+        reps: parsedReps,
+        weight: unitToKg(parsedWeight, unit),
         rpe: rpe ? parseInt(rpe) : undefined,
         rest_seconds: rest ? parseInt(rest) : undefined,
         tempo: tempo || undefined,

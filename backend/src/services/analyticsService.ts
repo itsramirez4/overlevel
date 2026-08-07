@@ -41,17 +41,19 @@ export class AnalyticsService {
    * an in-progress day shouldn't zero out an otherwise-intact streak.
    */
   async getCurrentStreak(userId: string): Promise<number> {
-    const { data, error } = await supabaseAdmin
-      .from('workouts')
-      .select('started_at')
-      .eq('user_id', userId)
-      .not('completed_at', 'is', null)
-      .order('started_at', { ascending: false })
-      .limit(400);
+    // A hardcoded row cap here would undercount a genuine long streak for
+    // anyone who trains more than once a day (their most-recent N rows can
+    // cover fewer distinct days than N) — fetch everything instead.
+    const data = await fetchAllRows<{ started_at: string }>((from, to) =>
+      supabaseAdmin
+        .from('workouts')
+        .select('started_at')
+        .eq('user_id', userId)
+        .not('completed_at', 'is', null)
+        .range(from, to)
+    );
 
-    if (error) throw new AppError('Failed to compute streak');
-
-    const workoutDays = new Set((data || []).map((w) => new Date(w.started_at).toISOString().split('T')[0]));
+    const workoutDays = new Set(data.map((w) => new Date(w.started_at).toISOString().split('T')[0]));
 
     const cursor = new Date();
     cursor.setUTCHours(0, 0, 0, 0);
@@ -256,17 +258,18 @@ export class AnalyticsService {
    * genuine effort rather than every individual set logged.
    */
   async getExerciseProgressHistory(exerciseId: string, userId: string) {
-    const { data, error } = await supabaseAdmin
-      .from('sets')
-      .select('weight, reps, workouts!inner(id, started_at, user_id)')
-      .eq('exercise_id', exerciseId)
-      .eq('workouts.user_id', userId)
-      .eq('is_warmup', false);
-
-    if (error) throw new AppError('Failed to compute exercise progress');
+    const data = await fetchAllRows<any>((from, to) =>
+      supabaseAdmin
+        .from('sets')
+        .select('weight, reps, workouts!inner(id, started_at, user_id)')
+        .eq('exercise_id', exerciseId)
+        .eq('workouts.user_id', userId)
+        .eq('is_warmup', false)
+        .range(from, to)
+    );
 
     const bestBySession = new Map<string, { date: string; weight: number; reps: number; estimated_1rm: number }>();
-    for (const s of (data || []) as any[]) {
+    for (const s of data) {
       const estimated1rm = Math.round(s.weight * (1 + s.reps / 30) * 100) / 100;
       const existing = bestBySession.get(s.workouts.id);
       if (!existing || estimated1rm > existing.estimated_1rm) {

@@ -1,10 +1,11 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { workoutService } from '../services/workoutService';
+import { parsePositiveIntParam } from '../utils/queryParams';
 
 export class WorkoutController {
   async list(req: AuthRequest, res: Response) {
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+    const limit = req.query.limit ? parsePositiveIntParam(req.query.limit, 20) : undefined;
     const workouts = await workoutService.list(req.userId!, limit);
     res.json(workouts);
   }

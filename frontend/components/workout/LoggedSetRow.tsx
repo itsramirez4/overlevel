@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Alert, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Link2, Pencil, Trophy, X } from 'lucide-react-native';
 import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
@@ -25,14 +25,16 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
   const [error, setError] = useState('');
 
   const handleSave = async () => {
-    if (!weight || !reps) {
-      setError('Reps y peso son obligatorios');
+    const parsedWeight = parseFloat(weight);
+    const parsedReps = parseInt(reps, 10);
+    if (!Number.isFinite(parsedWeight) || parsedWeight <= 0 || !Number.isFinite(parsedReps) || parsedReps <= 0) {
+      setError('Reps y peso deben ser números mayores que cero');
       return;
     }
     setError('');
     setSaving(true);
     try {
-      await api.put(`/sets/${set.id}`, { weight: unitToKg(parseFloat(weight), unit), reps: parseInt(reps) });
+      await api.put(`/sets/${set.id}`, { weight: unitToKg(parsedWeight, unit), reps: parsedReps });
       setEditing(false);
       onChanged();
     } catch (err: any) {
@@ -43,9 +45,14 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
   };
 
   const handleDelete = async () => {
-    setConfirmingDelete(false);
-    await api.delete(`/sets/${set.id}`);
-    onChanged();
+    try {
+      await api.delete(`/sets/${set.id}`);
+      setConfirmingDelete(false);
+      onChanged();
+    } catch {
+      setConfirmingDelete(false);
+      Alert.alert('Error', 'No se pudo borrar la serie. Inténtalo de nuevo.');
+    }
   };
 
   if (editing) {

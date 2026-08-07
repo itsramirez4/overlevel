@@ -73,38 +73,43 @@ export class UserService {
   async exportData(userId: string) {
     const user = await this.getUserById(userId);
 
-    const [exercises, routines, bodyWeightLogs] = await Promise.all([
-      supabaseAdmin.from('exercises').select('*').eq('user_id', userId),
-      supabaseAdmin.from('routines').select('*, routine_exercises(*)').eq('user_id', userId),
-      supabaseAdmin.from('body_weight_logs').select('*').eq('user_id', userId).order('logged_at', { ascending: true }),
-    ]);
-
-    if (exercises.error || routines.error || bodyWeightLogs.error) {
-      throw new AppError('Failed to export data');
-    }
-
-    let workouts: any[];
     try {
-      workouts = await fetchAllRows((from, to) =>
-        supabaseAdmin
-          .from('workouts')
-          .select('*, sets(*)')
-          .eq('user_id', userId)
-          .order('started_at', { ascending: true })
-          .range(from, to)
-      );
+      const [exercises, routines, bodyWeightLogs, workouts] = await Promise.all([
+        fetchAllRows<any>((from, to) =>
+          supabaseAdmin.from('exercises').select('*').eq('user_id', userId).range(from, to)
+        ),
+        fetchAllRows<any>((from, to) =>
+          supabaseAdmin.from('routines').select('*, routine_exercises(*)').eq('user_id', userId).range(from, to)
+        ),
+        fetchAllRows<any>((from, to) =>
+          supabaseAdmin
+            .from('body_weight_logs')
+            .select('*')
+            .eq('user_id', userId)
+            .order('logged_at', { ascending: true })
+            .range(from, to)
+        ),
+        fetchAllRows<any>((from, to) =>
+          supabaseAdmin
+            .from('workouts')
+            .select('*, sets(*)')
+            .eq('user_id', userId)
+            .order('started_at', { ascending: true })
+            .range(from, to)
+        ),
+      ]);
+
+      return {
+        exported_at: new Date().toISOString(),
+        user: { email: user.email, username: user.username, full_name: user.full_name },
+        exercises,
+        routines,
+        workouts,
+        body_weight_logs: bodyWeightLogs,
+      };
     } catch {
       throw new AppError('Failed to export data');
     }
-
-    return {
-      exported_at: new Date().toISOString(),
-      user: { email: user.email, username: user.username, full_name: user.full_name },
-      exercises: exercises.data,
-      routines: routines.data,
-      workouts,
-      body_weight_logs: bodyWeightLogs.data,
-    };
   }
 
   async getUserByEmail(email: string): Promise<User | null> {

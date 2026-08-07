@@ -3,6 +3,7 @@ import { Workout } from '../types';
 import { AppError } from '../middleware/errorHandler';
 import { characterService } from './characterService';
 import { battleService } from './battleService';
+import { routineService } from './routineService';
 
 export class WorkoutService {
   async list(userId: string, limit = 20): Promise<Workout[]> {
@@ -30,6 +31,11 @@ export class WorkoutService {
   }
 
   async start(userId: string, routineId?: string): Promise<Workout> {
+    // Throws 404 if the routine doesn't exist or belongs to someone else —
+    // otherwise a guessed/leaked routine id would get embedded in this
+    // workout and leak that other account's routine name back via getById/list.
+    if (routineId) await routineService.getById(routineId, userId);
+
     const { data, error } = await supabaseAdmin
       .from('workouts')
       .insert({
@@ -51,12 +57,16 @@ export class WorkoutService {
   ): Promise<Workout & { xp_award?: { xpGained: number; leveledUp: boolean; previousLevel: number; newLevel: number } }> {
     const { data: existing } = await supabaseAdmin
       .from('workouts')
-      .select('started_at')
+      .select('started_at, completed_at')
       .eq('id', id)
       .eq('user_id', userId)
       .single();
 
     if (!existing) throw new AppError('Workout not found', 404);
+    // Without this, re-calling complete on an already-completed workout
+    // would re-award XP every time (characterService.awardXpForWorkout has
+    // no idempotency check of its own) — free, unlimited leveling.
+    if (existing.completed_at) throw new AppError('Workout already completed', 400);
 
     const completedAt = new Date();
     const durationMinutes = Math.round(

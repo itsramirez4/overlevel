@@ -20,6 +20,7 @@ export default function SettingsScreen() {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [bodyWeight, setBodyWeight] = useState('');
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
 
@@ -53,16 +54,25 @@ export default function SettingsScreen() {
   }));
 
   const handleSave = async () => {
+    setSaveError('');
+    const parsedBodyWeight = bodyWeight.trim() ? parseFloat(bodyWeight) : undefined;
+    if (bodyWeight.trim() && !Number.isFinite(parsedBodyWeight)) {
+      setSaveError('El peso corporal no es un número válido');
+      return;
+    }
+
     setSaving(true);
     setSaved(false);
     try {
       await api.put('/users/me', {
-        body_weight: parseFloat(bodyWeight) || undefined,
+        body_weight: parsedBodyWeight,
         weight_unit: weightUnit,
       });
       await queryClient.invalidateQueries({ queryKey: ['users', 'body-weight-history'] });
       authStore.setState((s) => ({ user: s.user ? { ...s.user, weight_unit: weightUnit } : s.user }));
       setSaved(true);
+    } catch (err: any) {
+      setSaveError(err.response?.data?.message || 'No se pudo guardar. Inténtalo de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -71,6 +81,7 @@ export default function SettingsScreen() {
   const handleSelectUnit = (unit: WeightUnit) => {
     setWeightUnit(unit);
     setSaved(false);
+    setSaveError('');
   };
 
   const handleChangePassword = async () => {
@@ -157,10 +168,12 @@ export default function SettingsScreen() {
           onChangeText={(text) => {
             setBodyWeight(text);
             setSaved(false);
+            setSaveError('');
           }}
           keyboardType="decimal-pad"
         />
 
+        {saveError ? <Text style={styles.passwordError}>{saveError}</Text> : null}
         {saved && <Text style={styles.savedText}>Guardado ✓</Text>}
 
         <Button

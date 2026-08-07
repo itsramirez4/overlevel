@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors, radius, spacing, typography } from '../../utils/theme';
 import { feltLikeLabel, feltLikeOptions } from '../../utils/feltLike';
@@ -8,18 +8,27 @@ import { Button } from '../ui/Button';
 
 interface CompleteWorkoutDialogProps {
   visible: boolean;
+  loading?: boolean;
   onConfirm: (feltLike?: string, notes?: string) => void;
   onCancel: () => void;
 }
 
-export const CompleteWorkoutDialog = ({ visible, onConfirm, onCancel }: CompleteWorkoutDialogProps) => {
+export const CompleteWorkoutDialog = ({ visible, loading, onConfirm, onCancel }: CompleteWorkoutDialogProps) => {
   const [feltLike, setFeltLike] = useState<string | undefined>();
   const [notes, setNotes] = useState('');
 
+  // Reset once the dialog actually closes (cancel, or a successful
+  // completion) — not on every confirm tap, so a failed attempt keeps
+  // what the user typed instead of silently discarding it.
+  useEffect(() => {
+    if (!visible) {
+      setFeltLike(undefined);
+      setNotes('');
+    }
+  }, [visible]);
+
   const handleConfirm = () => {
     onConfirm(feltLike, notes.trim() || undefined);
-    setFeltLike(undefined);
-    setNotes('');
   };
 
   return (
@@ -52,10 +61,10 @@ export const CompleteWorkoutDialog = ({ visible, onConfirm, onCancel }: Complete
 
       <View style={styles.actions}>
         <View style={styles.actionButton}>
-          <Button label="Cancelar" variant="ghost" onPress={onCancel} />
+          <Button label="Cancelar" variant="ghost" onPress={onCancel} disabled={loading} />
         </View>
         <View style={styles.actionButton}>
-          <Button label="Terminar" onPress={handleConfirm} />
+          <Button label="Terminar" onPress={handleConfirm} loading={loading} disabled={loading} />
         </View>
       </View>
     </Modal>

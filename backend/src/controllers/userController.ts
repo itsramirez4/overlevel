@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { userService } from '../services/userService';
 import { importService } from '../services/importService';
+import { parsePositiveIntParam } from '../utils/queryParams';
 
 export class UserController {
   async me(req: AuthRequest, res: Response) {
@@ -15,7 +16,7 @@ export class UserController {
   }
 
   async bodyWeightHistory(req: AuthRequest, res: Response) {
-    const days = req.query.days ? parseInt(req.query.days as string) : 90;
+    const days = parsePositiveIntParam(req.query.days, 90);
     const history = await userService.getBodyWeightHistory(req.userId!, days);
     res.json(history);
   }
