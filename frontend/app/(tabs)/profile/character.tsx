@@ -91,10 +91,11 @@ export default function CharacterScreen() {
         {character && !changingType ? (
           <>
             <Card style={styles.sheetCard}>
+              <View style={styles.avatarBadgeLarge}>
+                <CharacterAvatar type={character.character_type} size={160} />
+              </View>
+
               <View style={styles.sheetHeader}>
-                <View style={styles.avatarBadge}>
-                  <CharacterAvatar type={character.character_type} size={96} />
-                </View>
                 <View style={styles.sheetHeaderText}>
                   <Text style={styles.name}>{character.name}</Text>
                   <Text style={styles.tagline}>{character.type_info?.tagline}</Text>
@@ -166,7 +167,7 @@ export default function CharacterScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.avatarBadge}>
-                    <CharacterAvatar type={type.id} size={72} />
+                    <CharacterAvatar type={type.id} size={88} />
                   </View>
                   <View style={styles.typeCardText}>
                     <Text style={styles.typeName}>{type.name}</Text>
@@ -279,6 +280,12 @@ const styles = StyleSheet.create({
   },
   sheetCard: {
     marginBottom: spacing.lg,
+  },
+  avatarBadgeLarge: {
+    alignSelf: 'center',
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
   },
   sheetHeader: {
     flexDirection: 'row',
