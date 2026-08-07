@@ -93,7 +93,7 @@ export default function CharacterScreen() {
             <Card style={styles.sheetCard}>
               <View style={styles.sheetHeader}>
                 <View style={styles.avatarBadge}>
-                  <CharacterAvatar type={character.character_type} size={72} />
+                  <CharacterAvatar type={character.character_type} size={96} />
                 </View>
                 <View style={styles.sheetHeaderText}>
                   <Text style={styles.name}>{character.name}</Text>
@@ -166,7 +166,7 @@ export default function CharacterScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.avatarBadge}>
-                    <CharacterAvatar type={type.id} size={56} />
+                    <CharacterAvatar type={type.id} size={72} />
                   </View>
                   <View style={styles.typeCardText}>
                     <Text style={styles.typeName}>{type.name}</Text>

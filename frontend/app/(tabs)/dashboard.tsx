@@ -70,7 +70,7 @@ export default function DashboardScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.characterIconBadge}>
-              <CharacterAvatar type={character.character_type} size={36} />
+              <CharacterAvatar type={character.character_type} size={48} />
             </View>
             <View style={styles.characterInfo}>
               <Text style={styles.characterName} numberOfLines={1}>
