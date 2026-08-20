@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, Upload } from 'lucide-react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { api } from '../../../services/api';
 import { colors, radius, spacing, typography } from '../../../utils/theme';
 import { Input } from '../../../components/ui/Input';
@@ -28,9 +30,7 @@ export default function ImportHevyScreen() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<ImportResult | null>(null);
 
-  const handlePickFile = () => {
-    if (Platform.OS !== 'web') return;
-
+  const handlePickFileWeb = () => {
     if (!fileInputRef.current) {
       const input = document.createElement('input');
       input.type = 'file';
@@ -52,6 +52,22 @@ export default function ImportHevyScreen() {
     }
     fileInputRef.current.click();
   };
+
+  const handlePickFileNative = async () => {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+      if (picked.canceled || !picked.assets?.[0]) return;
+
+      const content = await FileSystem.readAsStringAsync(picked.assets[0].uri);
+      setCsv(content);
+      setResult(null);
+      setError('');
+    } catch {
+      setError('No se pudo leer el archivo seleccionado');
+    }
+  };
+
+  const handlePickFile = () => (Platform.OS === 'web' ? handlePickFileWeb() : handlePickFileNative());
 
   const handleImport = async () => {
     if (!csv.trim()) {
@@ -91,15 +107,13 @@ export default function ImportHevyScreen() {
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
         <Text style={styles.instructions}>
           En Hevy: Perfil → icono de engranaje → Exportar e importar datos → Exportar entrenamientos. Luego
-          selecciona el CSV aquí abajo{Platform.OS === 'web' ? '' : ' pegando su contenido'}.
+          selecciona el CSV aquí abajo, o pega su contenido directamente.
         </Text>
 
-        {Platform.OS === 'web' && (
-          <TouchableOpacity style={styles.fileButton} onPress={handlePickFile} activeOpacity={0.7}>
-            <Upload size={18} color={colors.accent.fire} strokeWidth={2.4} />
-            <Text style={styles.fileButtonText}>Seleccionar archivo CSV</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity style={styles.fileButton} onPress={handlePickFile} activeOpacity={0.7}>
+          <Upload size={18} color={colors.accent.fire} strokeWidth={2.4} />
+          <Text style={styles.fileButtonText}>Seleccionar archivo CSV</Text>
+        </TouchableOpacity>
 
         <Input
           label="Contenido del CSV"
