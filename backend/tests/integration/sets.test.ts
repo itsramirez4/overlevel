@@ -91,3 +91,85 @@ describe('sets / PR detection', () => {
     expect(secondAfter.is_pr).toBe(false);
   });
 });
+
+describe('sets / cardio', () => {
+  let user: TestUser;
+  let workoutId: string;
+  let cardioExerciseId: string;
+  let strengthExerciseId: string;
+
+  beforeEach(async () => {
+    user = await createTestUser('cardio');
+    const workout = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+    workoutId = workout.body.id;
+    const cardio = await request(app)
+      .post('/api/exercises')
+      .set(authHeader(user))
+      .send({ name: 'Test Run', category: 'cardio' });
+    cardioExerciseId = cardio.body.id;
+    const strength = await request(app)
+      .post('/api/exercises')
+      .set(authHeader(user))
+      .send({ name: 'Cardio Test Bench', category: 'compound' });
+    strengthExerciseId = strength.body.id;
+  });
+
+  afterEach(async () => {
+    await deleteTestUser(user.id);
+  });
+
+  const logCardioSet = (overrides: Partial<{ duration_seconds: number; distance_km: number; set_number: number }>) =>
+    request(app)
+      .post('/api/sets')
+      .set(authHeader(user))
+      .send({
+        workout_id: workoutId,
+        exercise_id: cardioExerciseId,
+        set_number: overrides.set_number ?? 1,
+        duration_seconds: overrides.duration_seconds ?? 1800,
+        distance_km: overrides.distance_km ?? 5,
+      });
+
+  it('logs a cardio set with duration/distance instead of weight/reps', async () => {
+    const res = await logCardioSet({});
+    expect(res.status).toBe(201);
+    expect(res.body.duration_seconds).toBe(1800);
+    expect(res.body.distance_km).toBe(5);
+    expect(res.body.weight).toBeFalsy();
+    expect(res.body.reps).toBeFalsy();
+  });
+
+  it('rejects a cardio set missing duration or distance', async () => {
+    const res = await request(app)
+      .post('/api/sets')
+      .set(authHeader(user))
+      .send({ workout_id: workoutId, exercise_id: cardioExerciseId, set_number: 1, distance_km: 5 });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a strength set missing weight or reps', async () => {
+    const res = await request(app)
+      .post('/api/sets')
+      .set(authHeader(user))
+      .send({ workout_id: workoutId, exercise_id: strengthExerciseId, set_number: 1, reps: 5 });
+    expect(res.status).toBe(400);
+  });
+
+  it('a longer run beats the prior cardio PR', async () => {
+    await logCardioSet({ set_number: 1, distance_km: 5, duration_seconds: 1800 });
+    const res = await logCardioSet({ set_number: 2, distance_km: 8, duration_seconds: 2700 });
+    expect(res.body.is_pr).toBe(true);
+  });
+
+  it('a shorter run is NOT a cardio PR', async () => {
+    await logCardioSet({ set_number: 1, distance_km: 8, duration_seconds: 2700 });
+    const res = await logCardioSet({ set_number: 2, distance_km: 5, duration_seconds: 1800 });
+    expect(res.body.is_pr).toBe(false);
+  });
+
+  it('same distance in less time IS a cardio PR (faster pace)', async () => {
+    await logCardioSet({ set_number: 1, distance_km: 5, duration_seconds: 1800 });
+    const res = await logCardioSet({ set_number: 2, distance_km: 5, duration_seconds: 1500 });
+    expect(res.body.is_pr).toBe(true);
+  });
+});

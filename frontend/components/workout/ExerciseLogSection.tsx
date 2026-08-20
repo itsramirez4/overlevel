@@ -5,6 +5,7 @@ import { colors, radius, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
 import { authStore } from '../../stores/authStore';
 import { formatWeight } from '../../utils/units';
+import { formatSetDuration } from '../../utils/duration';
 import { Card } from '../ui/Card';
 import { SetLogger } from './SetLogger';
 import { LoggedSetRow } from './LoggedSetRow';
@@ -13,7 +14,14 @@ import { Exercise, ExerciseBattle, Set } from '../../types';
 
 interface LastSession {
   date: string;
-  sets: { set_number: number; weight: number; reps: number; rpe: number | null }[];
+  sets: {
+    set_number: number;
+    weight: number | null;
+    reps: number | null;
+    duration_seconds: number | null;
+    distance_km: number | null;
+    rpe: number | null;
+  }[];
 }
 
 interface ExerciseLogSectionProps {
@@ -44,6 +52,7 @@ export const ExerciseLogSection = ({
   shouldRest,
 }: ExerciseLogSectionProps) => {
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
+  const isCardio = exercise.category === 'cardio';
   const sortedSets = [...loggedSets].sort((a, b) => a.set_number - b.set_number);
   const lastSet = sortedSets[sortedSets.length - 1];
 
@@ -101,14 +110,21 @@ export const ExerciseLogSection = ({
 
       {lastSession && lastSession.sets.length > 0 && (
         <Text style={styles.lastSession} numberOfLines={1}>
-          Última vez: {lastSession.sets.map((s) => `${formatWeight(s.weight, unit)}×${s.reps}`).join(', ')}
+          Última vez:{' '}
+          {lastSession.sets
+            .map((s) =>
+              isCardio
+                ? `${formatSetDuration(s.duration_seconds || 0)}·${s.distance_km}km`
+                : `${formatWeight(s.weight || 0, unit)}×${s.reps}`
+            )
+            .join(', ')}
         </Text>
       )}
 
       {sortedSets.length > 0 && (
         <View style={styles.loggedSets}>
           {sortedSets.map((set) => (
-            <LoggedSetRow key={set.id} set={set} onChanged={onSetLogged} />
+            <LoggedSetRow key={set.id} set={set} isCardio={isCardio} onChanged={onSetLogged} />
           ))}
         </View>
       )}

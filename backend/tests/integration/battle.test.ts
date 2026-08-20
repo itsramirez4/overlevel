@@ -71,6 +71,27 @@ describe('battle (combat layer)', () => {
     expect(battles.body[0].defeated).toBe(true);
   });
 
+  it('logging a cardio set also creates a battle and deals damage', async () => {
+    const cardioExercise = await request(app)
+      .post('/api/exercises')
+      .set(authHeader(user))
+      .send({ name: 'Battle Run', category: 'cardio' });
+
+    const setRes = await request(app)
+      .post('/api/sets')
+      .set(authHeader(user))
+      .send({
+        workout_id: workoutId,
+        exercise_id: cardioExercise.body.id,
+        set_number: 1,
+        duration_seconds: 1800,
+        distance_km: 5,
+      });
+
+    expect(setRes.body.battle).toBeTruthy();
+    expect(setRes.body.battle.hp_current).toBeLessThan(setRes.body.battle.hp_max);
+  });
+
   it('the bestiary counts a defeated exercise after the workout completes', async () => {
     await request(app)
       .post('/api/sets')

@@ -11,13 +11,18 @@ import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
 import { authStore } from '../../../stores/authStore';
 import { formatWeight, kgToUnit } from '../../../utils/units';
+import { formatSetDuration, formatPace } from '../../../utils/duration';
 
 interface PersonalRecord {
   exercise_id: string;
   exercise_name: string;
-  weight: number;
-  reps: number;
-  estimated_1rm: number;
+  category: 'compound' | 'isolation' | 'cardio';
+  weight?: number;
+  reps?: number;
+  estimated_1rm?: number;
+  distance_km?: number;
+  duration_seconds?: number;
+  pace_min_per_km?: number | null;
   date: string;
 }
 
@@ -80,8 +85,9 @@ export default function PersonalRecordsScreen() {
                   {item.exercise_name}
                 </Text>
                 <Text style={styles.meta}>
-                  {formatWeight(item.weight, unit)} × {item.reps} reps · 1RM est.{' '}
-                  {Math.round(kgToUnit(item.estimated_1rm, unit))}{unit}
+                  {item.category === 'cardio'
+                    ? `${item.distance_km}km en ${formatSetDuration(item.duration_seconds || 0)} · ritmo ${formatPace(item.pace_min_per_km)}`
+                    : `${formatWeight(item.weight || 0, unit)} × ${item.reps} reps · 1RM est. ${Math.round(kgToUnit(item.estimated_1rm || 0, unit))}${unit}`}
                 </Text>
                 <Text style={styles.date}>
                   {new Date(item.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}

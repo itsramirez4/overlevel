@@ -5,6 +5,7 @@ import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
 import { authStore } from '../../stores/authStore';
 import { formatWeight, kgToUnit, unitToKg } from '../../utils/units';
+import { formatSetDuration } from '../../utils/duration';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -12,29 +13,46 @@ import { Set } from '../../types';
 
 interface LoggedSetRowProps {
   set: Set;
+  isCardio?: boolean;
   onChanged: () => void;
 }
 
-export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
+export const LoggedSetRow = ({ set, isCardio, onChanged }: LoggedSetRowProps) => {
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [weight, setWeight] = useState(kgToUnit(set.weight, unit).toString());
-  const [reps, setReps] = useState(set.reps.toString());
+  const [weight, setWeight] = useState(kgToUnit(set.weight || 0, unit).toString());
+  const [reps, setReps] = useState((set.reps ?? '').toString());
+  const [minutes, setMinutes] = useState(set.duration_seconds != null ? (set.duration_seconds / 60).toString() : '');
+  const [distance, setDistance] = useState(set.distance_km?.toString() || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const handleSave = async () => {
-    const parsedWeight = parseFloat(weight);
-    const parsedReps = parseInt(reps, 10);
-    if (!Number.isFinite(parsedWeight) || parsedWeight <= 0 || !Number.isFinite(parsedReps) || parsedReps <= 0) {
-      setError('Reps y peso deben ser números mayores que cero');
-      return;
+    let payload: Record<string, number>;
+
+    if (isCardio) {
+      const parsedMinutes = parseFloat(minutes);
+      const parsedDistance = parseFloat(distance);
+      if (!Number.isFinite(parsedMinutes) || parsedMinutes <= 0 || !Number.isFinite(parsedDistance) || parsedDistance <= 0) {
+        setError('Tiempo y distancia deben ser números mayores que cero');
+        return;
+      }
+      payload = { duration_seconds: Math.round(parsedMinutes * 60), distance_km: parsedDistance };
+    } else {
+      const parsedWeight = parseFloat(weight);
+      const parsedReps = parseInt(reps, 10);
+      if (!Number.isFinite(parsedWeight) || parsedWeight <= 0 || !Number.isFinite(parsedReps) || parsedReps <= 0) {
+        setError('Reps y peso deben ser números mayores que cero');
+        return;
+      }
+      payload = { weight: unitToKg(parsedWeight, unit), reps: parsedReps };
     }
+
     setError('');
     setSaving(true);
     try {
-      await api.put(`/sets/${set.id}`, { weight: unitToKg(parsedWeight, unit), reps: parsedReps });
+      await api.put(`/sets/${set.id}`, payload);
       setEditing(false);
       onChanged();
     } catch (err: any) {
@@ -43,6 +61,10 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
       setSaving(false);
     }
   };
+
+  const displayValue = isCardio
+    ? `${formatSetDuration(set.duration_seconds || 0)} · ${set.distance_km}km`
+    : `${formatWeight(set.weight || 0, unit)} × ${set.reps} reps`;
 
   const handleDelete = async () => {
     try {
@@ -59,17 +81,30 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
     return (
       <View style={styles.editRow}>
         <View style={styles.editInputs}>
-          <View style={styles.editInput}>
-            <Input
-              placeholder={unit === 'lbs' ? 'Lbs' : 'Kg'}
-              value={weight}
-              onChangeText={setWeight}
-              keyboardType="decimal-pad"
-            />
-          </View>
-          <View style={styles.editInput}>
-            <Input placeholder="Reps" value={reps} onChangeText={setReps} keyboardType="number-pad" />
-          </View>
+          {isCardio ? (
+            <>
+              <View style={styles.editInput}>
+                <Input placeholder="Minutos" value={minutes} onChangeText={setMinutes} keyboardType="decimal-pad" />
+              </View>
+              <View style={styles.editInput}>
+                <Input placeholder="Km" value={distance} onChangeText={setDistance} keyboardType="decimal-pad" />
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.editInput}>
+                <Input
+                  placeholder={unit === 'lbs' ? 'Lbs' : 'Kg'}
+                  value={weight}
+                  onChangeText={setWeight}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={styles.editInput}>
+                <Input placeholder="Reps" value={reps} onChangeText={setReps} keyboardType="number-pad" />
+              </View>
+            </>
+          )}
         </View>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <View style={styles.editActions}>
@@ -87,9 +122,7 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
   return (
     <View style={[styles.row, set.is_pr && styles.rowPr, set.is_warmup && styles.rowWarmup]}>
       <Text style={styles.number}>{set.set_number}</Text>
-      <Text style={[styles.value, set.is_warmup && styles.valueWarmup]}>
-        {formatWeight(set.weight, unit)} × {set.reps} reps
-      </Text>
+      <Text style={[styles.value, set.is_warmup && styles.valueWarmup]}>{displayValue}</Text>
       {set.is_warmup ? <Text style={styles.warmupTag}>Calentamiento</Text> : null}
       {set.superset_group ? <Link2 size={12} color={colors.accent.ember} strokeWidth={2.2} /> : null}
       {set.is_pr && <Trophy size={14} color={colors.accent.ember} strokeWidth={2.2} />}
@@ -114,7 +147,7 @@ export const LoggedSetRow = ({ set, onChanged }: LoggedSetRowProps) => {
       <ConfirmDialog
         visible={confirmingDelete}
         title="Borrar serie"
-        message={`¿Borrar la serie ${set.set_number} (${formatWeight(set.weight, unit)} × ${set.reps} reps)?`}
+        message={`¿Borrar la serie ${set.set_number} (${displayValue})?`}
         confirmLabel="Borrar"
         destructive
         onConfirm={handleDelete}

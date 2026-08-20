@@ -29,10 +29,15 @@ export const SetLogger = ({
   shouldRest = true,
 }: SetLoggerProps) => {
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
+  const isCardio = exercise?.category === 'cardio';
   const [reps, setReps] = useState(previousSet?.reps?.toString() || '');
   const [weight, setWeight] = useState(
     previousSet?.weight != null ? kgToUnit(previousSet.weight, unit).toString() : ''
   );
+  const [minutes, setMinutes] = useState(
+    previousSet?.duration_seconds != null ? (previousSet.duration_seconds / 60).toString() : ''
+  );
+  const [distance, setDistance] = useState(previousSet?.distance_km?.toString() || '');
   const [rpe, setRpe] = useState(previousSet?.rpe?.toString() || '');
   const [rest, setRest] = useState(previousSet?.rest_seconds?.toString() || '90');
   const [tempo, setTempo] = useState(previousSet?.tempo || '');
@@ -43,11 +48,25 @@ export const SetLogger = ({
   const [error, setError] = useState('');
 
   const handleSubmit = async () => {
-    const parsedReps = parseInt(reps, 10);
-    const parsedWeight = parseFloat(weight);
-    if (!Number.isFinite(parsedReps) || parsedReps <= 0 || !Number.isFinite(parsedWeight) || parsedWeight <= 0) {
-      setError('Reps y peso deben ser números mayores que cero');
-      return;
+    let cardioPayload: { duration_seconds: number; distance_km: number } | undefined;
+    let strengthPayload: { reps: number; weight: number } | undefined;
+
+    if (isCardio) {
+      const parsedMinutes = parseFloat(minutes);
+      const parsedDistance = parseFloat(distance);
+      if (!Number.isFinite(parsedMinutes) || parsedMinutes <= 0 || !Number.isFinite(parsedDistance) || parsedDistance <= 0) {
+        setError('Tiempo y distancia deben ser números mayores que cero');
+        return;
+      }
+      cardioPayload = { duration_seconds: Math.round(parsedMinutes * 60), distance_km: parsedDistance };
+    } else {
+      const parsedReps = parseInt(reps, 10);
+      const parsedWeight = parseFloat(weight);
+      if (!Number.isFinite(parsedReps) || parsedReps <= 0 || !Number.isFinite(parsedWeight) || parsedWeight <= 0) {
+        setError('Reps y peso deben ser números mayores que cero');
+        return;
+      }
+      strengthPayload = { reps: parsedReps, weight: unitToKg(parsedWeight, unit) };
     }
 
     setError('');
@@ -58,8 +77,8 @@ export const SetLogger = ({
         workout_id: workoutId,
         exercise_id: exercise.id,
         set_number: setNumber,
-        reps: parsedReps,
-        weight: unitToKg(parsedWeight, unit),
+        ...strengthPayload,
+        ...cardioPayload,
         rpe: rpe ? parseInt(rpe) : undefined,
         rest_seconds: rest ? parseInt(rest) : undefined,
         tempo: tempo || undefined,
@@ -91,22 +110,45 @@ export const SetLogger = ({
         <View style={styles.setBadge}>
           <Text style={styles.setBadgeText}>{setNumber}</Text>
         </View>
-        <View style={styles.half}>
-          <Input
-            placeholder={unit === 'lbs' ? 'Lbs' : 'Kg'}
-            value={weight}
-            onChangeText={setWeight}
-            keyboardType="decimal-pad"
-          />
-        </View>
-        <View style={styles.half}>
-          <Input
-            placeholder="Reps"
-            value={reps}
-            onChangeText={setReps}
-            keyboardType="number-pad"
-          />
-        </View>
+        {isCardio ? (
+          <>
+            <View style={styles.half}>
+              <Input
+                placeholder="Minutos"
+                value={minutes}
+                onChangeText={setMinutes}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View style={styles.half}>
+              <Input
+                placeholder="Km"
+                value={distance}
+                onChangeText={setDistance}
+                keyboardType="decimal-pad"
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.half}>
+              <Input
+                placeholder={unit === 'lbs' ? 'Lbs' : 'Kg'}
+                value={weight}
+                onChangeText={setWeight}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View style={styles.half}>
+              <Input
+                placeholder="Reps"
+                value={reps}
+                onChangeText={setReps}
+                keyboardType="number-pad"
+              />
+            </View>
+          </>
+        )}
       </View>
 
       <TouchableOpacity

@@ -3,6 +3,17 @@ import { AppError } from '../middleware/errorHandler';
 import { fetchAllRows } from '../utils/pagination';
 import { CHARACTER_TYPES, CharacterType, isCharacterType } from '../config/characterTypes';
 import { analyticsService } from './analyticsService';
+import { calculateSetEffort } from '../utils/calculations';
+
+/** Sums calculateSetEffort across a batch of sets, using each set's own
+ * exercise category (compound/isolation sets use weight*reps, cardio sets
+ * use distance) rather than assuming every set is strength. */
+function sumEffort(sets: any[]): number {
+  return sets.reduce(
+    (sum, s) => sum + calculateSetEffort(s.exercises?.category || 'compound', s.weight, s.reps, s.distance_km),
+    0
+  );
+}
 
 /** XP for a single workout — reused both to award XP live and to backfill
  * a new character's starting XP from everything already logged. */
@@ -126,11 +137,11 @@ export class CharacterService {
 
     const { data: sets } = await supabaseAdmin
       .from('sets')
-      .select('weight, reps, is_warmup, is_pr')
+      .select('weight, reps, distance_km, is_warmup, is_pr, exercises(category)')
       .eq('workout_id', workoutId);
 
-    const nonWarmup = (sets || []).filter((s) => !s.is_warmup);
-    const volume = nonWarmup.reduce((sum, s) => sum + s.weight * s.reps, 0);
+    const nonWarmup = (sets || []).filter((s: any) => !s.is_warmup);
+    const volume = sumEffort(nonWarmup);
     const prCount = nonWarmup.filter((s) => s.is_pr).length;
     const xpGained = computeWorkoutXp(volume, nonWarmup.length, prCount);
 
@@ -150,7 +161,7 @@ export class CharacterService {
     const workouts = await fetchAllRows<any>((from, to) =>
       supabaseAdmin
         .from('workouts')
-        .select('sets(weight, reps, is_warmup, is_pr)')
+        .select('sets(weight, reps, distance_km, is_warmup, is_pr, exercises(category))')
         .eq('user_id', userId)
         .not('completed_at', 'is', null)
         .range(from, to)
@@ -159,7 +170,7 @@ export class CharacterService {
     let totalXp = 0;
     for (const w of workouts) {
       const nonWarmup = (w.sets || []).filter((s: any) => !s.is_warmup);
-      const volume = nonWarmup.reduce((sum: number, s: any) => sum + s.weight * s.reps, 0);
+      const volume = sumEffort(nonWarmup);
       const prCount = nonWarmup.filter((s: any) => s.is_pr).length;
       totalXp += computeWorkoutXp(volume, nonWarmup.length, prCount);
     }

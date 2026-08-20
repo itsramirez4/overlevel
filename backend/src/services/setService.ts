@@ -3,36 +3,57 @@ import { Set } from '../types';
 import { AppError } from '../middleware/errorHandler';
 import { battleService, ExerciseBattle } from './battleService';
 import { fetchAllRows } from '../utils/pagination';
+import { calculateSetEffort, ExerciseCategory } from '../utils/calculations';
 
 /**
- * A set is a PR when it beats every other set of this exercise on weight,
- * or ties the best weight with more reps than that set achieved.
+ * A set is a PR when it beats every other set of this exercise. Strength: on
+ * weight, or ties the best weight with more reps. Cardio: on distance, or
+ * ties the best distance in less time (faster pace over the same ground).
  * Exported so bulk-insert paths (e.g. CSV import) can reuse the exact same
  * rule without paying for a per-row workout-ownership round trip.
  */
 export async function computeSetIsPr(
   exerciseId: string,
   userId: string,
-  weight: number,
-  reps: number,
+  category: ExerciseCategory,
+  weight: number | undefined,
+  reps: number | undefined,
+  distanceKm: number | undefined,
+  durationSeconds: number | undefined,
   excludeSetId?: string
 ): Promise<boolean> {
   let query = supabaseAdmin
     .from('sets')
-    .select('weight, reps, workouts!inner(user_id)')
+    .select('weight, reps, distance_km, duration_seconds, workouts!inner(user_id)')
     .eq('exercise_id', exerciseId)
     .eq('workouts.user_id', userId)
     .eq('is_warmup', false);
 
   if (excludeSetId) query = query.neq('id', excludeSetId);
 
+  if (category === 'cardio') {
+    const { data: priorBest } = await query
+      .order('distance_km', { ascending: false, nullsFirst: false })
+      .order('duration_seconds', { ascending: true, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!priorBest) return true;
+    const dist = distanceKm || 0;
+    const priorDist = priorBest.distance_km || 0;
+    if (dist !== priorDist) return dist > priorDist;
+    return (durationSeconds ?? Infinity) < (priorBest.duration_seconds ?? Infinity);
+  }
+
   const { data: priorBest } = await query
-    .order('weight', { ascending: false })
-    .order('reps', { ascending: false })
+    .order('weight', { ascending: false, nullsFirst: false })
+    .order('reps', { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle();
 
-  return !priorBest || weight > priorBest.weight || (weight === priorBest.weight && reps > priorBest.reps);
+  const w = weight || 0;
+  const r = reps || 0;
+  return !priorBest || w > (priorBest.weight || 0) || (w === (priorBest.weight || 0) && r > (priorBest.reps || 0));
 }
 
 /**
@@ -43,10 +64,19 @@ export async function computeSetIsPr(
  * chronological order so it stays consistent no matter what got edited.
  */
 export async function recomputeIsPrForExercise(exerciseId: string, userId: string): Promise<void> {
+  const { data: exercise } = await supabaseAdmin
+    .from('exercises')
+    .select('category')
+    .eq('id', exerciseId)
+    .maybeSingle();
+  const category: ExerciseCategory = exercise?.category || 'compound';
+
   const data = await fetchAllRows<any>((from, to) =>
     supabaseAdmin
       .from('sets')
-      .select('id, weight, reps, is_warmup, is_pr, set_number, workouts!inner(started_at, user_id)')
+      .select(
+        'id, weight, reps, distance_km, duration_seconds, is_warmup, is_pr, set_number, workouts!inner(started_at, user_id)'
+      )
       .eq('exercise_id', exerciseId)
       .eq('workouts.user_id', userId)
       .range(from, to)
@@ -59,17 +89,34 @@ export async function recomputeIsPrForExercise(exerciseId: string, userId: strin
       return dateDiff !== 0 ? dateDiff : a.set_number - b.set_number;
     });
 
-  let bestWeight = -Infinity;
-  let bestReps = -Infinity;
   const changed: { id: string; is_pr: boolean }[] = [];
 
-  for (const s of sorted) {
-    const isPr = s.weight > bestWeight || (s.weight === bestWeight && s.reps > bestReps);
-    if (isPr) {
-      bestWeight = s.weight;
-      bestReps = s.reps;
+  if (category === 'cardio') {
+    let bestDistance = -Infinity;
+    let bestDuration = Infinity;
+    for (const s of sorted) {
+      const dist = s.distance_km || 0;
+      const dur = s.duration_seconds ?? Infinity;
+      const isPr = dist > bestDistance || (dist === bestDistance && dur < bestDuration);
+      if (isPr) {
+        bestDistance = dist;
+        bestDuration = dur;
+      }
+      if (isPr !== s.is_pr) changed.push({ id: s.id, is_pr: isPr });
     }
-    if (isPr !== s.is_pr) changed.push({ id: s.id, is_pr: isPr });
+  } else {
+    let bestWeight = -Infinity;
+    let bestReps = -Infinity;
+    for (const s of sorted) {
+      const w = s.weight || 0;
+      const r = s.reps || 0;
+      const isPr = w > bestWeight || (w === bestWeight && r > bestReps);
+      if (isPr) {
+        bestWeight = w;
+        bestReps = r;
+      }
+      if (isPr !== s.is_pr) changed.push({ id: s.id, is_pr: isPr });
+    }
   }
 
   await Promise.all(changed.map((s) => supabaseAdmin.from('sets').update({ is_pr: s.is_pr }).eq('id', s.id)));
@@ -122,7 +169,7 @@ export class SetService {
 
     const { data: exercise } = await supabaseAdmin
       .from('exercises')
-      .select('id')
+      .select('id, category')
       .eq('id', input.exercise_id)
       .eq('user_id', userId)
       .is('deleted_at', null)
@@ -130,9 +177,26 @@ export class SetService {
 
     if (!exercise) throw new AppError('Exercise not found', 404);
 
+    const category: ExerciseCategory = exercise.category;
+    if (category === 'cardio') {
+      if (!input.duration_seconds || !input.distance_km) {
+        throw new AppError('Los ejercicios de cardio necesitan duración y distancia', 400);
+      }
+    } else if (!input.weight || !input.reps) {
+      throw new AppError('Este ejercicio necesita peso y repeticiones', 400);
+    }
+
     const isPr = input.is_warmup
       ? false
-      : await computeSetIsPr(input.exercise_id!, userId, input.weight!, input.reps!);
+      : await computeSetIsPr(
+          input.exercise_id!,
+          userId,
+          category,
+          input.weight,
+          input.reps,
+          input.distance_km,
+          input.duration_seconds
+        );
 
     const { data, error } = await supabaseAdmin
       .from('sets')
@@ -145,7 +209,13 @@ export class SetService {
     // Warmups don't land hits — no-op if the exercise doesn't have a battle yet either.
     const battle = input.is_warmup
       ? undefined
-      : await battleService.applyDamage(input.workout_id!, input.exercise_id!, userId, input.weight!, input.reps!);
+      : await battleService.applyDamage(
+          input.workout_id!,
+          input.exercise_id!,
+          userId,
+          calculateSetEffort(category, input.weight, input.reps, input.distance_km),
+          category
+        );
 
     return { ...(data as Set), battle };
   }
@@ -162,7 +232,11 @@ export class SetService {
 
     const nextIsWarmup = updates.is_warmup ?? existing.is_warmup;
     const affectsRanking =
-      updates.weight !== undefined || updates.reps !== undefined || updates.is_warmup !== undefined;
+      updates.weight !== undefined ||
+      updates.reps !== undefined ||
+      updates.duration_seconds !== undefined ||
+      updates.distance_km !== undefined ||
+      updates.is_warmup !== undefined;
 
     const { data, error } = await supabaseAdmin
       .from('sets')
@@ -192,7 +266,7 @@ export class SetService {
   async getLastSession(exerciseId: string, userId: string, excludeWorkoutId?: string) {
     let query = supabaseAdmin
       .from('sets')
-      .select('workout_id, set_number, weight, reps, rpe, workouts!inner(started_at, user_id)')
+      .select('workout_id, set_number, weight, reps, duration_seconds, distance_km, rpe, workouts!inner(started_at, user_id)')
       .eq('exercise_id', exerciseId)
       .eq('workouts.user_id', userId)
       .eq('is_warmup', false);
@@ -217,7 +291,14 @@ export class SetService {
     const sets = sorted
       .filter((s) => s.workout_id === lastWorkoutId)
       .sort((a, b) => a.set_number - b.set_number)
-      .map((s) => ({ set_number: s.set_number, weight: s.weight, reps: s.reps, rpe: s.rpe }));
+      .map((s) => ({
+        set_number: s.set_number,
+        weight: s.weight,
+        reps: s.reps,
+        duration_seconds: s.duration_seconds,
+        distance_km: s.distance_km,
+        rpe: s.rpe,
+      }));
 
     return { date: sorted[0].workouts.started_at, sets };
   }

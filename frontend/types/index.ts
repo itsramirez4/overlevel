@@ -64,8 +64,11 @@ export interface Set {
   workout_id: string;
   exercise_id: string;
   set_number: number;
-  reps: number;
-  weight: number;
+  // Strength exercises set these; cardio exercises set duration_seconds/distance_km instead.
+  reps?: number;
+  weight?: number;
+  duration_seconds?: number;
+  distance_km?: number;
   rpe?: number;
   rest_seconds?: number;
   tempo?: string;

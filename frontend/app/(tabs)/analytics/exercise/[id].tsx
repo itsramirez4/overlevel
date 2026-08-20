@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, ChevronLeft, Dumbbell, Flame, Trophy } from 'lucide-react-native';
+import { Activity, ChevronLeft, Dumbbell, Flame, MapPin, Timer, Trophy } from 'lucide-react-native';
 import { api } from '../../../../services/api';
 import { colors, radius, spacing, typography } from '../../../../utils/theme';
 import { StatCard } from '../../../../components/analytics/StatCard';
@@ -11,18 +11,26 @@ import { Card } from '../../../../components/ui/Card';
 import { ProgressChart } from '../../../../components/analytics/ProgressChart';
 import { authStore } from '../../../../stores/authStore';
 import { kgToUnit } from '../../../../utils/units';
+import { formatSetDuration, formatPace } from '../../../../utils/duration';
 
-type Metric = 'estimated_1rm' | 'weight';
+type StrengthMetric = 'estimated_1rm' | 'weight';
+type CardioMetric = 'distance_km' | 'pace_min_per_km';
 
-const metricLabel: Record<Metric, string> = {
+const strengthMetricLabel: Record<StrengthMetric, string> = {
   estimated_1rm: '1RM estimado',
   weight: 'Peso máximo',
+};
+
+const cardioMetricLabel: Record<CardioMetric, string> = {
+  distance_km: 'Distancia',
+  pace_min_per_km: 'Ritmo',
 };
 
 export default function ExerciseAnalyticsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [metric, setMetric] = useState<Metric>('estimated_1rm');
+  const [strengthMetric, setStrengthMetric] = useState<StrengthMetric>('estimated_1rm');
+  const [cardioMetric, setCardioMetric] = useState<CardioMetric>('distance_km');
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
 
   const { data: stats, isLoading } = useQuery({
@@ -36,7 +44,12 @@ export default function ExerciseAnalyticsScreen() {
     enabled: !!id,
   });
 
-  const chartPoints = (progress || []).map((p: any) => ({ date: p.date, value: kgToUnit(p[metric], unit) }));
+  const isCardio = stats?.category === 'cardio';
+  const chartPoints = isCardio
+    ? (progress || []).map((p: any) => ({ date: p.date, value: p[cardioMetric] }))
+    : (progress || []).map((p: any) => ({ date: p.date, value: kgToUnit(p[strengthMetric], unit) }));
+  const avgPace =
+    stats?.total_distance_km > 0 ? stats.total_duration_seconds / 60 / stats.total_distance_km : null;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -56,50 +69,93 @@ export default function ExerciseAnalyticsScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
-        <View style={styles.statsRow}>
-          <StatCard
-            label="1RM estimado"
-            value={stats?.estimated_1rm ? `${Math.round(kgToUnit(stats.estimated_1rm, unit))}${unit}` : '—'}
-            icon={Trophy}
-          />
-          <StatCard
-            label="Peso máximo"
-            value={stats?.max_weight ? `${kgToUnit(stats.max_weight, unit)}${unit}` : '—'}
-            icon={Dumbbell}
-          />
-        </View>
-        <View style={styles.statsRow}>
-          <StatCard
-            label="Volumen total"
-            value={stats?.total_volume ? `${Math.round(kgToUnit(stats.total_volume, unit))}${unit}` : '—'}
-            icon={Flame}
-          />
-          <StatCard label="RPE medio" value={stats?.avg_rpe ?? '—'} icon={Activity} />
-        </View>
+        {isCardio ? (
+          <>
+            <View style={styles.statsRow}>
+              <StatCard
+                label="Distancia máxima"
+                value={stats?.max_distance_km ? `${stats.max_distance_km}km` : '—'}
+                icon={MapPin}
+              />
+              <StatCard
+                label="Distancia total"
+                value={stats?.total_distance_km ? `${stats.total_distance_km}km` : '—'}
+                icon={Flame}
+              />
+            </View>
+            <View style={styles.statsRow}>
+              <StatCard label="Ritmo medio" value={formatPace(avgPace)} icon={Timer} />
+              <StatCard label="RPE medio" value={stats?.avg_rpe ?? '—'} icon={Activity} />
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.statsRow}>
+              <StatCard
+                label="1RM estimado"
+                value={stats?.estimated_1rm ? `${Math.round(kgToUnit(stats.estimated_1rm, unit))}${unit}` : '—'}
+                icon={Trophy}
+              />
+              <StatCard
+                label="Peso máximo"
+                value={stats?.max_weight ? `${kgToUnit(stats.max_weight, unit)}${unit}` : '—'}
+                icon={Dumbbell}
+              />
+            </View>
+            <View style={styles.statsRow}>
+              <StatCard
+                label="Volumen total"
+                value={stats?.total_volume ? `${Math.round(kgToUnit(stats.total_volume, unit))}${unit}` : '—'}
+                icon={Flame}
+              />
+              <StatCard label="RPE medio" value={stats?.avg_rpe ?? '—'} icon={Activity} />
+            </View>
+          </>
+        )}
 
         {chartPoints.length > 0 && (
           <Card style={styles.chartCard}>
             <View style={styles.chartHeader}>
               <Text style={styles.chartTitle}>Progreso</Text>
-              <View style={styles.metricToggle}>
-                {(Object.keys(metricLabel) as Metric[]).map((m) => (
-                  <TouchableOpacity
-                    key={m}
-                    onPress={() => setMetric(m)}
-                    style={[styles.metricOption, metric === m && styles.metricOptionActive]}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: metric === m }}
-                    accessibilityLabel={metricLabel[m]}
-                  >
-                    <Text style={[styles.metricOptionText, metric === m && styles.metricOptionTextActive]}>
-                      {metricLabel[m]}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {isCardio ? (
+                <View style={styles.metricToggle}>
+                  {(Object.keys(cardioMetricLabel) as CardioMetric[]).map((m) => (
+                    <TouchableOpacity
+                      key={m}
+                      onPress={() => setCardioMetric(m)}
+                      style={[styles.metricOption, cardioMetric === m && styles.metricOptionActive]}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: cardioMetric === m }}
+                      accessibilityLabel={cardioMetricLabel[m]}
+                    >
+                      <Text style={[styles.metricOptionText, cardioMetric === m && styles.metricOptionTextActive]}>
+                        {cardioMetricLabel[m]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.metricToggle}>
+                  {(Object.keys(strengthMetricLabel) as StrengthMetric[]).map((m) => (
+                    <TouchableOpacity
+                      key={m}
+                      onPress={() => setStrengthMetric(m)}
+                      style={[styles.metricOption, strengthMetric === m && styles.metricOptionActive]}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: strengthMetric === m }}
+                      accessibilityLabel={strengthMetricLabel[m]}
+                    >
+                      <Text style={[styles.metricOptionText, strengthMetric === m && styles.metricOptionTextActive]}>
+                        {strengthMetricLabel[m]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
-            <ProgressChart points={chartPoints} unit={unit} />
+            <ProgressChart points={chartPoints} unit={isCardio ? (cardioMetric === 'distance_km' ? 'km' : 'min/km') : unit} />
           </Card>
         )}
       </ScrollView>

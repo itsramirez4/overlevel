@@ -60,12 +60,17 @@ export const reorderRoutineExercisesSchema = z.object({
   order: z.array(z.string().uuid()).min(1),
 });
 
+// reps/weight vs duration_seconds/distance_km are both optional here — which
+// pair is actually required depends on the exercise's category (strength vs
+// cardio), which setService looks up and enforces; Zod only checks shape/range.
 export const logSetSchema = z.object({
   workout_id: z.string().uuid(),
   exercise_id: z.string().uuid(),
   set_number: z.number().int().positive(),
-  reps: z.number().int().positive(),
-  weight: z.number().positive(),
+  reps: z.number().int().positive().optional(),
+  weight: z.number().positive().optional(),
+  duration_seconds: z.number().int().positive().optional(),
+  distance_km: z.number().positive().optional(),
   rpe: z.number().int().min(1).max(10).optional(),
   rest_seconds: z.number().int().nonnegative().optional(),
   tempo: z.string().optional(),
@@ -77,6 +82,8 @@ export const logSetSchema = z.object({
 export const updateSetSchema = z.object({
   reps: z.number().int().positive().optional(),
   weight: z.number().positive().optional(),
+  duration_seconds: z.number().int().positive().optional(),
+  distance_km: z.number().positive().optional(),
   rpe: z.number().int().min(1).max(10).optional(),
   rest_seconds: z.number().int().nonnegative().optional(),
   tempo: z.string().optional(),

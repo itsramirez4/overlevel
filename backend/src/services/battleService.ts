@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import { fetchAllRows } from '../utils/pagination';
+import { calculateCardioEffort, ExerciseCategory } from '../utils/calculations';
 
 const HP_MAX = 100;
 // A set with no exercise history yet is judged against this baseline
@@ -109,28 +110,17 @@ export class BattleService {
     workoutId: string,
     exerciseId: string,
     userId: string,
-    weight: number,
-    reps: number
+    effort: number,
+    category: ExerciseCategory
   ): Promise<ExerciseBattle> {
     let battle = await this.getOrCreate(workoutId, exerciseId, userId);
     if (battle.defeated) return battle;
 
-    const { data: stats } = await supabaseAdmin
-      .from('user_exercise_stats')
-      .select('total_volume, set_count')
-      .eq('exercise_id', exerciseId)
-      .eq('user_id', userId)
-      .maybeSingle();
+    const referenceVolumePerSet = await this.getReferenceEffort(exerciseId, userId, category);
 
-    const referenceVolumePerSet =
-      stats?.set_count && stats.set_count > 0
-        ? (stats.total_volume as number) / (stats.set_count as number)
-        : DEFAULT_REFERENCE_VOLUME_PER_SET;
-
-    const thisSetVolume = weight * reps;
     // A set matching your usual effort for this exercise does ~1/4 of the
     // bar; a noticeably harder-than-usual set does more.
-    const damage = Math.max(1, Math.round((thisSetVolume / referenceVolumePerSet) * (battle.hp_max / 4)));
+    const damage = Math.max(1, Math.round((effort / referenceVolumePerSet) * (battle.hp_max / 4)));
 
     const nextHp = Math.max(0, battle.hp_current - damage);
     const defeated = nextHp === 0;
@@ -170,6 +160,39 @@ export class BattleService {
       .eq('workout_id', workoutId)
       .eq('user_id', userId)
       .eq('defeated', false);
+  }
+
+  /**
+   * The "usual effort" a fresh set is judged against. Strength exercises
+   * still read this off user_exercise_stats (total_volume/set_count) — but
+   * that view's total_volume is weight*reps, which is always NULL for a
+   * cardio exercise's rows, so cardio computes its own average distance-based
+   * effort directly instead of dividing by that NULL.
+   */
+  private async getReferenceEffort(exerciseId: string, userId: string, category: ExerciseCategory): Promise<number> {
+    if (category === 'cardio') {
+      const { data } = await supabaseAdmin
+        .from('sets')
+        .select('distance_km, workouts!inner(user_id)')
+        .eq('exercise_id', exerciseId)
+        .eq('workouts.user_id', userId)
+        .eq('is_warmup', false);
+
+      const efforts = (data || []).map((s: any) => calculateCardioEffort(s.distance_km || 0));
+      if (efforts.length === 0) return DEFAULT_REFERENCE_VOLUME_PER_SET;
+      return efforts.reduce((sum, e) => sum + e, 0) / efforts.length;
+    }
+
+    const { data: stats } = await supabaseAdmin
+      .from('user_exercise_stats')
+      .select('total_volume, set_count')
+      .eq('exercise_id', exerciseId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    return stats?.set_count && stats.set_count > 0
+      ? (stats.total_volume as number) / (stats.set_count as number)
+      : DEFAULT_REFERENCE_VOLUME_PER_SET;
   }
 
   private async getOrCreate(workoutId: string, exerciseId: string, userId: string): Promise<ExerciseBattle> {

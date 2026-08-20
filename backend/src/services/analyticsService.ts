@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import { fetchAllRows } from '../utils/pagination';
+import { calculatePaceMinPerKm } from '../utils/calculations';
 
 export class AnalyticsService {
   async getSummary(userId: string) {
@@ -263,6 +264,44 @@ export class AnalyticsService {
    * genuine effort rather than every individual set logged.
    */
   async getExerciseProgressHistory(exerciseId: string, userId: string) {
+    const { data: exercise } = await supabaseAdmin
+      .from('exercises')
+      .select('category')
+      .eq('id', exerciseId)
+      .maybeSingle();
+
+    if (exercise?.category === 'cardio') {
+      const data = await fetchAllRows<any>((from, to) =>
+        supabaseAdmin
+          .from('sets')
+          .select('distance_km, duration_seconds, workouts!inner(id, started_at, user_id)')
+          .eq('exercise_id', exerciseId)
+          .eq('workouts.user_id', userId)
+          .eq('is_warmup', false)
+          .range(from, to)
+      );
+
+      // One point per session: the longest distance covered that session.
+      const bestBySession = new Map<
+        string,
+        { date: string; distance_km: number; duration_seconds: number; pace_min_per_km: number | null }
+      >();
+      for (const s of data) {
+        const distance = s.distance_km || 0;
+        const existing = bestBySession.get(s.workouts.id);
+        if (!existing || distance > existing.distance_km) {
+          bestBySession.set(s.workouts.id, {
+            date: s.workouts.started_at,
+            distance_km: distance,
+            duration_seconds: s.duration_seconds || 0,
+            pace_min_per_km: calculatePaceMinPerKm(s.duration_seconds || 0, distance),
+          });
+        }
+      }
+
+      return Array.from(bestBySession.values()).sort((a, b) => a.date.localeCompare(b.date));
+    }
+
     const data = await fetchAllRows<any>((from, to) =>
       supabaseAdmin
         .from('sets')
@@ -301,7 +340,9 @@ export class AnalyticsService {
       data = await fetchAllRows((from, to) =>
         supabaseAdmin
           .from('sets')
-          .select('weight, reps, exercise_id, exercises!inner(name, user_id), workouts!inner(started_at)')
+          .select(
+            'weight, reps, distance_km, duration_seconds, exercise_id, exercises!inner(name, user_id, category), workouts!inner(started_at)'
+          )
           .eq('exercises.user_id', userId)
           .eq('is_pr', true)
           .range(from, to)
@@ -310,23 +351,31 @@ export class AnalyticsService {
       throw new AppError('Failed to compute personal records');
     }
 
-    const bestByExercise = new Map<
-      string,
-      { exercise_id: string; exercise_name: string; weight: number; reps: number; estimated_1rm: number; date: string }
-    >();
+    const bestByExercise = new Map<string, any>();
     for (const s of data as any[]) {
       const date = s.workouts.started_at;
       const existing = bestByExercise.get(s.exercise_id);
-      if (!existing || date > existing.date) {
-        bestByExercise.set(s.exercise_id, {
-          exercise_id: s.exercise_id,
-          exercise_name: s.exercises.name,
-          weight: s.weight,
-          reps: s.reps,
-          estimated_1rm: Math.round(s.weight * (1 + s.reps / 30) * 100) / 100,
-          date,
-        });
-      }
+      if (existing && date <= existing.date) continue;
+
+      const category = s.exercises.category;
+      const base = { exercise_id: s.exercise_id, exercise_name: s.exercises.name, category, date };
+
+      bestByExercise.set(
+        s.exercise_id,
+        category === 'cardio'
+          ? {
+              ...base,
+              distance_km: s.distance_km,
+              duration_seconds: s.duration_seconds,
+              pace_min_per_km: calculatePaceMinPerKm(s.duration_seconds || 0, s.distance_km || 0),
+            }
+          : {
+              ...base,
+              weight: s.weight,
+              reps: s.reps,
+              estimated_1rm: Math.round(s.weight * (1 + s.reps / 30) * 100) / 100,
+            }
+      );
     }
 
     return Array.from(bestByExercise.values()).sort((a, b) => a.exercise_name.localeCompare(b.exercise_name));

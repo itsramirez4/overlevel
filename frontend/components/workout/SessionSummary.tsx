@@ -8,7 +8,7 @@ interface SessionSummaryProps {
 
 export const SessionSummary = ({ workout }: SessionSummaryProps) => {
   const totalSets = workout.sets?.length || 0;
-  const totalVolume = (workout.sets || []).reduce((sum, s) => sum + s.weight * s.reps, 0);
+  const totalVolume = (workout.sets || []).reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0);
 
   return (
     <View style={styles.container}>
