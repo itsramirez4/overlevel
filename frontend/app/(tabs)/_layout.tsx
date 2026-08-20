@@ -1,8 +1,9 @@
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BarChart3, Dumbbell, Home, ListChecks, User, type LucideIcon } from 'lucide-react-native';
 import { colors, spacing } from '../../utils/theme';
+import { authStore } from '../../stores/authStore';
 
 const TAB_CONFIG: { name: string; title: string; icon: LucideIcon }[] = [
   { name: 'dashboard', title: 'Inicio', icon: Home },
@@ -53,6 +54,11 @@ function CustomTabBar({ state, navigation }: any) {
 }
 
 export default function TabsLayout() {
+  const isSignedIn = authStore((s) => s.isSignedIn);
+  // No valid session — send them to login instead of a tab bar full of
+  // screens that would just 401 on their first request.
+  if (!isSignedIn) return <Redirect href="/(auth)/login" />;
+
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}

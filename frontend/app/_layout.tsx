@@ -11,8 +11,10 @@ const queryClient = new QueryClient();
 export default function RootLayout() {
   // useAuth() already calls authStore.checkAuth() internally and tracks
   // isLoading against it — a second direct call here just fired the same
-  // /users/me request twice on every app launch.
-  const { isLoading, isSignedIn } = useAuth();
+  // /users/me request twice on every app launch. isSignedIn itself is read
+  // directly from authStore by (tabs)/_layout and (auth)/_layout instead
+  // of threaded through here — see the comment below the loading gate.
+  const { isLoading } = useAuth();
 
   useEffect(() => {
     // Mobile browsers size `html`/`body`/`#root` off the *layout* viewport,
@@ -35,15 +37,21 @@ export default function RootLayout() {
     );
   }
 
+  // Both groups are always declared here — which one the user actually
+  // lands on is decided inside each group's own layout via <Redirect>
+  // (isSignedIn gates (tabs), !isSignedIn gates (auth)). Conditionally
+  // omitting a Stack.Screen based on isSignedIn instead used to work most
+  // of the time, but Expo Router resolves the initial URL against whatever
+  // routes exist in the file system before this component's state is
+  // necessarily reflected in the mounted navigator, so a cold start could
+  // land on (auth)/login even with a fully valid, already-refreshed
+  // session — the API calls would succeed, but the screen wouldn't move.
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <Stack screenOptions={{ headerShown: false }}>
-          {isSignedIn ? (
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          ) : (
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          )}
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(auth)" />
         </Stack>
       </QueryClientProvider>
     </ErrorBoundary>
