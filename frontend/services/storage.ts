@@ -1,16 +1,16 @@
-import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
- * expo-secure-store has no web implementation (it wraps Keychain/Keystore),
- * so web falls back to AsyncStorage, which itself wraps localStorage there.
+ * Used to be SecureStore (Keystore-backed) on native with an AsyncStorage
+ * fallback on web only. Switched to AsyncStorage everywhere: SecureStore's
+ * Keystore-encrypted values weren't surviving an Android process restart on
+ * at least one real device (session lost on every backgrounding, not just
+ * force-close — see the app/close bug), while the write itself never threw.
+ * AsyncStorage trades at-rest encryption for plain reliable persistence,
+ * an acceptable tradeoff for short-lived JWTs in a single-user fitness app.
  */
 export const storage = {
-  getItem: (key: string) =>
-    Platform.OS === 'web' ? AsyncStorage.getItem(key) : SecureStore.getItemAsync(key),
-  setItem: (key: string, value: string) =>
-    Platform.OS === 'web' ? AsyncStorage.setItem(key, value) : SecureStore.setItemAsync(key, value),
-  removeItem: (key: string) =>
-    Platform.OS === 'web' ? AsyncStorage.removeItem(key) : SecureStore.deleteItemAsync(key),
+  getItem: (key: string) => AsyncStorage.getItem(key),
+  setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
+  removeItem: (key: string) => AsyncStorage.removeItem(key),
 };
