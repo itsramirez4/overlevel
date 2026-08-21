@@ -47,6 +47,12 @@
         "projectId": "8c9fdd4d-3887-4797-8f1d-dd1528541ccd"
       }
     },
-    "owner": "itsramirez4"
+    "owner": "itsramirez4",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8c9fdd4d-3887-4797-8f1d-dd1528541ccd"
+    }
   }
 }
