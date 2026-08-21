@@ -1,12 +1,13 @@
-import { View, Text, Image, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, User as UserIcon, Users } from 'lucide-react-native';
+import { ChevronLeft, Users } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Loader } from '../../../components/ui/Loader';
+import { UserAvatar } from '../../../components/character/UserAvatar';
 import { PublicUser } from '../../../types';
 
 export default function ConnectionsScreen() {
@@ -55,13 +56,7 @@ export default function ConnectionsScreen() {
               onPress={() => router.push(`/social/user/${item.id}`)}
               activeOpacity={0.7}
             >
-              <View style={styles.avatar}>
-                {item.avatar_url ? (
-                  <Image source={{ uri: item.avatar_url }} style={styles.avatarImage} />
-                ) : (
-                  <UserIcon size={18} color={colors.accent.fire} strokeWidth={2} />
-                )}
-              </View>
+              <UserAvatar characterType={item.character_type} size={36} />
               <View style={styles.info}>
                 <Text style={styles.username}>{item.username}</Text>
                 {!!item.full_name && <Text style={styles.fullName}>{item.full_name}</Text>}
@@ -101,6 +96,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
     backgroundColor: colors.bg.secondary,
     borderWidth: 1,
     borderColor: colors.border.subtle,
@@ -108,20 +104,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     marginBottom: spacing.sm,
     ...shadow.card,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.pill,
-    backgroundColor: colors.bg.elevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
   },
   info: {
     flex: 1,

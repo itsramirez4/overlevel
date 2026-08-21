@@ -20,13 +20,6 @@ export const updateUserSchema = z.object({
   profile_public: z.boolean().optional(),
 });
 
-export const updateAvatarSchema = z.object({
-  // A data URI (data:image/jpeg;base64,...) — kept as a plain string, not
-  // z.string().url(), since data URIs aren't valid per the WHATWG URL spec
-  // that .url() checks against.
-  image: z.string().min(1),
-});
-
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string(),

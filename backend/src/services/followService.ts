@@ -6,7 +6,7 @@ export interface PublicUser {
   id: string;
   username: string;
   full_name?: string;
-  avatar_url?: string;
+  character_type?: string | null;
 }
 
 export class FollowService {
@@ -62,8 +62,11 @@ export class FollowService {
   // is just as fast for list sizes a follower list actually has.
   private async fetchUsers(ids: string[]): Promise<PublicUser[]> {
     if (ids.length === 0) return [];
-    const { data } = await supabaseAdmin.from('users').select('id, username, full_name, avatar_url').in('id', ids);
-    return (data || []) as PublicUser[];
+    const [{ data }, characterTypes] = await Promise.all([
+      supabaseAdmin.from('users').select('id, username, full_name').in('id', ids),
+      userService.getCharacterTypes(ids),
+    ]);
+    return (data || []).map((u) => ({ ...u, character_type: characterTypes[u.id] || null }));
   }
 }
 

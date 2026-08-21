@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, View, Text, Image, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { colors, radius, shadow, spacing, typography } from '../../../../utils/t
 import { EmptyState } from '../../../../components/common/EmptyState';
 import { Loader } from '../../../../components/ui/Loader';
 import { Button } from '../../../../components/ui/Button';
+import { UserAvatar } from '../../../../components/character/UserAvatar';
 import { getWorkoutName } from '../../../../utils/workoutName';
 import { PublicProfile } from '../../../../types';
 
@@ -55,8 +56,6 @@ export default function PublicProfileScreen() {
     );
   }
 
-  const initial = (profile.username || '?').charAt(0).toUpperCase();
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
@@ -81,12 +80,8 @@ export default function PublicProfileScreen() {
         ListHeaderComponent={
           <>
             <View style={styles.profileCard}>
-              <View style={styles.avatar}>
-                {profile.avatar_url ? (
-                  <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-                ) : (
-                  <Text style={styles.avatarText}>{initial}</Text>
-                )}
+              <View style={styles.avatarWrap}>
+                <UserAvatar characterType={profile.character_type} size={AVATAR_SIZE} />
               </View>
               {!!profile.full_name && <Text style={styles.fullName}>{profile.full_name}</Text>}
               {!!profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
@@ -177,25 +172,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: radius.pill,
-    backgroundColor: colors.bg.elevated,
-    borderWidth: 1,
-    borderColor: colors.accent.fire,
-    alignItems: 'center',
-    justifyContent: 'center',
+  avatarWrap: {
     marginBottom: spacing.sm,
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarText: {
-    ...typography.h1,
-    color: colors.accent.fire,
   },
   fullName: {
     ...typography.h3,

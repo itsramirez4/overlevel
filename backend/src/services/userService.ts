@@ -41,40 +41,17 @@ export class UserService {
     return data as User;
   }
 
-  /**
-   * Decodes a data URI (data:image/jpeg;base64,...) the app sends straight
-   * from the image picker, uploads it to the public `avatars` bucket under
-   * this user's id (upsert — re-uploading just replaces the old file), and
-   * points avatar_url at the resulting public URL.
-   */
-  async updateAvatar(userId: string, dataUri: string): Promise<User> {
-    const match = dataUri.match(/^data:(image\/\w+);base64,(.+)$/);
-    if (!match) throw new AppError('Imagen no válida', 400);
-
-    const [, mimeType, base64Data] = match;
-    const extension = mimeType.split('/')[1] || 'jpg';
-    const path = `${userId}.${extension}`;
-    const buffer = Buffer.from(base64Data, 'base64');
-
-    // 5MB — comfortably covers a phone photo at the picker's compressed
-    // quality setting, without letting someone post an oversized upload
-    // through a route that isn't otherwise size-limited by multer/busboy.
-    if (buffer.byteLength > 5 * 1024 * 1024) throw new AppError('La imagen no puede superar 5MB', 400);
-
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from('avatars')
-      .upload(path, buffer, { contentType: mimeType, upsert: true });
-
-    if (uploadError) throw new AppError('No se pudo subir la imagen');
-
-    const {
-      data: { publicUrl },
-    } = supabaseAdmin.storage.from('avatars').getPublicUrl(path);
-
-    // Cache-bust: same filename every time (upsert), so without a
-    // query param the old image would keep showing from cache after a
-    // re-upload.
-    return this.updateUser(userId, { avatar_url: `${publicUrl}?v=${Date.now()}` });
+  /** Batch user_id -> character_type lookup, used to show each user's chosen
+   * character as their avatar in social lists/profiles (some users have no
+   * character yet, so entries are simply absent from the map). */
+  async getCharacterTypes(ids: string[]): Promise<Record<string, string>> {
+    if (ids.length === 0) return {};
+    const { data } = await supabaseAdmin.from('characters').select('user_id, character_type').in('user_id', ids);
+    const map: Record<string, string> = {};
+    (data || []).forEach((c: any) => {
+      map[c.user_id] = c.character_type;
+    });
+    return map;
   }
 
   async getBodyWeightHistory(userId: string, days = 90): Promise<BodyWeightLog[]> {
@@ -179,9 +156,10 @@ export class UserService {
   async getPublicProfile(targetId: string, viewerId: string) {
     const user = await this.assertViewable(targetId, viewerId);
     const { followService } = await import('./followService');
-    const [counts, isFollowing] = await Promise.all([
+    const [counts, isFollowing, characterTypes] = await Promise.all([
       followService.getCounts(targetId),
       targetId === viewerId ? Promise.resolve(false) : followService.isFollowing(viewerId, targetId),
+      this.getCharacterTypes([targetId]),
     ]);
 
     return {
@@ -189,7 +167,7 @@ export class UserService {
       username: user.username,
       full_name: user.full_name,
       bio: user.bio,
-      avatar_url: user.avatar_url,
+      character_type: characterTypes[targetId] || null,
       profile_public: user.profile_public,
       created_at: user.created_at,
       followers_count: counts.followers,
@@ -203,14 +181,15 @@ export class UserService {
   async search(query: string, viewerId: string) {
     const { data, error } = await supabaseAdmin
       .from('users')
-      .select('id, username, full_name, avatar_url')
+      .select('id, username, full_name')
       .eq('profile_public', true)
       .neq('id', viewerId)
       .ilike('username', `%${query}%`)
       .limit(20);
 
     if (error) throw new AppError('Failed to search users');
-    return data || [];
+    const characterTypes = await this.getCharacterTypes((data || []).map((u) => u.id));
+    return (data || []).map((u) => ({ ...u, character_type: characterTypes[u.id] || null }));
   }
 }
 

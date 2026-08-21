@@ -1,6 +1,7 @@
-import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import {
   Calculator,
   CalendarDays,
@@ -12,23 +13,29 @@ import {
   Swords,
   Trophy,
 } from 'lucide-react-native';
+import { api } from '../../../services/api';
 import { authStore } from '../../../stores/authStore';
 import { authService } from '../../../services/auth';
 import { colors, radius, spacing, typography } from '../../../utils/theme';
 import { Header } from '../../../components/common/Header';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { UserAvatar } from '../../../components/character/UserAvatar';
+import { Character } from '../../../types';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const user = authStore((state) => state.user);
 
+  const { data: character } = useQuery<Character | null>({
+    queryKey: ['character'],
+    queryFn: () => api.get('/characters/me').then((r) => r.data),
+  });
+
   const handleLogout = async () => {
     await authService.logout();
     router.replace('/(auth)/login');
   };
-
-  const initial = (user?.username || user?.email || '?').charAt(0).toUpperCase();
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -36,13 +43,7 @@ export default function ProfileScreen() {
         <Header title="Perfil" />
 
         <Card style={styles.profileCard}>
-          <View style={styles.avatar}>
-            {user?.avatar_url ? (
-              <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />
-            ) : (
-              <Text style={styles.avatarText}>{initial}</Text>
-            )}
-          </View>
+          <UserAvatar characterType={character?.character_type} size={AVATAR_SIZE} />
           <View style={styles.identity}>
             <Text style={styles.username}>{user?.username}</Text>
             <Text style={styles.email}>{user?.email}</Text>
@@ -147,27 +148,8 @@ const styles = StyleSheet.create({
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
     marginBottom: spacing.lg,
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: radius.pill,
-    backgroundColor: colors.bg.elevated,
-    borderWidth: 1,
-    borderColor: colors.accent.fire,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarText: {
-    ...typography.h2,
-    color: colors.accent.fire,
   },
   identity: {
     flex: 1,

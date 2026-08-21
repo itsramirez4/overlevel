@@ -37,12 +37,6 @@
           "icon": "./assets/icon.png",
           "color": "#ff4433"
         }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Overlevel necesita acceder a tus fotos para poner una imagen de perfil."
-        }
       ]
     ],
     "extra": {

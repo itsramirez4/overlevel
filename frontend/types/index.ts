@@ -39,7 +39,7 @@ export interface PublicUser {
   id: string;
   username: string;
   full_name?: string;
-  avatar_url?: string;
+  character_type?: CharacterType | null;
 }
 
 export interface PublicProfile extends PublicUser {
