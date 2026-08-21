@@ -59,8 +59,10 @@ export const ExerciseLogSection = ({
   canMoveUp,
   canMoveDown,
 }: ExerciseLogSectionProps) => {
-  const unit = authStore((s) => s.user?.weight_unit) || 'kg';
-  const distanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
+  const globalUnit = authStore((s) => s.user?.weight_unit) || 'kg';
+  const globalDistanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
+  const unit = exercise.weight_unit || globalUnit;
+  const distanceUnit = exercise.distance_unit || globalDistanceUnit;
   const isCardio = exercise.category === 'cardio';
   const sortedSets = [...loggedSets].sort((a, b) => a.set_number - b.set_number);
   const lastSet = sortedSets[sortedSets.length - 1];
@@ -155,7 +157,15 @@ export const ExerciseLogSection = ({
       {sortedSets.length > 0 && (
         <View style={styles.loggedSets}>
           {sortedSets.map((set) => (
-            <LoggedSetRow key={set.id} set={set} isCardio={isCardio} onChanged={onSetLogged} />
+            <LoggedSetRow
+              key={set.id}
+              set={set}
+              isCardio={isCardio}
+              exerciseId={exercise.id}
+              weightUnit={unit}
+              distanceUnit={distanceUnit}
+              onChanged={onSetLogged}
+            />
           ))}
         </View>
       )}

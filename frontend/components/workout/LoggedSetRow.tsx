@@ -3,23 +3,33 @@ import { Alert, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Link2, Pencil, Trophy, X } from 'lucide-react-native';
 import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
-import { authStore } from '../../stores/authStore';
-import { formatWeight, kgToUnit, unitToKg, formatDistance, kmToUnit, unitToKm } from '../../utils/units';
+import { workoutStore } from '../../stores/workoutStore';
+import { formatWeight, kgToUnit, unitToKg, formatDistance, kmToUnit, unitToKm, DistanceUnit } from '../../utils/units';
+import { WeightUnit } from '../../services/calculations';
 import { formatSetDuration } from '../../utils/duration';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { UnitToggle } from './UnitToggle';
 import { Set } from '../../types';
 
 interface LoggedSetRowProps {
   set: Set;
   isCardio?: boolean;
+  exerciseId: string;
+  weightUnit: WeightUnit;
+  distanceUnit: DistanceUnit;
   onChanged: () => void;
 }
 
-export const LoggedSetRow = ({ set, isCardio, onChanged }: LoggedSetRowProps) => {
-  const unit = authStore((s) => s.user?.weight_unit) || 'kg';
-  const distanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
+export const LoggedSetRow = ({
+  set,
+  isCardio,
+  exerciseId,
+  weightUnit: unit,
+  distanceUnit,
+  onChanged,
+}: LoggedSetRowProps) => {
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [weight, setWeight] = useState(kgToUnit(set.weight || 0, unit).toString());
@@ -30,6 +40,27 @@ export const LoggedSetRow = ({ set, isCardio, onChanged }: LoggedSetRowProps) =>
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Same fire-and-forget persistence + shared-state update as SetLogger's
+  // unit toggle — see the comment there.
+  const persistUnit = (patch: { weight_unit: WeightUnit } | { distance_unit: DistanceUnit }) => {
+    workoutStore.getState().updateSessionExercise(exerciseId, patch);
+    api.put(`/exercises/${exerciseId}`, patch).catch(() => {});
+  };
+
+  const handleToggleWeightUnit = () => {
+    const nextUnit: WeightUnit = unit === 'kg' ? 'lbs' : 'kg';
+    const parsed = parseFloat(weight);
+    if (Number.isFinite(parsed)) setWeight(kgToUnit(unitToKg(parsed, unit), nextUnit).toString());
+    persistUnit({ weight_unit: nextUnit });
+  };
+
+  const handleToggleDistanceUnit = () => {
+    const nextUnit: DistanceUnit = distanceUnit === 'km' ? 'mi' : 'km';
+    const parsed = parseFloat(distance);
+    if (Number.isFinite(parsed)) setDistance(kmToUnit(unitToKm(parsed, distanceUnit), nextUnit).toString());
+    persistUnit({ distance_unit: nextUnit });
+  };
 
   const handleSave = async () => {
     let payload: Record<string, number>;
@@ -93,6 +124,7 @@ export const LoggedSetRow = ({ set, isCardio, onChanged }: LoggedSetRowProps) =>
                 <Input placeholder="Minutos" value={minutes} onChangeText={setMinutes} keyboardType="decimal-pad" />
               </View>
               <View style={styles.editInput}>
+                <UnitToggle label={distanceUnit} onPress={handleToggleDistanceUnit} />
                 <Input
                   placeholder={distanceUnit === 'mi' ? 'Millas' : 'Km'}
                   value={distance}
@@ -104,6 +136,7 @@ export const LoggedSetRow = ({ set, isCardio, onChanged }: LoggedSetRowProps) =>
           ) : (
             <>
               <View style={styles.editInput}>
+                <UnitToggle label={unit} onPress={handleToggleWeightUnit} />
                 <Input
                   placeholder={unit === 'lbs' ? 'Lbs' : 'Kg'}
                   value={weight}

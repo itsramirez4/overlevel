@@ -31,6 +31,11 @@ export const updateExerciseSchema = z.object({
   muscle_groups: z.array(z.string()).optional(),
   equipment: z.array(z.string()).optional(),
   notes: z.string().optional(),
+  // Per-exercise unit override, e.g. logging curls in lbs while squats stay
+  // in kg — null explicitly clears the override back to the user's global
+  // preference (undefined just means "not part of this update").
+  weight_unit: z.enum(['kg', 'lbs']).nullable().optional(),
+  distance_unit: z.enum(['km', 'mi']).nullable().optional(),
 });
 
 export const createRoutineSchema = z.object({

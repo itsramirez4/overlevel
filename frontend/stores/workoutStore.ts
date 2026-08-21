@@ -18,6 +18,7 @@ interface WorkoutStore {
   addSessionExercise: (exercise: Exercise) => void;
   removeSessionExercise: (exerciseId: string) => void;
   moveSessionExercise: (exerciseId: string, direction: 'up' | 'down') => void;
+  updateSessionExercise: (exerciseId: string, patch: Partial<Exercise>) => void;
   restEndsAt: number | null;
   startRest: (seconds: number) => void;
   clearRest: () => void;
@@ -68,6 +69,15 @@ export const workoutStore = create<WorkoutStore>()(
 
         [exercises[index], exercises[targetIndex]] = [exercises[targetIndex], exercises[index]];
         set({ sessionExercises: exercises, linkedToPrevious: {} });
+      },
+
+      // Patches one session exercise in place — used to reflect a per-exercise
+      // unit change (kg/lbs, km/mi) immediately in every screen showing this
+      // exercise, without waiting on a refetch.
+      updateSessionExercise: (exerciseId, patch) => {
+        set({
+          sessionExercises: get().sessionExercises.map((e) => (e.id === exerciseId ? { ...e, ...patch } : e)),
+        });
       },
 
       restEndsAt: null,

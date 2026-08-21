@@ -5,9 +5,11 @@ import { api } from '../../services/api';
 import { workoutStore } from '../../stores/workoutStore';
 import { authStore } from '../../stores/authStore';
 import { scheduleRestTimerNotification } from '../../services/notifications';
-import { kgToUnit, unitToKg, kmToUnit, unitToKm } from '../../utils/units';
+import { kgToUnit, unitToKg, kmToUnit, unitToKm, DistanceUnit } from '../../utils/units';
+import { WeightUnit } from '../../services/calculations';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
+import { UnitToggle } from './UnitToggle';
 
 export interface SetLoggerProps {
   workoutId: string;
@@ -28,8 +30,12 @@ export const SetLogger = ({
   supersetGroup,
   shouldRest = true,
 }: SetLoggerProps) => {
-  const unit = authStore((s) => s.user?.weight_unit) || 'kg';
-  const distanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
+  const globalUnit = authStore((s) => s.user?.weight_unit) || 'kg';
+  const globalDistanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
+  // Per-exercise override, changeable any time via the unit chip below —
+  // falls back to the user's global preference until one is set.
+  const unit: WeightUnit = exercise?.weight_unit || globalUnit;
+  const distanceUnit: DistanceUnit = exercise?.distance_unit || globalDistanceUnit;
   const isCardio = exercise?.category === 'cardio';
   const [reps, setReps] = useState(previousSet?.reps?.toString() || '');
   const [weight, setWeight] = useState(
@@ -49,6 +55,29 @@ export const SetLogger = ({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Persists the new per-exercise unit (fire-and-forget — a failed save just
+  // means it falls back to the global unit next time, not worth blocking on)
+  // and updates the shared session-exercise state so every other screen
+  // showing this exercise (logged-set rows, "last session") picks it up too.
+  const persistUnit = (patch: { weight_unit: WeightUnit } | { distance_unit: DistanceUnit }) => {
+    workoutStore.getState().updateSessionExercise(exercise.id, patch);
+    api.put(`/exercises/${exercise.id}`, patch).catch(() => {});
+  };
+
+  const handleToggleWeightUnit = () => {
+    const nextUnit: WeightUnit = unit === 'kg' ? 'lbs' : 'kg';
+    const parsed = parseFloat(weight);
+    if (Number.isFinite(parsed)) setWeight(kgToUnit(unitToKg(parsed, unit), nextUnit).toString());
+    persistUnit({ weight_unit: nextUnit });
+  };
+
+  const handleToggleDistanceUnit = () => {
+    const nextUnit: DistanceUnit = distanceUnit === 'km' ? 'mi' : 'km';
+    const parsed = parseFloat(distance);
+    if (Number.isFinite(parsed)) setDistance(kmToUnit(unitToKm(parsed, distanceUnit), nextUnit).toString());
+    persistUnit({ distance_unit: nextUnit });
+  };
 
   const handleSubmit = async () => {
     let cardioPayload: { duration_seconds: number; distance_km: number } | undefined;
@@ -127,6 +156,7 @@ export const SetLogger = ({
               />
             </View>
             <View style={styles.half}>
+              <UnitToggle label={distanceUnit} onPress={handleToggleDistanceUnit} />
               <Input
                 placeholder={distanceUnit === 'mi' ? 'Millas' : 'Km'}
                 value={distance}
@@ -138,6 +168,7 @@ export const SetLogger = ({
         ) : (
           <>
             <View style={styles.half}>
+              <UnitToggle label={unit} onPress={handleToggleWeightUnit} />
               <Input
                 placeholder={unit === 'lbs' ? 'Lbs' : 'Kg'}
                 value={weight}

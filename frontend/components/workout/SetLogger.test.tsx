@@ -6,7 +6,7 @@ import { authStore } from '../../stores/authStore';
 import { scheduleRestTimerNotification } from '../../services/notifications';
 
 jest.mock('../../services/api', () => ({
-  api: { post: jest.fn() },
+  api: { post: jest.fn(), put: jest.fn().mockResolvedValue({ data: {} }) },
 }));
 jest.mock('../../services/notifications', () => ({
   scheduleRestTimerNotification: jest.fn(),
@@ -47,6 +47,37 @@ describe('SetLogger validation', () => {
 
     await waitFor(() => expect(getByText(/mayores que cero/)).toBeTruthy());
     expect(mockedApi.post).not.toHaveBeenCalled();
+  });
+});
+
+describe('SetLogger per-exercise unit toggle', () => {
+  it('tapping the unit chip converts the typed value and persists the new unit for this exercise', async () => {
+    const { getByText, getByPlaceholderText } = await render(
+      <SetLogger workoutId="w1" exercise={exercise} setNumber={1} onSetLogged={jest.fn()} />
+    );
+
+    await fireEvent.changeText(getByPlaceholderText('Kg'), '100');
+    await fireEvent.press(getByText('KG ⇄'));
+
+    // The exercise prop itself is static in this isolated render (in the
+    // real app it flows back from workoutStore and the placeholder relabels
+    // to "Lbs" too) — what matters here is the typed value converts and the
+    // new unit gets persisted.
+    expect(getByPlaceholderText('Kg').props.value).toBe('220.46');
+    expect(mockedApi.put).toHaveBeenCalledWith('/exercises/ex1', { weight_unit: 'lbs' });
+  });
+
+  it('a per-exercise unit override takes priority over the global preference', async () => {
+    const { getByPlaceholderText } = await render(
+      <SetLogger
+        workoutId="w1"
+        exercise={{ ...exercise, weight_unit: 'lbs' }}
+        setNumber={1}
+        onSetLogged={jest.fn()}
+      />
+    );
+    // Global preference is 'kg' (see beforeEach) but this exercise overrides it.
+    expect(getByPlaceholderText('Lbs')).toBeTruthy();
   });
 });
 

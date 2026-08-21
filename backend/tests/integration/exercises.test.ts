@@ -26,6 +26,28 @@ describe('exercises', () => {
     expect(list.body.map((e: any) => e.name)).toContain('Bench Press');
   });
 
+  it('sets and clears a per-exercise unit override', async () => {
+    const created = await request(app)
+      .post('/api/exercises')
+      .set(authHeader(user))
+      .send({ name: 'Curl', category: 'isolation' });
+    expect(created.body.weight_unit).toBeFalsy();
+
+    const updated = await request(app)
+      .put(`/api/exercises/${created.body.id}`)
+      .set(authHeader(user))
+      .send({ weight_unit: 'lbs' });
+    expect(updated.status).toBe(200);
+    expect(updated.body.weight_unit).toBe('lbs');
+
+    const cleared = await request(app)
+      .put(`/api/exercises/${created.body.id}`)
+      .set(authHeader(user))
+      .send({ weight_unit: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.weight_unit).toBeFalsy();
+  });
+
   it('rejects a duplicate name for the same user with 409', async () => {
     await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Squat', category: 'compound' });
     const dup = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Squat', category: 'compound' });

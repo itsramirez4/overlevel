@@ -30,6 +30,9 @@ export interface Exercise {
   target_sets?: number;
   target_weight?: number;
   target_reps?: number;
+  // Per-exercise unit override — unset means "use the user's global preference".
+  weight_unit?: 'kg' | 'lbs';
+  distance_unit?: 'km' | 'mi';
 }
 
 export interface RoutineExercise {

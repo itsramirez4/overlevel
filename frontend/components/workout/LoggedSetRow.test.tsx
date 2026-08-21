@@ -1,7 +1,6 @@
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { LoggedSetRow } from './LoggedSetRow';
 import { api } from '../../services/api';
-import { authStore } from '../../stores/authStore';
 import { Set } from '../../types';
 
 jest.mock('../../services/api', () => ({
@@ -24,20 +23,33 @@ const baseSet: Set = {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  authStore.setState({ user: { weight_unit: 'kg' } as any });
 });
 
 describe('display', () => {
   it('shows weight, reps, and a PR trophy when it is a PR', async () => {
     const { getByText, queryByText } = await render(
-      <LoggedSetRow set={{ ...baseSet, is_pr: true }} onChanged={jest.fn()} />
+      <LoggedSetRow
+        set={{ ...baseSet, is_pr: true }}
+        exerciseId="ex1"
+        weightUnit="kg"
+        distanceUnit="km"
+        onChanged={jest.fn()}
+      />
     );
     expect(getByText('60kg × 8 reps')).toBeTruthy();
     expect(queryByText('Calentamiento')).toBeNull();
   });
 
   it('shows a warmup tag for a warmup set', async () => {
-    const { getByText } = await render(<LoggedSetRow set={{ ...baseSet, is_warmup: true }} onChanged={jest.fn()} />);
+    const { getByText } = await render(
+      <LoggedSetRow
+        set={{ ...baseSet, is_warmup: true }}
+        exerciseId="ex1"
+        weightUnit="kg"
+        distanceUnit="km"
+        onChanged={jest.fn()}
+      />
+    );
     expect(getByText('Calentamiento')).toBeTruthy();
   });
 });
@@ -45,7 +57,9 @@ describe('display', () => {
 describe('editing', () => {
   it('rejects saving zero/negative values without calling the API', async () => {
     const onChanged = jest.fn();
-    const { getByText, getByLabelText, getByPlaceholderText } = await render(<LoggedSetRow set={baseSet} onChanged={onChanged} />);
+    const { getByText, getByLabelText, getByPlaceholderText } = await render(
+      <LoggedSetRow set={baseSet} exerciseId="ex1" weightUnit="kg" distanceUnit="km" onChanged={onChanged} />
+    );
 
     await fireEvent.press(getByLabelText('Editar serie 1'));
     await fireEvent.changeText(getByPlaceholderText('Kg'), '0');
@@ -60,7 +74,7 @@ describe('editing', () => {
     mockedApi.put.mockResolvedValue({ data: {} });
     const onChanged = jest.fn();
     const { getByText, getByLabelText, getByPlaceholderText, queryByText } = await render(
-      <LoggedSetRow set={baseSet} onChanged={onChanged} />
+      <LoggedSetRow set={baseSet} exerciseId="ex1" weightUnit="kg" distanceUnit="km" onChanged={onChanged} />
     );
 
     await fireEvent.press(getByLabelText('Editar serie 1'));
@@ -76,7 +90,9 @@ describe('editing', () => {
 
   it('shows the server error message when saving fails', async () => {
     mockedApi.put.mockRejectedValue({ response: { data: { message: 'No se pudo guardar la serie' } } });
-    const { getByText, getByLabelText, getByPlaceholderText } = await render(<LoggedSetRow set={baseSet} onChanged={jest.fn()} />);
+    const { getByText, getByLabelText, getByPlaceholderText } = await render(
+      <LoggedSetRow set={baseSet} exerciseId="ex1" weightUnit="kg" distanceUnit="km" onChanged={jest.fn()} />
+    );
 
     await fireEvent.press(getByLabelText('Editar serie 1'));
     await fireEvent.changeText(getByPlaceholderText('Kg'), '65');
@@ -86,11 +102,34 @@ describe('editing', () => {
   });
 });
 
+describe('per-exercise unit toggle', () => {
+  it('tapping the unit chip while editing converts the value and persists the new unit', async () => {
+    mockedApi.put.mockResolvedValue({ data: {} });
+    const { getByText, getByLabelText, getByPlaceholderText } = await render(
+      <LoggedSetRow set={baseSet} exerciseId="ex1" weightUnit="kg" distanceUnit="km" onChanged={jest.fn()} />
+    );
+
+    await fireEvent.press(getByLabelText('Editar serie 1'));
+    expect(getByPlaceholderText('Kg').props.value).toBe('60');
+
+    await fireEvent.press(getByText('KG ⇄'));
+
+    // weightUnit is a static prop in this isolated render (in the real app
+    // it flows back from workoutStore and the placeholder relabels to "Lbs"
+    // too) — what matters here is the typed value converts and the new unit
+    // gets persisted.
+    expect(getByPlaceholderText('Kg').props.value).toBe('132.28');
+    expect(mockedApi.put).toHaveBeenCalledWith('/exercises/ex1', { weight_unit: 'lbs' });
+  });
+});
+
 describe('deleting', () => {
   it('deletes the set after confirming, and notifies the parent', async () => {
     mockedApi.delete.mockResolvedValue({ data: {} });
     const onChanged = jest.fn();
-    const { getByText, getByLabelText } = await render(<LoggedSetRow set={baseSet} onChanged={onChanged} />);
+    const { getByText, getByLabelText } = await render(
+      <LoggedSetRow set={baseSet} exerciseId="ex1" weightUnit="kg" distanceUnit="km" onChanged={onChanged} />
+    );
 
     await fireEvent.press(getByLabelText('Borrar serie 1'));
     await fireEvent.press(getByText('Borrar'));
