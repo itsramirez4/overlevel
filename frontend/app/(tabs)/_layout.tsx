@@ -1,7 +1,7 @@
 import { Tabs, Redirect } from 'expo-router';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BarChart3, Dumbbell, Home, ListChecks, User, type LucideIcon } from 'lucide-react-native';
+import { BarChart3, Dumbbell, Home, ListChecks, User, Users, type LucideIcon } from 'lucide-react-native';
 import { colors, spacing } from '../../utils/theme';
 import { authStore } from '../../stores/authStore';
 
@@ -10,6 +10,7 @@ const TAB_CONFIG: { name: string; title: string; icon: LucideIcon }[] = [
   { name: 'workouts', title: 'Entrenar', icon: Dumbbell },
   { name: 'routines', title: 'Rutinas', icon: ListChecks },
   { name: 'analytics', title: 'Analíticas', icon: BarChart3 },
+  { name: 'social', title: 'Social', icon: Users },
   { name: 'profile', title: 'Perfil', icon: User },
 ];
 
@@ -68,6 +69,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="workouts" options={{ title: 'Entrenar' }} />
       <Tabs.Screen name="routines" options={{ title: 'Rutinas' }} />
       <Tabs.Screen name="analytics" options={{ title: 'Analíticas' }} />
+      <Tabs.Screen name="social" options={{ title: 'Social' }} />
       <Tabs.Screen name="profile" options={{ title: 'Perfil' }} />
     </Tabs>
   );

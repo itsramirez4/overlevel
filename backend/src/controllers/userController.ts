@@ -17,6 +17,11 @@ export class UserController {
     res.json(user);
   }
 
+  async updateAvatar(req: AuthRequest, res: Response) {
+    const user = await userService.updateAvatar(req.userId!, req.body.image);
+    res.json(user);
+  }
+
   async bodyWeightHistory(req: AuthRequest, res: Response) {
     const days = parsePositiveIntParam(req.query.days, 90);
     const history = await userService.getBodyWeightHistory(req.userId!, days);

@@ -1,18 +1,27 @@
 import { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, Search, User as UserIcon } from 'lucide-react-native';
+import { Search, User as UserIcon } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
+import { Header } from '../../../components/common/Header';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Input } from '../../../components/ui/Input';
-import { PublicUser } from '../../../types';
+import { authStore } from '../../../stores/authStore';
+import { PublicUser, PublicProfile } from '../../../types';
 
-export default function SearchUsersScreen() {
+export default function SocialScreen() {
   const router = useRouter();
+  const user = authStore((state) => state.user);
   const [query, setQuery] = useState('');
+
+  const { data: ownProfile } = useQuery<PublicProfile>({
+    queryKey: ['users', user?.id],
+    queryFn: () => api.get(`/users/${user!.id}`).then((r) => r.data),
+    enabled: !!user?.id,
+  });
 
   const { data: results, isLoading } = useQuery<PublicUser[]>({
     queryKey: ['users', 'search', query],
@@ -22,22 +31,30 @@ export default function SearchUsersScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          hitSlop={12}
-          style={styles.backButton}
-          accessibilityLabel="Volver"
-          accessibilityRole="button"
-        >
-          <ChevronLeft size={22} color={colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.title} accessibilityRole="header">
-          Buscar usuarios
-        </Text>
-      </View>
+      <View style={styles.content}>
+        <Header title="Social" subtitle="Sigue a otros usuarios y mira sus entrenamientos" />
 
-      <View style={styles.searchContainer}>
+        {ownProfile && (
+          <View style={styles.statsRow}>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => router.push(`/social/connections?id=${user!.id}&type=followers`)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.statValue}>{ownProfile.followers_count}</Text>
+              <Text style={styles.statLabel}>Seguidores</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => router.push(`/social/connections?id=${user!.id}&type=following`)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.statValue}>{ownProfile.following_count}</Text>
+              <Text style={styles.statLabel}>Seguidos</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <Input placeholder="Buscar por nombre de usuario…" value={query} onChangeText={setQuery} autoCapitalize="none" />
       </View>
 
@@ -47,21 +64,21 @@ export default function SearchUsersScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           isLoading || !query.trim() ? null : (
-            <EmptyState
-              icon={Search}
-              title="Sin resultados"
-              message="Solo se pueden encontrar perfiles públicos."
-            />
+            <EmptyState icon={Search} title="Sin resultados" message="Solo se pueden encontrar perfiles públicos." />
           )
         }
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
-            onPress={() => router.push(`/profile/user/${item.id}`)}
+            onPress={() => router.push(`/social/user/${item.id}`)}
             activeOpacity={0.7}
           >
             <View style={styles.avatar}>
-              <UserIcon size={18} color={colors.accent.fire} strokeWidth={2} />
+              {item.avatar_url ? (
+                <Image source={{ uri: item.avatar_url }} style={styles.avatarImage} />
+              ) : (
+                <UserIcon size={18} color={colors.accent.fire} strokeWidth={2} />
+              )}
             </View>
             <View style={styles.info}>
               <Text style={styles.username}>{item.username}</Text>
@@ -79,22 +96,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg.primary,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  content: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: spacing.xl,
     marginBottom: spacing.lg,
   },
-  backButton: {
-    marginRight: spacing.sm,
+  statItem: {
+    alignItems: 'center',
   },
-  title: {
-    ...typography.h1,
+  statValue: {
+    ...typography.h3,
     color: colors.text.primary,
   },
-  searchContainer: {
-    paddingHorizontal: spacing.lg,
+  statLabel: {
+    ...typography.tiny,
+    color: colors.text.secondary,
   },
   listContent: {
     paddingHorizontal: spacing.lg,
@@ -120,6 +139,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   info: {
     flex: 1,

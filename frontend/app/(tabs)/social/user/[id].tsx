@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, Image, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -82,7 +82,11 @@ export default function PublicProfileScreen() {
           <>
             <View style={styles.profileCard}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initial}</Text>
+                {profile.avatar_url ? (
+                  <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarText}>{initial}</Text>
+                )}
               </View>
               {!!profile.full_name && <Text style={styles.fullName}>{profile.full_name}</Text>}
               {!!profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
@@ -90,7 +94,7 @@ export default function PublicProfileScreen() {
               <View style={styles.statsRow}>
                 <TouchableOpacity
                   style={styles.statItem}
-                  onPress={() => router.push(`/profile/connections?id=${id}&type=followers`)}
+                  onPress={() => router.push(`/social/connections?id=${id}&type=followers`)}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.statValue}>{profile.followers_count}</Text>
@@ -98,7 +102,7 @@ export default function PublicProfileScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.statItem}
-                  onPress={() => router.push(`/profile/connections?id=${id}&type=following`)}
+                  onPress={() => router.push(`/social/connections?id=${id}&type=following`)}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.statValue}>{profile.following_count}</Text>
@@ -183,6 +187,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     ...typography.h1,

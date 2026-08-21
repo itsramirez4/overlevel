@@ -1,4 +1,4 @@
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -52,11 +52,15 @@ export default function ConnectionsScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.card}
-              onPress={() => router.push(`/profile/user/${item.id}`)}
+              onPress={() => router.push(`/social/user/${item.id}`)}
               activeOpacity={0.7}
             >
               <View style={styles.avatar}>
-                <UserIcon size={18} color={colors.accent.fire} strokeWidth={2} />
+                {item.avatar_url ? (
+                  <Image source={{ uri: item.avatar_url }} style={styles.avatarImage} />
+                ) : (
+                  <UserIcon size={18} color={colors.accent.fire} strokeWidth={2} />
+                )}
               </View>
               <View style={styles.info}>
                 <Text style={styles.username}>{item.username}</Text>
@@ -113,6 +117,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   info: {
     flex: 1,

@@ -1,6 +1,16 @@
 import { z } from 'zod';
 
 export const updateUserSchema = z.object({
+  // Trimmed first so a whitespace-only value can't slip through .min(3).
+  // Lowercase-only on the wire — search/lookup elsewhere compares as typed,
+  // so a mixed-case username would silently fail to match its own display form.
+  username: z
+    .string()
+    .trim()
+    .min(3)
+    .max(30)
+    .regex(/^[a-z0-9_.]+$/, 'Solo minúsculas, números, puntos y guiones bajos')
+    .optional(),
   full_name: z.string().max(100).optional(),
   bio: z.string().max(500).optional(),
   avatar_url: z.string().url().optional(),
@@ -8,6 +18,13 @@ export const updateUserSchema = z.object({
   distance_unit: z.enum(['km', 'mi']).optional(),
   body_weight: z.number().positive().optional(),
   profile_public: z.boolean().optional(),
+});
+
+export const updateAvatarSchema = z.object({
+  // A data URI (data:image/jpeg;base64,...) — kept as a plain string, not
+  // z.string().url(), since data URIs aren't valid per the WHATWG URL spec
+  // that .url() checks against.
+  image: z.string().min(1),
 });
 
 export const loginSchema = z.object({

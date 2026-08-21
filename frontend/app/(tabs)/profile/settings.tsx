@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, spacing, typography } from '../../../utils/theme';
 import { Input } from '../../../components/ui/Input';
@@ -22,10 +23,13 @@ export default function SettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [username, setUsername] = useState('');
   const [bodyWeight, setBodyWeight] = useState('');
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km');
   const [profilePublic, setProfilePublic] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -59,6 +63,40 @@ export default function SettingsScreen() {
     if (user) setProfilePublic(!!user.profile_public);
   }, [user?.profile_public]);
 
+  useEffect(() => {
+    if (user?.username) setUsername(user.username);
+  }, [user?.username]);
+
+  const handlePickAvatar = async () => {
+    setAvatarError('');
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setAvatarError('Necesitas dar permiso para acceder a tus fotos');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+    if (result.canceled || !result.assets?.[0]?.base64) return;
+
+    setAvatarUploading(true);
+    try {
+      await api.put('/users/me/avatar', { image: `data:image/jpeg;base64,${result.assets[0].base64}` });
+      await queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
+      const { data: refreshed } = await api.get('/users/me');
+      authStore.setState((s) => (s.user ? { user: { ...s.user, avatar_url: refreshed.avatar_url } } : {}));
+    } catch (err: any) {
+      setAvatarError(err.response?.data?.message || 'No se pudo subir la foto');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   const chartData = (weightHistory || []).slice(-8).map((log: any) => ({
     label: new Date(log.logged_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
     volume: Number(log.weight),
@@ -66,6 +104,11 @@ export default function SettingsScreen() {
 
   const handleSave = async () => {
     setSaveError('');
+    const trimmedUsername = username.trim().toLowerCase();
+    if (trimmedUsername.length < 3 || !/^[a-z0-9_.]+$/.test(trimmedUsername)) {
+      setSaveError('El usuario debe tener al menos 3 caracteres: minúsculas, números, puntos o guiones bajos');
+      return;
+    }
     const parsedBodyWeight = bodyWeight.trim() ? parseFloat(bodyWeight) : undefined;
     if (bodyWeight.trim() && !Number.isFinite(parsedBodyWeight)) {
       setSaveError('El peso corporal no es un número válido');
@@ -76,6 +119,7 @@ export default function SettingsScreen() {
     setSaved(false);
     try {
       await api.put('/users/me', {
+        username: trimmedUsername,
         body_weight: parsedBodyWeight,
         weight_unit: weightUnit,
         distance_unit: distanceUnit,
@@ -85,7 +129,15 @@ export default function SettingsScreen() {
       await queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
       authStore.setState((s) =>
         s.user
-          ? { user: { ...s.user, weight_unit: weightUnit, distance_unit: distanceUnit, profile_public: profilePublic } }
+          ? {
+              user: {
+                ...s.user,
+                username: trimmedUsername,
+                weight_unit: weightUnit,
+                distance_unit: distanceUnit,
+                profile_public: profilePublic,
+              },
+            }
           : {}
       );
       setSaved(true);
@@ -178,6 +230,37 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
+        <TouchableOpacity
+          style={styles.avatarContainer}
+          onPress={handlePickAvatar}
+          activeOpacity={0.7}
+          disabled={avatarUploading}
+          accessibilityRole="button"
+          accessibilityLabel="Cambiar foto de perfil"
+        >
+          <View style={styles.avatar}>
+            {user?.avatar_url ? (
+              <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />
+            ) : (
+              <Camera size={22} color={colors.text.muted} />
+            )}
+          </View>
+          <Text style={styles.avatarLabel}>{avatarUploading ? 'Subiendo…' : 'Cambiar foto'}</Text>
+        </TouchableOpacity>
+        {avatarError ? <Text style={styles.passwordError}>{avatarError}</Text> : null}
+
+        <Input
+          label="Nombre de usuario"
+          placeholder="tu_usuario"
+          value={username}
+          onChangeText={(text) => {
+            setUsername(text);
+            setSaved(false);
+            setSaveError('');
+          }}
+          autoCapitalize="none"
+        />
+
         <Text style={styles.label}>Perfil</Text>
         <View style={styles.chipsRow}>
           {([true, false] as boolean[]).map((value) => {
@@ -383,6 +466,31 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: spacing.lg,
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  avatar: {
+    width: 88,
+    height: 88,
+    borderRadius: radius.pill,
+    backgroundColor: colors.bg.elevated,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginBottom: spacing.xs,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarLabel: {
+    ...typography.tiny,
+    color: colors.accent.fire,
+    fontWeight: '700',
   },
   contentInner: {
     paddingBottom: spacing.xxl,

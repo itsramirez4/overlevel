@@ -26,7 +26,10 @@ export class UserService {
       .select()
       .single();
 
-    if (error || !data) throw new AppError('Failed to update user');
+    if (error || !data) {
+      if (error?.code === '23505') throw new AppError(`El nombre de usuario "${updates.username}" ya está en uso`, 409);
+      throw new AppError('Failed to update user');
+    }
 
     if (typeof updates.body_weight === 'number') {
       await supabaseAdmin.from('body_weight_logs').insert({
@@ -36,6 +39,42 @@ export class UserService {
     }
 
     return data as User;
+  }
+
+  /**
+   * Decodes a data URI (data:image/jpeg;base64,...) the app sends straight
+   * from the image picker, uploads it to the public `avatars` bucket under
+   * this user's id (upsert — re-uploading just replaces the old file), and
+   * points avatar_url at the resulting public URL.
+   */
+  async updateAvatar(userId: string, dataUri: string): Promise<User> {
+    const match = dataUri.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!match) throw new AppError('Imagen no válida', 400);
+
+    const [, mimeType, base64Data] = match;
+    const extension = mimeType.split('/')[1] || 'jpg';
+    const path = `${userId}.${extension}`;
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // 5MB — comfortably covers a phone photo at the picker's compressed
+    // quality setting, without letting someone post an oversized upload
+    // through a route that isn't otherwise size-limited by multer/busboy.
+    if (buffer.byteLength > 5 * 1024 * 1024) throw new AppError('La imagen no puede superar 5MB', 400);
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('avatars')
+      .upload(path, buffer, { contentType: mimeType, upsert: true });
+
+    if (uploadError) throw new AppError('No se pudo subir la imagen');
+
+    const {
+      data: { publicUrl },
+    } = supabaseAdmin.storage.from('avatars').getPublicUrl(path);
+
+    // Cache-bust: same filename every time (upsert), so without a
+    // query param the old image would keep showing from cache after a
+    // re-upload.
+    return this.updateUser(userId, { avatar_url: `${publicUrl}?v=${Date.now()}` });
   }
 
   async getBodyWeightHistory(userId: string, days = 90): Promise<BodyWeightLog[]> {

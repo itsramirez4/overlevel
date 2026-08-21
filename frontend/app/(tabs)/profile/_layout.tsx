@@ -10,9 +10,6 @@ export default function ProfileLayout() {
       <Stack.Screen name="exercises" />
       <Stack.Screen name="exercise-edit" />
       <Stack.Screen name="exercise-trash" />
-      <Stack.Screen name="search-users" />
-      <Stack.Screen name="connections" />
-      <Stack.Screen name="user/[id]" />
     </Stack>
   );
 }
