@@ -13,10 +13,14 @@ export const formatSetDuration = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-/** Pace as "min:ss /km", the standard way runners read a pace. */
-export const formatPace = (minPerKm: number | null | undefined): string => {
-  if (minPerKm == null) return '—';
-  const mins = Math.floor(minPerKm);
-  const secs = Math.round((minPerKm - mins) * 60);
-  return `${mins}:${secs.toString().padStart(2, '0')} /km`;
+/**
+ * Pace as "min:ss /km" (or /mi), the standard way runners read a pace.
+ * Pass the value already converted to the target unit (see units.ts'
+ * paceToUnit) — this only formats, it doesn't convert.
+ */
+export const formatPace = (minPerUnit: number | null | undefined, unit: 'km' | 'mi' = 'km'): string => {
+  if (minPerUnit == null) return '—';
+  const mins = Math.floor(minPerUnit);
+  const secs = Math.round((minPerUnit - mins) * 60);
+  return `${mins}:${secs.toString().padStart(2, '0')} /${unit}`;
 };

@@ -5,7 +5,7 @@ import { api } from '../../services/api';
 import { workoutStore } from '../../stores/workoutStore';
 import { authStore } from '../../stores/authStore';
 import { scheduleRestTimerNotification } from '../../services/notifications';
-import { kgToUnit, unitToKg } from '../../utils/units';
+import { kgToUnit, unitToKg, kmToUnit, unitToKm } from '../../utils/units';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 
@@ -29,6 +29,7 @@ export const SetLogger = ({
   shouldRest = true,
 }: SetLoggerProps) => {
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
+  const distanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
   const isCardio = exercise?.category === 'cardio';
   const [reps, setReps] = useState(previousSet?.reps?.toString() || '');
   const [weight, setWeight] = useState(
@@ -37,7 +38,9 @@ export const SetLogger = ({
   const [minutes, setMinutes] = useState(
     previousSet?.duration_seconds != null ? (previousSet.duration_seconds / 60).toString() : ''
   );
-  const [distance, setDistance] = useState(previousSet?.distance_km?.toString() || '');
+  const [distance, setDistance] = useState(
+    previousSet?.distance_km != null ? kmToUnit(previousSet.distance_km, distanceUnit).toString() : ''
+  );
   const [rpe, setRpe] = useState(previousSet?.rpe?.toString() || '');
   const [rest, setRest] = useState(previousSet?.rest_seconds?.toString() || '90');
   const [tempo, setTempo] = useState(previousSet?.tempo || '');
@@ -58,7 +61,10 @@ export const SetLogger = ({
         setError('Tiempo y distancia deben ser números mayores que cero');
         return;
       }
-      cardioPayload = { duration_seconds: Math.round(parsedMinutes * 60), distance_km: parsedDistance };
+      cardioPayload = {
+        duration_seconds: Math.round(parsedMinutes * 60),
+        distance_km: unitToKm(parsedDistance, distanceUnit),
+      };
     } else {
       const parsedReps = parseInt(reps, 10);
       const parsedWeight = parseFloat(weight);
@@ -122,7 +128,7 @@ export const SetLogger = ({
             </View>
             <View style={styles.half}>
               <Input
-                placeholder="Km"
+                placeholder={distanceUnit === 'mi' ? 'Millas' : 'Km'}
                 value={distance}
                 onChangeText={setDistance}
                 keyboardType="decimal-pad"

@@ -66,6 +66,38 @@ describe('setSessionExercises', () => {
   });
 });
 
+describe('moveSessionExercise', () => {
+  beforeEach(() => {
+    workoutStore.getState().setSessionExercises([mkExercise('a'), mkExercise('b'), mkExercise('c')]);
+  });
+
+  it('moves an exercise up, swapping it with its predecessor', () => {
+    workoutStore.getState().moveSessionExercise('b', 'up');
+    expect(workoutStore.getState().sessionExercises.map((e) => e.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('moves an exercise down, swapping it with its successor', () => {
+    workoutStore.getState().moveSessionExercise('b', 'down');
+    expect(workoutStore.getState().sessionExercises.map((e) => e.id)).toEqual(['a', 'c', 'b']);
+  });
+
+  it('does nothing when the first exercise is moved up', () => {
+    workoutStore.getState().moveSessionExercise('a', 'up');
+    expect(workoutStore.getState().sessionExercises.map((e) => e.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('does nothing when the last exercise is moved down', () => {
+    workoutStore.getState().moveSessionExercise('c', 'down');
+    expect(workoutStore.getState().sessionExercises.map((e) => e.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('clears superset links on a successful move', () => {
+    workoutStore.getState().toggleSupersetLink('b');
+    workoutStore.getState().moveSessionExercise('b', 'up');
+    expect(workoutStore.getState().linkedToPrevious).toEqual({});
+  });
+});
+
 describe('toggleSupersetLink', () => {
   it('flips a link on, then off again', () => {
     workoutStore.getState().toggleSupersetLink('a');

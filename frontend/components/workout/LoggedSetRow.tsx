@@ -4,7 +4,7 @@ import { Link2, Pencil, Trophy, X } from 'lucide-react-native';
 import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
 import { authStore } from '../../stores/authStore';
-import { formatWeight, kgToUnit, unitToKg } from '../../utils/units';
+import { formatWeight, kgToUnit, unitToKg, formatDistance, kmToUnit, unitToKm } from '../../utils/units';
 import { formatSetDuration } from '../../utils/duration';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
@@ -19,12 +19,15 @@ interface LoggedSetRowProps {
 
 export const LoggedSetRow = ({ set, isCardio, onChanged }: LoggedSetRowProps) => {
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
+  const distanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [weight, setWeight] = useState(kgToUnit(set.weight || 0, unit).toString());
   const [reps, setReps] = useState((set.reps ?? '').toString());
   const [minutes, setMinutes] = useState(set.duration_seconds != null ? (set.duration_seconds / 60).toString() : '');
-  const [distance, setDistance] = useState(set.distance_km?.toString() || '');
+  const [distance, setDistance] = useState(
+    set.distance_km != null ? kmToUnit(set.distance_km, distanceUnit).toString() : ''
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -38,7 +41,10 @@ export const LoggedSetRow = ({ set, isCardio, onChanged }: LoggedSetRowProps) =>
         setError('Tiempo y distancia deben ser números mayores que cero');
         return;
       }
-      payload = { duration_seconds: Math.round(parsedMinutes * 60), distance_km: parsedDistance };
+      payload = {
+        duration_seconds: Math.round(parsedMinutes * 60),
+        distance_km: unitToKm(parsedDistance, distanceUnit),
+      };
     } else {
       const parsedWeight = parseFloat(weight);
       const parsedReps = parseInt(reps, 10);
@@ -63,7 +69,7 @@ export const LoggedSetRow = ({ set, isCardio, onChanged }: LoggedSetRowProps) =>
   };
 
   const displayValue = isCardio
-    ? `${formatSetDuration(set.duration_seconds || 0)} · ${set.distance_km}km`
+    ? `${formatSetDuration(set.duration_seconds || 0)} · ${formatDistance(set.distance_km || 0, distanceUnit)}`
     : `${formatWeight(set.weight || 0, unit)} × ${set.reps} reps`;
 
   const handleDelete = async () => {
@@ -87,7 +93,12 @@ export const LoggedSetRow = ({ set, isCardio, onChanged }: LoggedSetRowProps) =>
                 <Input placeholder="Minutos" value={minutes} onChangeText={setMinutes} keyboardType="decimal-pad" />
               </View>
               <View style={styles.editInput}>
-                <Input placeholder="Km" value={distance} onChangeText={setDistance} keyboardType="decimal-pad" />
+                <Input
+                  placeholder={distanceUnit === 'mi' ? 'Millas' : 'Km'}
+                  value={distance}
+                  onChangeText={setDistance}
+                  keyboardType="decimal-pad"
+                />
               </View>
             </>
           ) : (

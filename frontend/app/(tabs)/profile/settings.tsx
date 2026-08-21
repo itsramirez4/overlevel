@@ -14,6 +14,7 @@ import { downloadOrShareJson } from '../../../services/dataExport';
 import { authStore } from '../../../stores/authStore';
 
 type WeightUnit = 'kg' | 'lbs';
+type DistanceUnit = 'km' | 'mi';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function SettingsScreen() {
   const [saveError, setSaveError] = useState('');
   const [bodyWeight, setBodyWeight] = useState('');
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
+  const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km');
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -48,6 +50,10 @@ export default function SettingsScreen() {
     if (user?.weight_unit) setWeightUnit(user.weight_unit);
   }, [user?.weight_unit]);
 
+  useEffect(() => {
+    if (user?.distance_unit) setDistanceUnit(user.distance_unit);
+  }, [user?.distance_unit]);
+
   const chartData = (weightHistory || []).slice(-8).map((log: any) => ({
     label: new Date(log.logged_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
     volume: Number(log.weight),
@@ -67,9 +73,12 @@ export default function SettingsScreen() {
       await api.put('/users/me', {
         body_weight: parsedBodyWeight,
         weight_unit: weightUnit,
+        distance_unit: distanceUnit,
       });
       await queryClient.invalidateQueries({ queryKey: ['users', 'body-weight-history'] });
-      authStore.setState((s) => ({ user: s.user ? { ...s.user, weight_unit: weightUnit } : s.user }));
+      authStore.setState((s) =>
+        s.user ? { user: { ...s.user, weight_unit: weightUnit, distance_unit: distanceUnit } } : {}
+      );
       setSaved(true);
     } catch (err: any) {
       setSaveError(err.response?.data?.message || 'No se pudo guardar. Inténtalo de nuevo.');
@@ -80,6 +89,12 @@ export default function SettingsScreen() {
 
   const handleSelectUnit = (unit: WeightUnit) => {
     setWeightUnit(unit);
+    setSaved(false);
+    setSaveError('');
+  };
+
+  const handleSelectDistanceUnit = (unit: DistanceUnit) => {
+    setDistanceUnit(unit);
     setSaved(false);
     setSaveError('');
   };
@@ -157,6 +172,27 @@ export default function SettingsScreen() {
                 key={unit}
                 style={[styles.chip, selected && styles.chipSelected]}
                 onPress={() => handleSelectUnit(unit)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  {unit.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Text style={styles.label}>Unidad de distancia</Text>
+        <View style={styles.chipsRow}>
+          {(['km', 'mi'] as DistanceUnit[]).map((unit) => {
+            const selected = unit === distanceUnit;
+            return (
+              <TouchableOpacity
+                key={unit}
+                style={[styles.chip, selected && styles.chipSelected]}
+                onPress={() => handleSelectDistanceUnit(unit)}
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}

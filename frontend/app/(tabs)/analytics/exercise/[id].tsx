@@ -10,7 +10,7 @@ import { StatCard } from '../../../../components/analytics/StatCard';
 import { Card } from '../../../../components/ui/Card';
 import { ProgressChart } from '../../../../components/analytics/ProgressChart';
 import { authStore } from '../../../../stores/authStore';
-import { kgToUnit } from '../../../../utils/units';
+import { kgToUnit, kmToUnit, formatDistance, paceToUnit } from '../../../../utils/units';
 import { formatSetDuration, formatPace } from '../../../../utils/duration';
 
 type StrengthMetric = 'estimated_1rm' | 'weight';
@@ -32,6 +32,7 @@ export default function ExerciseAnalyticsScreen() {
   const [strengthMetric, setStrengthMetric] = useState<StrengthMetric>('estimated_1rm');
   const [cardioMetric, setCardioMetric] = useState<CardioMetric>('distance_km');
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
+  const distanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['analytics', 'exercise', id],
@@ -46,10 +47,17 @@ export default function ExerciseAnalyticsScreen() {
 
   const isCardio = stats?.category === 'cardio';
   const chartPoints = isCardio
-    ? (progress || []).map((p: any) => ({ date: p.date, value: p[cardioMetric] }))
+    ? (progress || []).map((p: any) => ({
+        date: p.date,
+        value:
+          cardioMetric === 'distance_km'
+            ? kmToUnit(p.distance_km, distanceUnit)
+            : paceToUnit(p.pace_min_per_km ?? 0, distanceUnit),
+      }))
     : (progress || []).map((p: any) => ({ date: p.date, value: kgToUnit(p[strengthMetric], unit) }));
-  const avgPace =
+  const avgPaceMinPerKm =
     stats?.total_distance_km > 0 ? stats.total_duration_seconds / 60 / stats.total_distance_km : null;
+  const avgPace = avgPaceMinPerKm != null ? paceToUnit(avgPaceMinPerKm, distanceUnit) : null;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -74,17 +82,17 @@ export default function ExerciseAnalyticsScreen() {
             <View style={styles.statsRow}>
               <StatCard
                 label="Distancia máxima"
-                value={stats?.max_distance_km ? `${stats.max_distance_km}km` : '—'}
+                value={stats?.max_distance_km ? formatDistance(stats.max_distance_km, distanceUnit) : '—'}
                 icon={MapPin}
               />
               <StatCard
                 label="Distancia total"
-                value={stats?.total_distance_km ? `${stats.total_distance_km}km` : '—'}
+                value={stats?.total_distance_km ? formatDistance(stats.total_distance_km, distanceUnit) : '—'}
                 icon={Flame}
               />
             </View>
             <View style={styles.statsRow}>
-              <StatCard label="Ritmo medio" value={formatPace(avgPace)} icon={Timer} />
+              <StatCard label="Ritmo medio" value={formatPace(avgPace, distanceUnit)} icon={Timer} />
               <StatCard label="RPE medio" value={stats?.avg_rpe ?? '—'} icon={Activity} />
             </View>
           </>
@@ -155,7 +163,10 @@ export default function ExerciseAnalyticsScreen() {
                 </View>
               )}
             </View>
-            <ProgressChart points={chartPoints} unit={isCardio ? (cardioMetric === 'distance_km' ? 'km' : 'min/km') : unit} />
+            <ProgressChart
+              points={chartPoints}
+              unit={isCardio ? (cardioMetric === 'distance_km' ? distanceUnit : `min/${distanceUnit}`) : unit}
+            />
           </Card>
         )}
       </ScrollView>

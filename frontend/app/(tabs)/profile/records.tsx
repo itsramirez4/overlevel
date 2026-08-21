@@ -10,7 +10,7 @@ import { EmptyState } from '../../../components/common/EmptyState';
 import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
 import { authStore } from '../../../stores/authStore';
-import { formatWeight, kgToUnit } from '../../../utils/units';
+import { formatWeight, kgToUnit, formatDistance, paceToUnit } from '../../../utils/units';
 import { formatSetDuration, formatPace } from '../../../utils/duration';
 
 interface PersonalRecord {
@@ -30,6 +30,7 @@ export default function PersonalRecordsScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
+  const distanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
 
   const { data: records, isLoading } = useQuery<PersonalRecord[]>({
     queryKey: ['analytics', 'records'],
@@ -86,7 +87,7 @@ export default function PersonalRecordsScreen() {
                 </Text>
                 <Text style={styles.meta}>
                   {item.category === 'cardio'
-                    ? `${item.distance_km}km en ${formatSetDuration(item.duration_seconds || 0)} · ritmo ${formatPace(item.pace_min_per_km)}`
+                    ? `${formatDistance(item.distance_km || 0, distanceUnit)} en ${formatSetDuration(item.duration_seconds || 0)} · ritmo ${formatPace(item.pace_min_per_km != null ? paceToUnit(item.pace_min_per_km, distanceUnit) : null, distanceUnit)}`
                     : `${formatWeight(item.weight || 0, unit)} × ${item.reps} reps · 1RM est. ${Math.round(kgToUnit(item.estimated_1rm || 0, unit))}${unit}`}
                 </Text>
                 <Text style={styles.date}>

@@ -1,10 +1,10 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { Link2, X } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Link2, X } from 'lucide-react-native';
 import { colors, radius, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
 import { authStore } from '../../stores/authStore';
-import { formatWeight } from '../../utils/units';
+import { formatWeight, formatDistance } from '../../utils/units';
 import { formatSetDuration } from '../../utils/duration';
 import { Card } from '../ui/Card';
 import { SetLogger } from './SetLogger';
@@ -36,6 +36,10 @@ interface ExerciseLogSectionProps {
   onToggleLink: () => void;
   supersetGroup?: string;
   shouldRest: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }
 
 export const ExerciseLogSection = ({
@@ -50,8 +54,13 @@ export const ExerciseLogSection = ({
   onToggleLink,
   supersetGroup,
   shouldRest,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
 }: ExerciseLogSectionProps) => {
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
+  const distanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
   const isCardio = exercise.category === 'cardio';
   const sortedSets = [...loggedSets].sort((a, b) => a.set_number - b.set_number);
   const lastSet = sortedSets[sortedSets.length - 1];
@@ -90,14 +99,36 @@ export const ExerciseLogSection = ({
 
       <View style={styles.header}>
         <Text style={styles.name}>{exercise.name}</Text>
-        <TouchableOpacity
-          onPress={onRemove}
-          hitSlop={10}
-          accessibilityLabel="Quitar ejercicio"
-          accessibilityRole="button"
-        >
-          <X size={18} color={colors.text.muted} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={onMoveUp}
+            disabled={!canMoveUp}
+            hitSlop={10}
+            style={styles.reorderButton}
+            accessibilityLabel="Mover ejercicio arriba"
+            accessibilityRole="button"
+          >
+            <ChevronUp size={18} color={canMoveUp ? colors.text.secondary : colors.text.muted} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onMoveDown}
+            disabled={!canMoveDown}
+            hitSlop={10}
+            style={styles.reorderButton}
+            accessibilityLabel="Mover ejercicio abajo"
+            accessibilityRole="button"
+          >
+            <ChevronDown size={18} color={canMoveDown ? colors.text.secondary : colors.text.muted} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onRemove}
+            hitSlop={10}
+            accessibilityLabel="Quitar ejercicio"
+            accessibilityRole="button"
+          >
+            <X size={18} color={colors.text.muted} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <EnemyCard enemyName={exercise.name} battle={battle} />
@@ -114,7 +145,7 @@ export const ExerciseLogSection = ({
           {lastSession.sets
             .map((s) =>
               isCardio
-                ? `${formatSetDuration(s.duration_seconds || 0)}·${s.distance_km}km`
+                ? `${formatSetDuration(s.duration_seconds || 0)}·${formatDistance(s.distance_km || 0, distanceUnit)}`
                 : `${formatWeight(s.weight || 0, unit)}×${s.reps}`
             )
             .join(', ')}
@@ -160,6 +191,15 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text.primary,
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  reorderButton: {
+    width: 20,
+    alignItems: 'center',
   },
   target: {
     ...typography.tiny,

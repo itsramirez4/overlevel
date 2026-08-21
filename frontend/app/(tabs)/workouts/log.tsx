@@ -29,6 +29,7 @@ export default function WorkoutLogScreen() {
   } | null>(null);
   const sessionExercises = workoutStore((state) => state.sessionExercises);
   const removeSessionExercise = workoutStore((state) => state.removeSessionExercise);
+  const moveSessionExercise = workoutStore((state) => state.moveSessionExercise);
   const linkedToPrevious = workoutStore((state) => state.linkedToPrevious);
   const toggleSupersetLink = workoutStore((state) => state.toggleSupersetLink);
 
@@ -164,6 +165,10 @@ export default function WorkoutLogScreen() {
               onToggleLink={() => toggleSupersetLink(exercise.id)}
               supersetGroup={supersetGroups[exercise.id]}
               shouldRest={shouldRestAfter[exercise.id]}
+              onMoveUp={() => moveSessionExercise(exercise.id, 'up')}
+              onMoveDown={() => moveSessionExercise(exercise.id, 'down')}
+              canMoveUp={index > 0}
+              canMoveDown={index < sessionExercises.length - 1}
             />
           ))
         )}
