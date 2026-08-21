@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -42,7 +42,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
         <Header title="Perfil" />
 
         <Card style={styles.profileCard}>
@@ -162,7 +162,7 @@ export default function ProfileScreen() {
           onPress={handleLogout}
           style={styles.logoutButton}
         />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -176,7 +176,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  contentInner: {
     padding: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   profileCard: {
     flexDirection: 'row',
@@ -244,6 +247,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   logoutButton: {
-    marginTop: 'auto',
+    marginTop: spacing.md,
   },
 });
