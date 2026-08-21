@@ -18,4 +18,14 @@ router.put('/me/password', authRateLimiter, validateBody(changePasswordSchema), 
 router.get('/me/export', userController.exportData);
 router.post('/me/import/hevy', validateBody(importHevySchema), userController.importHevy);
 
+// Social — /search must stay before /:id, or a request for /search would
+// itself get captured as `id: "search"` by the param route below.
+router.get('/search', userController.search);
+router.get('/:id', userController.publicProfile);
+router.get('/:id/workouts', userController.publicWorkouts);
+router.get('/:id/followers', userController.followers);
+router.get('/:id/following', userController.following);
+router.post('/:id/follow', userController.follow);
+router.delete('/:id/follow', userController.unfollow);
+
 export default router;

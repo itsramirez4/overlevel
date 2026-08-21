@@ -121,6 +121,58 @@ export class UserService {
 
     return data as User | null;
   }
+
+  /**
+   * Gate for viewing anything about another account (profile, workouts,
+   * follower/following lists, following them) — always allowed for your own
+   * id regardless of profile_public, 404 for anyone else's private one. A
+   * 404 rather than 403 so a private account's existence isn't leaked to
+   * someone who isn't already looking at it (e.g. via a guessed/shared id).
+   */
+  async assertViewable(targetId: string, viewerId: string): Promise<User> {
+    const { data } = await supabaseAdmin.from('users').select('*').eq('id', targetId).maybeSingle();
+    if (!data) throw new AppError('User not found', 404);
+    if (data.id !== viewerId && !data.profile_public) throw new AppError('User not found', 404);
+    return data as User;
+  }
+
+  /** Public-safe view of another user's profile, plus the viewer's own relationship to them. */
+  async getPublicProfile(targetId: string, viewerId: string) {
+    const user = await this.assertViewable(targetId, viewerId);
+    const { followService } = await import('./followService');
+    const [counts, isFollowing] = await Promise.all([
+      followService.getCounts(targetId),
+      targetId === viewerId ? Promise.resolve(false) : followService.isFollowing(viewerId, targetId),
+    ]);
+
+    return {
+      id: user.id,
+      username: user.username,
+      full_name: user.full_name,
+      bio: user.bio,
+      avatar_url: user.avatar_url,
+      profile_public: user.profile_public,
+      created_at: user.created_at,
+      followers_count: counts.followers,
+      following_count: counts.following,
+      is_following: isFollowing,
+      is_self: targetId === viewerId,
+    };
+  }
+
+  /** Public accounts only, by username — private accounts don't show up so they can't be followed via search either. */
+  async search(query: string, viewerId: string) {
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .select('id, username, full_name, avatar_url')
+      .eq('profile_public', true)
+      .neq('id', viewerId)
+      .ilike('username', `%${query}%`)
+      .limit(20);
+
+    if (error) throw new AppError('Failed to search users');
+    return data || [];
+  }
 }
 
 export const userService = new UserService();

@@ -2,6 +2,8 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { userService } from '../services/userService';
 import { importService } from '../services/importService';
+import { followService } from '../services/followService';
+import { workoutService } from '../services/workoutService';
 import { parsePositiveIntParam } from '../utils/queryParams';
 
 export class UserController {
@@ -34,6 +36,44 @@ export class UserController {
   async importHevy(req: AuthRequest, res: Response) {
     const result = await importService.importHevyCsv(req.userId!, req.body.csv);
     res.json(result);
+  }
+
+  async search(req: AuthRequest, res: Response) {
+    const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    if (!query) return res.json([]);
+    const results = await userService.search(query, req.userId!);
+    res.json(results);
+  }
+
+  async publicProfile(req: AuthRequest, res: Response) {
+    const profile = await userService.getPublicProfile(req.params.id, req.userId!);
+    res.json(profile);
+  }
+
+  async publicWorkouts(req: AuthRequest, res: Response) {
+    const limit = parsePositiveIntParam(req.query.limit, 20);
+    const workouts = await workoutService.listPublic(req.params.id, req.userId!, limit);
+    res.json(workouts);
+  }
+
+  async follow(req: AuthRequest, res: Response) {
+    await followService.follow(req.userId!, req.params.id);
+    res.status(204).send();
+  }
+
+  async unfollow(req: AuthRequest, res: Response) {
+    await followService.unfollow(req.userId!, req.params.id);
+    res.status(204).send();
+  }
+
+  async followers(req: AuthRequest, res: Response) {
+    await userService.assertViewable(req.params.id, req.userId!);
+    res.json(await followService.listFollowers(req.params.id));
+  }
+
+  async following(req: AuthRequest, res: Response) {
+    await userService.assertViewable(req.params.id, req.userId!);
+    res.json(await followService.listFollowing(req.params.id));
   }
 }
 

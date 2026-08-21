@@ -4,6 +4,7 @@ import { AppError } from '../middleware/errorHandler';
 import { characterService } from './characterService';
 import { battleService } from './battleService';
 import { routineService } from './routineService';
+import { userService } from './userService';
 
 export class WorkoutService {
   async list(userId: string, limit = 20): Promise<Workout[]> {
@@ -11,6 +12,28 @@ export class WorkoutService {
       .from('workouts')
       .select('*, sets(*, exercises(name)), routines(name)')
       .eq('user_id', userId)
+      .order('started_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw new AppError('Failed to fetch workouts');
+    return (data || []) as Workout[];
+  }
+
+  /**
+   * Another user's completed workouts, for their public profile — gated by
+   * the same assertViewable rule as the profile itself (own account, or a
+   * public one). Only completed ones: an in-progress session isn't really
+   * "content" to show on a profile, and showing it would leak that they're
+   * mid-workout right now.
+   */
+  async listPublic(targetId: string, viewerId: string, limit = 20): Promise<Workout[]> {
+    await userService.assertViewable(targetId, viewerId);
+
+    const { data, error } = await supabaseAdmin
+      .from('workouts')
+      .select('*, sets(*, exercises(name)), routines(name)')
+      .eq('user_id', targetId)
+      .not('completed_at', 'is', null)
       .order('started_at', { ascending: false })
       .limit(limit);
 

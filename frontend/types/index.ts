@@ -35,6 +35,23 @@ export interface Exercise {
   distance_unit?: 'km' | 'mi';
 }
 
+export interface PublicUser {
+  id: string;
+  username: string;
+  full_name?: string;
+  avatar_url?: string;
+}
+
+export interface PublicProfile extends PublicUser {
+  bio?: string;
+  profile_public: boolean;
+  created_at: string;
+  followers_count: number;
+  following_count: number;
+  is_following: boolean;
+  is_self: boolean;
+}
+
 export interface RoutineExercise {
   id: string;
   routine_id: string;

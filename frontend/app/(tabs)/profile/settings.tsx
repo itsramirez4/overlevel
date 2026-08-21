@@ -25,6 +25,7 @@ export default function SettingsScreen() {
   const [bodyWeight, setBodyWeight] = useState('');
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km');
+  const [profilePublic, setProfilePublic] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -54,6 +55,10 @@ export default function SettingsScreen() {
     if (user?.distance_unit) setDistanceUnit(user.distance_unit);
   }, [user?.distance_unit]);
 
+  useEffect(() => {
+    if (user) setProfilePublic(!!user.profile_public);
+  }, [user?.profile_public]);
+
   const chartData = (weightHistory || []).slice(-8).map((log: any) => ({
     label: new Date(log.logged_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
     volume: Number(log.weight),
@@ -74,10 +79,14 @@ export default function SettingsScreen() {
         body_weight: parsedBodyWeight,
         weight_unit: weightUnit,
         distance_unit: distanceUnit,
+        profile_public: profilePublic,
       });
       await queryClient.invalidateQueries({ queryKey: ['users', 'body-weight-history'] });
+      await queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
       authStore.setState((s) =>
-        s.user ? { user: { ...s.user, weight_unit: weightUnit, distance_unit: distanceUnit } } : {}
+        s.user
+          ? { user: { ...s.user, weight_unit: weightUnit, distance_unit: distanceUnit, profile_public: profilePublic } }
+          : {}
       );
       setSaved(true);
     } catch (err: any) {
@@ -89,6 +98,12 @@ export default function SettingsScreen() {
 
   const handleSelectUnit = (unit: WeightUnit) => {
     setWeightUnit(unit);
+    setSaved(false);
+    setSaveError('');
+  };
+
+  const handleSelectProfilePublic = (value: boolean) => {
+    setProfilePublic(value);
     setSaved(false);
     setSaveError('');
   };
@@ -163,6 +178,32 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
+        <Text style={styles.label}>Perfil</Text>
+        <View style={styles.chipsRow}>
+          {([true, false] as boolean[]).map((value) => {
+            const selected = value === profilePublic;
+            return (
+              <TouchableOpacity
+                key={String(value)}
+                style={[styles.chip, selected && styles.chipSelected]}
+                onPress={() => handleSelectProfilePublic(value)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  {value ? 'Público' : 'Privado'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Text style={styles.helperText}>
+          {profilePublic
+            ? 'Cualquier persona puede encontrarte, ver tus entrenamientos y seguirte.'
+            : 'Nadie puede encontrarte, ver tus entrenamientos ni seguirte.'}
+        </Text>
+
         <Text style={styles.label}>Unidad de peso</Text>
         <View style={styles.chipsRow}>
           {(['kg', 'lbs'] as WeightUnit[]).map((unit) => {
@@ -390,6 +431,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.md,
+  },
+  helperText: {
+    ...typography.tiny,
+    color: colors.text.muted,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.lg,
   },
   chip: {
     flex: 1,
