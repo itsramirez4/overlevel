@@ -1,12 +1,30 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { Stack } from 'expo-router';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { QueryClientProvider, QueryClient, focusManager, onlineManager } from '@tanstack/react-query';
+import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from '../hooks/useAuth';
 import { Loader } from '../components/ui/Loader';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
 const queryClient = new QueryClient();
+
+// React Query's "refetch on focus/reconnect" only works out of the box on
+// web (it listens for the browser's visibilitychange/online events) — on
+// native it needs to be told about those transitions itself. Without this,
+// a screen that was already mounted with stale cached data (e.g. the
+// dashboard, or a workout list) never re-fetches when you background the
+// app and come back, or switch tabs — only an explicit invalidateQueries
+// call (or a full app restart, which throws the whole cache away) shows the
+// change, which read to the user as "I have to close and reopen the app".
+if (Platform.OS !== 'web') {
+  AppState.addEventListener('change', (status) => {
+    focusManager.setFocused(status === 'active');
+  });
+  onlineManager.setEventListener((setOnline) =>
+    NetInfo.addEventListener((state) => setOnline(!!state.isConnected))
+  );
+}
 
 export default function RootLayout() {
   // useAuth() already calls authStore.checkAuth() internally and tracks

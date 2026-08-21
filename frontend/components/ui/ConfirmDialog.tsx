@@ -10,6 +10,7 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
+  loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -21,6 +22,7 @@ export const ConfirmDialog = ({
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
   destructive,
+  loading,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) => (
@@ -31,13 +33,15 @@ export const ConfirmDialog = ({
     {!!message && <Text style={styles.message}>{message}</Text>}
     <View style={styles.actions}>
       <View style={styles.actionButton}>
-        <Button label={cancelLabel} variant="ghost" onPress={onCancel} />
+        <Button label={cancelLabel} variant="ghost" onPress={onCancel} disabled={loading} />
       </View>
       <View style={styles.actionButton}>
         <Button
           label={confirmLabel}
           variant={destructive ? 'primary' : 'outline'}
           onPress={onConfirm}
+          loading={loading}
+          disabled={loading}
           style={destructive ? styles.destructiveButton : undefined}
         />
       </View>

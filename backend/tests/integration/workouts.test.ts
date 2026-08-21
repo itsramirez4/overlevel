@@ -76,7 +76,7 @@ describe('workouts', () => {
     expect(second.status).toBe(400);
   });
 
-  it('rejects logging a set on an already-completed workout', async () => {
+  it('allows logging a set on an already-completed workout, but skips battles (no retroactive XP/battle effects)', async () => {
     const started = await request(app).post('/api/workouts').set(authHeader(user)).send({});
     const workoutId = started.body.id;
     await request(app).put(`/api/workouts/${workoutId}/complete`).set(authHeader(user)).send({});
@@ -88,7 +88,9 @@ describe('workouts', () => {
       .set(authHeader(user))
       .send({ workout_id: workoutId, exercise_id: exercise.body.id, set_number: 1, weight: 60, reps: 8 });
 
-    expect(setRes.status).toBe(400);
+    expect(setRes.status).toBe(201);
+    expect(setRes.body.battle).toBeUndefined();
+    expect(setRes.body.is_pr).toBe(true);
   });
 
   it('one user cannot view or complete another user\'s workout', async () => {

@@ -135,11 +135,16 @@ export class SetService {
   }
 
   /**
-   * Logging a set on an already-completed workout would silently create a
-   * new exercise_battles row that nothing ever finishes again (finishForWorkout
-   * already ran) — it'd sit forever un-defeated in that workout's battle list.
+   * A completed workout can still be edited (add/edit/delete sets, even
+   * whole exercises) after the fact — it just doesn't re-fight battles or
+   * re-award XP, both of which only ever happen once, at completion time.
+   * `log()` uses the returned completed_at to skip battleService entirely
+   * for that case: applying damage post-completion would either silently
+   * create a new exercise_battles row that finishForWorkout already ran
+   * and will never finish again, or land a hit on a battle that's already
+   * a defeated one-way ratchet.
    */
-  private async assertWorkoutWritable(workoutId: string, userId: string): Promise<void> {
+  private async getWorkoutForLog(workoutId: string, userId: string): Promise<{ completed_at: string | null }> {
     const { data } = await supabaseAdmin
       .from('workouts')
       .select('id, completed_at')
@@ -148,7 +153,7 @@ export class SetService {
       .single();
 
     if (!data) throw new AppError('Workout not found', 404);
-    if (data.completed_at) throw new AppError('No se pueden añadir series a un entrenamiento ya finalizado', 400);
+    return data;
   }
 
   async listByWorkout(workoutId: string, userId: string): Promise<Set[]> {
@@ -165,7 +170,7 @@ export class SetService {
   }
 
   async log(userId: string, input: Partial<Set>): Promise<Set & { battle?: ExerciseBattle }> {
-    await this.assertWorkoutWritable(input.workout_id!, userId);
+    const workout = await this.getWorkoutForLog(input.workout_id!, userId);
 
     const { data: exercise } = await supabaseAdmin
       .from('exercises')
@@ -206,8 +211,9 @@ export class SetService {
 
     if (error || !data) throw new AppError('Failed to log set');
 
-    // Warmups don't land hits — no-op if the exercise doesn't have a battle yet either.
-    const battle = input.is_warmup
+    // Warmups don't land hits, and neither does editing a workout after the
+    // fact — battles only fight during the live session (see getWorkoutForLog).
+    const battle = input.is_warmup || workout.completed_at
       ? undefined
       : await battleService.applyDamage(
           input.workout_id!,
