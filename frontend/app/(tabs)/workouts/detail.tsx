@@ -13,8 +13,8 @@ import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { EditWorkoutDialog } from '../../../components/workout/EditWorkoutDialog';
 import { getWorkoutName } from '../../../utils/workoutName';
 import { feltLikeLabel } from '../../../utils/feltLike';
-import { formatWeight, kgToUnit } from '../../../utils/units';
-import { formatDuration } from '../../../utils/duration';
+import { formatWeight, kgToUnit, formatDistance } from '../../../utils/units';
+import { formatDuration, formatSetDuration } from '../../../utils/duration';
 import { authStore } from '../../../stores/authStore';
 
 export default function WorkoutDetailScreen() {
@@ -25,6 +25,7 @@ export default function WorkoutDetailScreen() {
   const [editOpen, setEditOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
+  const globalDistanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
 
   const { data: workout, isLoading } = useQuery({
     queryKey: ['workouts', id],
@@ -73,13 +74,20 @@ export default function WorkoutDetailScreen() {
     .reduce((sum: number, s: any) => sum + s.weight * s.reps, 0);
 
   const exerciseGroups = Object.values(
-    sets.reduce((groups: Record<string, { name: string; sets: any[] }>, set: any) => {
+    sets.reduce((groups: Record<string, { exerciseId: string; name: string; isCardio: boolean; sets: any[] }>, set: any) => {
       const key = set.exercise_id;
-      if (!groups[key]) groups[key] = { name: set.exercises?.name || 'Ejercicio', sets: [] };
+      if (!groups[key]) {
+        groups[key] = {
+          exerciseId: key,
+          name: set.exercises?.name || 'Ejercicio',
+          isCardio: set.exercises?.category === 'cardio',
+          sets: [],
+        };
+      }
       groups[key].sets.push(set);
       return groups;
     }, {})
-  ) as { name: string; sets: any[] }[];
+  ) as { exerciseId: string; name: string; isCardio: boolean; sets: any[] }[];
 
   exerciseGroups.forEach((g) => g.sets.sort((a, b) => a.set_number - b.set_number));
 
@@ -135,7 +143,7 @@ export default function WorkoutDetailScreen() {
 
       <FlatList
         data={exerciseGroups}
-        keyExtractor={(item) => item.name}
+        keyExtractor={(item) => item.exerciseId}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <View style={styles.statsRow}>
@@ -166,7 +174,9 @@ export default function WorkoutDetailScreen() {
               >
                 <Text style={styles.setNumber}>{set.set_number}</Text>
                 <Text style={styles.setValue}>
-                  {formatWeight(set.weight, unit)} × {set.reps} reps
+                  {item.isCardio
+                    ? `${formatSetDuration(set.duration_seconds || 0)} · ${formatDistance(set.distance_km || 0, set.exercises?.distance_unit || globalDistanceUnit)}`
+                    : `${formatWeight(set.weight || 0, set.exercises?.weight_unit || unit)} × ${set.reps} reps`}
                 </Text>
                 {set.is_warmup ? <Text style={styles.warmupTag}>Calentamiento</Text> : null}
                 {set.superset_group ? (
