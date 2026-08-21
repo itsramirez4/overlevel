@@ -13,6 +13,22 @@ describe('workouts', () => {
     await deleteTestUser(user.id);
   });
 
+  it('starting a routine-based workout embeds the routine name (used to prefill the completion title)', async () => {
+    const routine = await request(app).post('/api/routines').set(authHeader(user)).send({ name: 'Push Day' });
+    const started = await request(app)
+      .post('/api/workouts')
+      .set(authHeader(user))
+      .send({ routine_id: routine.body.id });
+
+    expect(started.status).toBe(201);
+    expect(started.body.routines?.name).toBe('Push Day');
+  });
+
+  it('a freestyle workout (no routine_id) has no routine name embedded', async () => {
+    const started = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+    expect(started.body.routines).toBeFalsy();
+  });
+
   it('rejects starting a workout against another user\'s routine_id', async () => {
     const victim = await createTestUser('workouts-victim');
     try {

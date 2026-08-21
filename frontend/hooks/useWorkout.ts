@@ -35,9 +35,10 @@ export const useWorkout = () => {
     return data;
   };
 
-  const completeWorkout = async (feltLike?: string, notes?: string) => {
+  const completeWorkout = async (title?: string, feltLike?: string, notes?: string) => {
     if (!currentWorkout) return;
     const { data } = await api.put(`/workouts/${currentWorkout.id}/complete`, {
+      title,
       felt_like: feltLike,
       notes,
     });

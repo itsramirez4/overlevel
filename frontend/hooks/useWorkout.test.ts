@@ -77,9 +77,13 @@ describe('completeWorkout', () => {
     mockedApi.put.mockResolvedValue({ data: { id: 'w3', completed_at: '2026-01-01T01:00:00Z' } });
 
     const { result } = await renderHook(() => useWorkout());
-    const returned = await act(async () => result.current.completeWorkout('good', 'felt great'));
+    const returned = await act(async () => result.current.completeWorkout('Leg Day', 'good', 'felt great'));
 
-    expect(mockedApi.put).toHaveBeenCalledWith('/workouts/w3/complete', { felt_like: 'good', notes: 'felt great' });
+    expect(mockedApi.put).toHaveBeenCalledWith('/workouts/w3/complete', {
+      title: 'Leg Day',
+      felt_like: 'good',
+      notes: 'felt great',
+    });
     expect(workoutStore.getState().currentWorkout).toBeNull();
     expect(workoutStore.getState().sessionExercises).toEqual([]);
     expect(returned).toEqual({ id: 'w3', completed_at: '2026-01-01T01:00:00Z' });

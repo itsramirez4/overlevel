@@ -43,7 +43,10 @@ export class WorkoutService {
         routine_id: routineId,
         started_at: new Date().toISOString(),
       })
-      .select()
+      // Same routines(name) embed as getById — the complete-workout dialog
+      // prefills its title from this, so a routine-based session needs the
+      // name available right away, not just after a later refetch.
+      .select('*, routines(name)')
       .single();
 
     if (error || !data) throw new AppError('Failed to start workout');

@@ -9,11 +9,21 @@ import { Button } from '../ui/Button';
 interface CompleteWorkoutDialogProps {
   visible: boolean;
   loading?: boolean;
-  onConfirm: (feltLike?: string, notes?: string) => void;
+  /** Prefilled into the title field — the routine's name for a routine-based
+   * workout, or empty for a free one (same as Hevy). Still fully editable. */
+  defaultTitle?: string;
+  onConfirm: (title?: string, feltLike?: string, notes?: string) => void;
   onCancel: () => void;
 }
 
-export const CompleteWorkoutDialog = ({ visible, loading, onConfirm, onCancel }: CompleteWorkoutDialogProps) => {
+export const CompleteWorkoutDialog = ({
+  visible,
+  loading,
+  defaultTitle,
+  onConfirm,
+  onCancel,
+}: CompleteWorkoutDialogProps) => {
+  const [title, setTitle] = useState(defaultTitle || '');
   const [feltLike, setFeltLike] = useState<string | undefined>();
   const [notes, setNotes] = useState('');
 
@@ -22,18 +32,21 @@ export const CompleteWorkoutDialog = ({ visible, loading, onConfirm, onCancel }:
   // what the user typed instead of silently discarding it.
   useEffect(() => {
     if (!visible) {
+      setTitle(defaultTitle || '');
       setFeltLike(undefined);
       setNotes('');
     }
-  }, [visible]);
+  }, [visible, defaultTitle]);
 
   const handleConfirm = () => {
-    onConfirm(feltLike, notes.trim() || undefined);
+    onConfirm(title.trim() || undefined, feltLike, notes.trim() || undefined);
   };
 
   return (
     <Modal visible={visible} onClose={onCancel}>
       <Text style={styles.title}>¿Cómo te sentiste?</Text>
+
+      <Input label="Título (opcional)" placeholder="Nombre del entrenamiento" value={title} onChangeText={setTitle} />
 
       <View style={styles.options}>
         {feltLikeOptions.map((option) => (

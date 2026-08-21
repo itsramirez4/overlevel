@@ -98,11 +98,11 @@ export default function WorkoutLogScreen() {
     );
   }
 
-  const handleComplete = async (feltLike?: string, notes?: string) => {
+  const handleComplete = async (title?: string, feltLike?: string, notes?: string) => {
     if (completing) return;
     setCompleting(true);
     try {
-      const result = await completeWorkout(feltLike, notes);
+      const result = await completeWorkout(title, feltLike, notes);
       setCompleteDialogOpen(false);
       if (result?.xp_award) {
         setXpAward(result.xp_award);
@@ -193,6 +193,7 @@ export default function WorkoutLogScreen() {
       <CompleteWorkoutDialog
         visible={completeDialogOpen}
         loading={completing}
+        defaultTitle={currentWorkout.title || currentWorkout.routines?.name}
         onConfirm={handleComplete}
         onCancel={() => !completing && setCompleteDialogOpen(false)}
       />
