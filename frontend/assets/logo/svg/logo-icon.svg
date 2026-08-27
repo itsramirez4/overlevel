@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+<defs>
+  <clipPath id="inner"><circle cx="128" cy="128" r="82"/></clipPath>
+</defs>
+<!-- O: open at lower-right to integrate the L -->
+<path d="M177 70 A82 82 0 1 0 196 137" fill="none" stroke="#FF5A4A" stroke-width="24" stroke-linecap="butt"/>
+<!-- L foot -->
+<path d="M137 151 L137 202 L209 202" fill="none" stroke="#FF5A4A" stroke-width="24" stroke-linecap="butt" stroke-linejoin="miter"/>
+<!-- Progress / level-up bar -->
+<path d="M73 207 L183 61" fill="none" stroke="#FFD700" stroke-width="22" stroke-linecap="butt"/>
+</svg>

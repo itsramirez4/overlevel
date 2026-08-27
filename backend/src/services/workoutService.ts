@@ -1,8 +1,6 @@
 import { supabaseAdmin } from '../config/supabase';
 import { Workout } from '../types';
 import { AppError } from '../middleware/errorHandler';
-import { characterService } from './characterService';
-import { battleService } from './battleService';
 import { routineService } from './routineService';
 import { userService } from './userService';
 
@@ -53,7 +51,29 @@ export class WorkoutService {
     return data as Workout;
   }
 
-  async start(userId: string, routineId?: string): Promise<Workout> {
+  async start(userId: string, routineId?: string): Promise<Workout & { resumed?: boolean }> {
+    // Idempotent: if the user already has an incomplete workout, return it
+    // instead of creating a new one. Without this, nothing server-side ever
+    // guarded against starting a second one — if the client's local
+    // "current workout" state was ever lost (reinstall, storage cleared, a
+    // crash before it persisted), the old one became permanently orphaned:
+    // stuck with completed_at null forever, still counted in
+    // workouts_this_month, still showing in "recent workouts" as a
+    // confusing "0 sets" entry, with no UI path anywhere that could ever
+    // call complete() on it again. Embeds sets(exercises) same as getById
+    // so the caller can rebuild its session-exercise list from what's
+    // already logged, not just show a blank "no exercises yet" screen.
+    const { data: existing } = await supabaseAdmin
+      .from('workouts')
+      .select('*, sets(*, exercises(*)), routines(name)')
+      .eq('user_id', userId)
+      .is('completed_at', null)
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) return { ...(existing as Workout), resumed: true };
+
     // Throws 404 if the routine doesn't exist or belongs to someone else —
     // otherwise a guessed/leaked routine id would get embedded in this
     // workout and leak that other account's routine name back via getById/list.
@@ -81,43 +101,25 @@ export class WorkoutService {
     userId: string,
     updates: Partial<Workout>
   ): Promise<Workout & { xp_award?: { xpGained: number; leveledUp: boolean; previousLevel: number; newLevel: number } }> {
-    const { data: existing } = await supabaseAdmin
-      .from('workouts')
-      .select('started_at, completed_at')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single();
+    // Marking the workout complete, awarding XP, and finishing battles all
+    // happen inside complete_workout() (see migration 031) as one Postgres
+    // transaction — either the whole thing lands or none of it does, so
+    // there's no partial-failure state to detect or resume here anymore.
+    const { data, error } = await supabaseAdmin.rpc('complete_workout', {
+      p_workout_id: id,
+      p_user_id: userId,
+      p_title: updates.title ?? null,
+      p_notes: updates.notes ?? null,
+      p_felt_like: updates.felt_like ?? null,
+    });
 
-    if (!existing) throw new AppError('Workout not found', 404);
-    // Without this, re-calling complete on an already-completed workout
-    // would re-award XP every time (characterService.awardXpForWorkout has
-    // no idempotency check of its own) — free, unlimited leveling.
-    if (existing.completed_at) throw new AppError('Workout already completed', 400);
+    if (error) {
+      if (error.message?.includes('WORKOUT_NOT_FOUND')) throw new AppError('Workout not found', 404);
+      if (error.message?.includes('WORKOUT_ALREADY_COMPLETED')) throw new AppError('Workout already completed', 400);
+      throw new AppError('Failed to complete workout');
+    }
 
-    const completedAt = new Date();
-    const durationMinutes = Math.round(
-      (completedAt.getTime() - new Date(existing.started_at).getTime()) / 60000
-    );
-
-    const { data, error } = await supabaseAdmin
-      .from('workouts')
-      .update({ ...updates, completed_at: completedAt.toISOString(), duration_minutes: durationMinutes })
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error || !data) throw new AppError('Failed to complete workout');
-
-    // No-op (returns null) if the user hasn't created a character — the RPG
-    // layer is additive and never required for the tracker itself to work.
-    const xpAward = await characterService.awardXpForWorkout(userId, id);
-
-    // The kill guarantee: whatever HP any battle from this workout has left,
-    // finish it off now.
-    await battleService.finishForWorkout(id, userId);
-
-    return { ...(data as Workout), xp_award: xpAward || undefined };
+    return { ...(data.workout as Workout), xp_award: data.xp_award || undefined };
   }
 
   /** Editing title/notes/felt_like after the fact — deliberately separate from
@@ -140,13 +142,19 @@ export class WorkoutService {
   }
 
   async remove(id: string, userId: string): Promise<void> {
-    const { error } = await supabaseAdmin
+    // .select() + a row-found check, same as exercises/routines' remove() —
+    // without it, deleting a nonexistent/not-owned id silently "succeeds"
+    // instead of 404ing, masking bugs that every sibling endpoint would catch.
+    const { data, error } = await supabaseAdmin
       .from('workouts')
       .delete()
       .eq('id', id)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .select('id')
+      .maybeSingle();
 
     if (error) throw new AppError('Failed to delete workout');
+    if (!data) throw new AppError('Workout not found', 404);
   }
 }
 

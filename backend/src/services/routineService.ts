@@ -1,18 +1,24 @@
 import { supabaseAdmin } from '../config/supabase';
 import { Routine, RoutineExercise } from '../types';
 import { AppError } from '../middleware/errorHandler';
+import { fetchAllRows } from '../utils/pagination';
 
 export class RoutineService {
+  // Not bounded by a workout/time range — a user with a lot of routines
+  // could otherwise hit PostgREST's 1000-row response cap and have this
+  // silently truncate instead of erroring. See utils/pagination.ts.
   async list(userId: string): Promise<Routine[]> {
-    const { data, error } = await supabaseAdmin
-      .from('routines')
-      .select('*, routine_exercises(*, exercises(*))')
-      .eq('user_id', userId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+    const data = await fetchAllRows<Routine>((from, to) =>
+      supabaseAdmin
+        .from('routines')
+        .select('*, routine_exercises(*, exercises(*))')
+        .eq('user_id', userId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .range(from, to)
+    );
 
-    if (error) throw new AppError('Failed to fetch routines');
-    return (data || []) as Routine[];
+    return data;
   }
 
   async getById(id: string, userId: string): Promise<Routine> {
@@ -29,15 +35,17 @@ export class RoutineService {
   }
 
   async listTrash(userId: string): Promise<Routine[]> {
-    const { data, error } = await supabaseAdmin
-      .from('routines')
-      .select('*')
-      .eq('user_id', userId)
-      .not('deleted_at', 'is', null)
-      .order('deleted_at', { ascending: false });
+    const data = await fetchAllRows<Routine>((from, to) =>
+      supabaseAdmin
+        .from('routines')
+        .select('*')
+        .eq('user_id', userId)
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false })
+        .range(from, to)
+    );
 
-    if (error) throw new AppError('Failed to fetch trash');
-    return (data || []) as Routine[];
+    return data;
   }
 
   async create(userId: string, input: Partial<Routine>): Promise<Routine> {

@@ -17,6 +17,7 @@ coverage/
 .DS_Store
 Thumbs.db
 .vscode/
+.claude/
 
 # Raw sprite-generator output for character art (design/) and personal
 # scratch files like CSV exports (local/) — source material, never shipped.

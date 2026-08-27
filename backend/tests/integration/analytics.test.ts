@@ -43,6 +43,18 @@ async function insertSet(
   });
 }
 
+async function insertCardioSet(workoutId: string, exerciseId: string, setNumber: number, distanceKm: number) {
+  await supabaseAdmin.from('sets').insert({
+    workout_id: workoutId,
+    exercise_id: exerciseId,
+    set_number: setNumber,
+    distance_km: distanceKm,
+    duration_seconds: 1800,
+    is_warmup: false,
+    is_pr: false,
+  });
+}
+
 function utcDaysAgo(days: number): Date {
   const d = new Date();
   d.setUTCHours(12, 0, 0, 0); // midday, safely clear of any date-boundary rounding
@@ -79,6 +91,18 @@ describe('analytics', () => {
 
       const res = await request(app).get('/api/analytics/summary').set(authHeader(user));
       expect(res.body.workouts_this_month).toBe(1);
+      expect(res.body.total_volume).toBe(500);
+    });
+
+    // Cardio sets have no weight/reps (they're NULL by design), so a plain
+    // weight*reps sum silently counts every cardio set as 0 volume — this
+    // used to disagree with XP/battle damage, which are category-aware.
+    it("counts a cardio set's distance-based effort as volume, not zero", async () => {
+      const exercise = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Analytics Run', category: 'cardio' });
+      const workout = await insertHistoricalWorkout(user.id, utcDaysAgo(0));
+      await insertCardioSet(workout.id, exercise.body.id, 1, 5); // 5km -> effort 500
+
+      const res = await request(app).get('/api/analytics/summary').set(authHeader(user));
       expect(res.body.total_volume).toBe(500);
     });
 

@@ -140,9 +140,9 @@ export class SetService {
    * re-award XP, both of which only ever happen once, at completion time.
    * `log()` uses the returned completed_at to skip battleService entirely
    * for that case: applying damage post-completion would either silently
-   * create a new exercise_battles row that finishForWorkout already ran
-   * and will never finish again, or land a hit on a battle that's already
-   * a defeated one-way ratchet.
+   * create a new exercise_battles row that complete_workout() (migration
+   * 031) already ran and will never finish again, or land a hit on a battle
+   * that's already a defeated one-way ratchet.
    */
   private async getWorkoutForLog(workoutId: string, userId: string): Promise<{ completed_at: string | null }> {
     const { data } = await supabaseAdmin

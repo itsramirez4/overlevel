@@ -45,8 +45,8 @@ export class BattleService {
   /**
    * Trophy list — every exercise ever defeated, with how many times and
    * when. Reuses the one-way `defeated` ratchet already guaranteed by
-   * finishForWorkout(), so a kill recorded here never gets un-recorded by
-   * later editing/deleting sets from that workout.
+   * complete_workout() (migration 031), so a kill recorded here never gets
+   * un-recorded by later editing/deleting sets from that workout.
    */
   async getBestiary(userId: string): Promise<BestiaryEntry[]> {
     const battles = await fetchAllRows<{ exercise_id: string; defeated_at: string | null }>((from, to) =>
@@ -104,7 +104,7 @@ export class BattleService {
    * it's never recalculated or reversed by editing/deleting sets afterward,
    * same as a real hit landed can't be un-landed. How much damage lands is
    * mostly flavor; the actual "you WILL kill this enemy" guarantee lives in
-   * finishForWorkout(), not here.
+   * complete_workout() (see migration 031), not here.
    */
   async applyDamage(
     workoutId: string,
@@ -122,45 +122,39 @@ export class BattleService {
     // bar; a noticeably harder-than-usual set does more.
     const damage = Math.max(1, Math.round((effort / referenceVolumePerSet) * (battle.hp_max / 4)));
 
-    const nextHp = Math.max(0, battle.hp_current - damage);
-    const defeated = nextHp === 0;
+    // apply_battle_damage (migration 032) does the hp_current read-and-write
+    // in one atomic SQL statement — two sets landing close together each
+    // subtract from the true current value instead of racing on a JS-side
+    // read-modify-write and losing damage.
+    const { data, error } = await supabaseAdmin.rpc('apply_battle_damage', {
+      p_battle_id: battle.id,
+      p_damage: damage,
+    });
 
-    const { data: updated, error } = await supabaseAdmin
-      .from('exercise_battles')
-      .update({
-        hp_current: nextHp,
-        defeated,
-        defeated_at: defeated ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', battle.id)
-      .select()
-      .single();
+    if (error) throw new AppError('Failed to apply damage');
 
-    if (error || !updated) throw new AppError('Failed to apply damage');
-    return updated as ExerciseBattle;
+    if (!data) {
+      // NULL means a concurrent hit already defeated this battle between
+      // our getOrCreate() and this call — return its current state instead
+      // of treating "someone else finished it first" as an error.
+      const { data: current, error: fetchError } = await supabaseAdmin
+        .from('exercise_battles')
+        .select('*')
+        .eq('id', battle.id)
+        .single();
+
+      if (fetchError || !current) throw new AppError('Failed to apply damage');
+      return current as ExerciseBattle;
+    }
+
+    return data as ExerciseBattle;
   }
 
-  /**
-   * The guarantee: however much real damage landed, completing the workout
-   * finishes off every battle it touched. No combination of sets/reps can
-   * leave an enemy alive past the end of the workout, and — since this only
-   * ever flips defeated false→true, never the reverse — a set deleted
-   * afterward can't undo a kill already recorded here.
-   */
-  async finishForWorkout(workoutId: string, userId: string): Promise<void> {
-    await supabaseAdmin
-      .from('exercise_battles')
-      .update({
-        hp_current: 0,
-        defeated: true,
-        defeated_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('workout_id', workoutId)
-      .eq('user_id', userId)
-      .eq('defeated', false);
-  }
+  // The "finish every battle on workout completion" guarantee (however much
+  // real damage landed, no combination of sets/reps can leave an enemy alive
+  // past the end of the workout) used to live here as finishForWorkout() —
+  // it now runs inside complete_workout() (migration 031), in the same
+  // transaction as marking the workout complete and awarding XP.
 
   /**
    * The "usual effort" a fresh set is judged against. Strength exercises

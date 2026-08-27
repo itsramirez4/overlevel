@@ -55,6 +55,17 @@ export class ImportService {
 
     if (rows.length === 0) throw new AppError('El CSV no tiene filas', 400);
 
+    // Every row costs at least one sequential, awaited insert below (often
+    // two, for a set plus its workout/exercise) — the 5MB body cap
+    // (validators.ts) still allows tens of thousands of rows for a file
+    // with short lines, which would tie up this request for a very long
+    // time. Even the most dedicated multi-year lifter's export shouldn't
+    // come close to this.
+    const MAX_ROWS = 20_000;
+    if (rows.length > MAX_ROWS) {
+      throw new AppError(`El CSV tiene demasiadas filas (${rows.length}, máximo ${MAX_ROWS})`, 400);
+    }
+
     const result: HevyImportResult = {
       workouts_created: 0,
       exercises_created: 0,

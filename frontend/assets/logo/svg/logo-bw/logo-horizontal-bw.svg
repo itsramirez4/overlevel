@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 256">
+<g>
+  <path d="M177 70 A82 82 0 1 0 196 137" fill="none" stroke="#FFFFFF" stroke-width="24" stroke-linecap="butt"/>
+  <path d="M137 151 L137 202 L209 202" fill="none" stroke="#FFFFFF" stroke-width="24" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M73 207 L183 61" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="butt"/>
+</g>
+<text x="260" y="142" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="72" font-weight="800" letter-spacing="-2">Overlevel</text>
+<text x="263" y="184" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="400" letter-spacing="4">DOMINA TU PROGRESIÓN</text>
+</svg>

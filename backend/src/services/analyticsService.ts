@@ -1,7 +1,34 @@
 import { supabaseAdmin } from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import { fetchAllRows } from '../utils/pagination';
-import { calculatePaceMinPerKm } from '../utils/calculations';
+import { calculatePaceMinPerKm, calculateSetEffort } from '../utils/calculations';
+
+interface EffortSet {
+  weight: number | null;
+  reps: number | null;
+  distance_km: number | null;
+  is_warmup: boolean;
+  // A many-to-one embed (many sets, one exercise) is a single object at
+  // runtime — same as everywhere else in this codebase that reads
+  // `.exercises`. Supabase's query typing can't know that without a
+  // generated Database schema type and defaults to an array instead; the
+  // `as EffortSet[]` casts below the query sites are what paper over that,
+  // not this type.
+  exercises: { category: 'compound' | 'isolation' | 'cardio' } | null;
+}
+
+const setCategory = (exercises: EffortSet['exercises']) => exercises?.category || 'compound';
+
+/** Sums calculateSetEffort across non-warmup sets, category-aware — a plain
+ * weight*reps sum silently zeroes out every cardio set (weight/reps are
+ * NULL for those), which used to make analytics disagree with XP/battle
+ * damage (characterService/battleService) about how much a cardio session
+ * "counts". Shared here so the four functions below can't drift again. */
+function nonWarmupEffort(sets: EffortSet[]): number {
+  return sets
+    .filter((s) => !s.is_warmup)
+    .reduce((sum, s) => sum + calculateSetEffort(setCategory(s.exercises), s.weight, s.reps, s.distance_km), 0);
+}
 
 export class AnalyticsService {
   async getSummary(userId: string) {
@@ -15,19 +42,14 @@ export class AnalyticsService {
 
     const { data: monthWorkouts, error } = await supabaseAdmin
       .from('workouts')
-      .select('id, sets(weight, reps, is_warmup)')
+      .select('id, sets(weight, reps, distance_km, is_warmup, exercises(category))')
       .eq('user_id', userId)
       .gte('started_at', startOfMonth.toISOString());
 
     if (error) throw new AppError('Failed to compute analytics summary');
 
     const workoutsThisMonth = monthWorkouts?.length || 0;
-    const totalVolume = (monthWorkouts || []).reduce((sum, w: any) => {
-      const workoutVolume = (w.sets || [])
-        .filter((s: any) => !s.is_warmup)
-        .reduce((setSum: number, s: any) => setSum + s.weight * s.reps, 0);
-      return sum + workoutVolume;
-    }, 0);
+    const totalVolume = (monthWorkouts || []).reduce((sum, w) => sum + nonWarmupEffort((w.sets || []) as unknown as EffortSet[]), 0);
 
     const recommendedRoutine = await this.recommendRoutine(userId);
     const currentStreak = await this.getCurrentStreak(userId);
@@ -142,7 +164,7 @@ export class AnalyticsService {
 
     const { data: workouts, error } = await supabaseAdmin
       .from('workouts')
-      .select('started_at, sets(weight, reps, is_warmup)')
+      .select('started_at, sets(weight, reps, distance_km, is_warmup, exercises(category))')
       .eq('user_id', userId)
       .gte('started_at', since.toISOString());
 
@@ -157,9 +179,7 @@ export class AnalyticsService {
 
     for (const w of workouts || []) {
       const key = weekStart(new Date(w.started_at)).toISOString().split('T')[0];
-      const volume = (w.sets || [])
-        .filter((s: any) => !s.is_warmup)
-        .reduce((sum: number, s: any) => sum + s.weight * s.reps, 0);
+      const volume = nonWarmupEffort((w.sets || []) as unknown as EffortSet[]);
       buckets.set(key, (buckets.get(key) || 0) + volume);
     }
 
@@ -175,12 +195,15 @@ export class AnalyticsService {
    * lift contributes to each group it trains rather than splitting volume.
    */
   async getMuscleGroupDistribution(userId: string, weeks = 8) {
+    // UTC, not local server time — same reasoning as getCurrentStreak/
+    // getSummary above: otherwise this chart's cutoff can disagree with
+    // every sibling analytics endpoint about which workouts are "in range".
     const since = new Date();
-    since.setDate(since.getDate() - weeks * 7);
+    since.setUTCDate(since.getUTCDate() - weeks * 7);
 
     const { data: workouts, error } = await supabaseAdmin
       .from('workouts')
-      .select('sets(weight, reps, is_warmup, exercises(muscle_groups))')
+      .select('sets(weight, reps, distance_km, is_warmup, exercises(category, muscle_groups))')
       .eq('user_id', userId)
       .gte('started_at', since.toISOString());
 
@@ -188,12 +211,12 @@ export class AnalyticsService {
 
     const totals = new Map<string, number>();
     for (const w of workouts || []) {
-      for (const s of (w as any).sets || []) {
+      for (const s of (w.sets || []) as unknown as (EffortSet & {
+        exercises: { category: 'compound' | 'isolation' | 'cardio'; muscle_groups: string[] } | null;
+      })[]) {
         if (s.is_warmup) continue;
-        const volume = s.weight * s.reps;
-        const groups: string[] = s.exercises?.muscle_groups?.length
-          ? s.exercises.muscle_groups
-          : ['Sin clasificar'];
+        const volume = calculateSetEffort(s.exercises?.category || 'compound', s.weight, s.reps, s.distance_km);
+        const groups: string[] = s.exercises?.muscle_groups?.length ? s.exercises.muscle_groups : ['Sin clasificar'];
         for (const g of groups) {
           totals.set(g, (totals.get(g) || 0) + volume);
         }
@@ -220,7 +243,7 @@ export class AnalyticsService {
 
     const { data: workouts, error } = await supabaseAdmin
       .from('workouts')
-      .select('started_at, sets(weight, reps, is_warmup)')
+      .select('started_at, sets(weight, reps, distance_km, is_warmup, exercises(category))')
       .eq('user_id', userId)
       .gte('started_at', rangeStart.toISOString());
 
@@ -237,9 +260,7 @@ export class AnalyticsService {
     for (const w of workouts || []) {
       const key = new Date(w.started_at).toISOString().split('T')[0];
       if (!buckets.has(key)) continue;
-      const volume = (w.sets || [])
-        .filter((s: any) => !s.is_warmup)
-        .reduce((sum: number, s: any) => sum + s.weight * s.reps, 0);
+      const volume = nonWarmupEffort((w.sets || []) as unknown as EffortSet[]);
       buckets.set(key, (buckets.get(key) || 0) + volume);
     }
 

@@ -120,42 +120,11 @@ export class CharacterService {
     return this.getMyCharacter(userId);
   }
 
-  /** Called when a workout is completed — no-op (returns null) if the user
-   * has no character yet. Returns the award so the completion screen can
-   * show "+XX XP" / a level-up moment instead of this happening silently. */
-  async awardXpForWorkout(
-    userId: string,
-    workoutId: string
-  ): Promise<{ xpGained: number; leveledUp: boolean; previousLevel: number; newLevel: number } | null> {
-    const { data: character } = await supabaseAdmin
-      .from('characters')
-      .select('id, xp')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (!character) return null;
-
-    const { data: sets } = await supabaseAdmin
-      .from('sets')
-      .select('weight, reps, distance_km, is_warmup, is_pr, exercises(category)')
-      .eq('workout_id', workoutId);
-
-    const nonWarmup = (sets || []).filter((s: any) => !s.is_warmup);
-    const volume = sumEffort(nonWarmup);
-    const prCount = nonWarmup.filter((s) => s.is_pr).length;
-    const xpGained = computeWorkoutXp(volume, nonWarmup.length, prCount);
-
-    const previousLevel = levelForXp(character.xp);
-    const newXp = character.xp + xpGained;
-    const newLevel = levelForXp(newXp);
-
-    await supabaseAdmin
-      .from('characters')
-      .update({ xp: newXp, level: newLevel, updated_at: new Date().toISOString() })
-      .eq('id', character.id);
-
-    return { xpGained, leveledUp: newLevel > previousLevel, previousLevel, newLevel };
-  }
+  // Live XP-awarding on workout completion (used to live here as
+  // awardXpForWorkout) now happens inside the complete_workout() Postgres
+  // function — see migration 031 — so it runs in the same transaction as
+  // marking the workout complete and finishing battles, instead of as a
+  // separate, independently-failable call from workoutService.complete().
 
   private async computeTotalXpFromHistory(userId: string): Promise<number> {
     const workouts = await fetchAllRows<any>((from, to) =>

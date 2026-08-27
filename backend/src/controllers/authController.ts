@@ -6,6 +6,16 @@ import { issueTokenPair, revokeRefreshToken, rotateRefreshToken, RefreshTokenReu
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 
+/** Same shape updateUserSchema enforces for a user-driven username change
+ * (lowercase, [a-z0-9_.]+, 3-30 chars) — the auto-generated one from a
+ * first login has to satisfy it too, or it'd be a username the user could
+ * never re-save from settings without changing it first. */
+function deriveUsername(email: string, userId: string): string {
+  const stripped = (email.split('@')[0] || '').toLowerCase().replace(/[^a-z0-9_.]/g, '');
+  const trimmed = stripped.slice(0, 30);
+  return trimmed.length >= 3 ? trimmed : `user_${userId.slice(0, 8)}`;
+}
+
 export class AuthController {
   /**
    * No self-registration: users are provisioned in Supabase Auth (dashboard/admin only).
@@ -14,45 +24,62 @@ export class AuthController {
   async login(req: Request, res: Response) {
     const { email, password } = req.body;
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // No try/catch here: express-async-errors forwards any rejection (ours or
+    // Supabase's) to the shared errorHandler, which is what actually decides
+    // what's safe to expose — an AppError's own message, or a sanitized
+    // "Something went wrong" for anything unexpected. Catching locally had
+    // been bypassing that and echoing raw error.message straight to the client.
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (error || !data.user) throw new AppError('Invalid credentials', 401);
+    if (error || !data.user) throw new AppError('Invalid credentials', 401);
 
-      const { accessToken, refreshToken } = await issueTokenPair(data.user.id);
+    let { data: userData } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
 
-      let { data: userData } = await supabaseAdmin
+    if (!userData) {
+      const username = deriveUsername(data.user.email || '', data.user.id);
+      const { data: createdUser, error: createError } = await supabaseAdmin
         .from('users')
-        .select('*')
-        .eq('id', data.user.id)
+        .insert({ id: data.user.id, email: data.user.email, username })
+        .select()
         .single();
 
-      if (!userData) {
-        const { data: createdUser, error: createError } = await supabaseAdmin
+      if (createError?.code === '23505') {
+        // Two different emails normalized to the same username (stripping
+        // punctuation collapsed them) — retry once with a short unique
+        // suffix instead of failing this user's very first login outright.
+        const { data: retried, error: retryError } = await supabaseAdmin
           .from('users')
-          .insert({
-            id: data.user.id,
-            email: data.user.email,
-            username: data.user.email?.split('@')[0] || data.user.id,
-          })
+          .insert({ id: data.user.id, email: data.user.email, username: `${username}_${data.user.id.slice(0, 6)}` })
           .select()
           .single();
 
-        if (createError || !createdUser) throw new AppError('Failed to provision user profile');
+        if (retryError || !retried) throw new AppError('Failed to provision user profile');
+        userData = retried;
+      } else if (createError || !createdUser) {
+        throw new AppError('Failed to provision user profile');
+      } else {
         userData = createdUser;
       }
-
-      res.json({
-        user: userData,
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-    } catch (error: any) {
-      res.status(401).json({
-        error: 'LOGIN_FAILED',
-        message: error.message,
-      });
     }
+
+    // Only after the users row is guaranteed to exist: refresh_tokens.user_id
+    // has a hard FK to users(id), so issuing tokens before provisioning the
+    // profile (the previous order) made every brand-new user's very first
+    // login — the only account-creation path this app has — fail outright
+    // with a 500. Caught by actually running the app, not by any test: every
+    // test helper pre-creates the users row directly, sidestepping this exact
+    // ordering.
+    const { accessToken, refreshToken } = await issueTokenPair(data.user.id);
+
+    res.json({
+      user: userData,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
   }
 
   /**

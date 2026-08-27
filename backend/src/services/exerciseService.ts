@@ -1,18 +1,24 @@
 import { supabaseAdmin } from '../config/supabase';
 import { Exercise } from '../types';
 import { AppError } from '../middleware/errorHandler';
+import { fetchAllRows } from '../utils/pagination';
 
 export class ExerciseService {
+  // Not bounded by a workout/time range — a user with a large exercise
+  // catalog could otherwise hit PostgREST's 1000-row response cap and have
+  // this silently truncate instead of erroring. See utils/pagination.ts.
   async list(userId: string): Promise<Exercise[]> {
-    const { data, error } = await supabaseAdmin
-      .from('exercises')
-      .select('*')
-      .eq('user_id', userId)
-      .is('deleted_at', null)
-      .order('name');
+    const data = await fetchAllRows<Exercise>((from, to) =>
+      supabaseAdmin
+        .from('exercises')
+        .select('*')
+        .eq('user_id', userId)
+        .is('deleted_at', null)
+        .order('name')
+        .range(from, to)
+    );
 
-    if (error) throw new AppError('Failed to fetch exercises');
-    return (data || []) as Exercise[];
+    return data;
   }
 
   async getById(id: string, userId: string): Promise<Exercise> {
@@ -29,15 +35,17 @@ export class ExerciseService {
   }
 
   async listTrash(userId: string): Promise<Exercise[]> {
-    const { data, error } = await supabaseAdmin
-      .from('exercises')
-      .select('*')
-      .eq('user_id', userId)
-      .not('deleted_at', 'is', null)
-      .order('deleted_at', { ascending: false });
+    const data = await fetchAllRows<Exercise>((from, to) =>
+      supabaseAdmin
+        .from('exercises')
+        .select('*')
+        .eq('user_id', userId)
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false })
+        .range(from, to)
+    );
 
-    if (error) throw new AppError('Failed to fetch trash');
-    return (data || []) as Exercise[];
+    return data;
   }
 
   async create(userId: string, input: Partial<Exercise>): Promise<Exercise> {

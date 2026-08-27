@@ -3,8 +3,9 @@ import { logger } from '../utils/logger';
 
 /** Logs a weekly volume/training-frequency summary per user for observability. */
 export const generateWeeklyStats = async () => {
+  // UTC, not local server time — same reasoning as generateDailyReport.
   const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
+  weekAgo.setUTCDate(weekAgo.getUTCDate() - 7);
 
   const { data, error } = await supabaseAdmin
     .from('workout_stats')

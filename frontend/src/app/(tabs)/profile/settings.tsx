@@ -1,0 +1,504 @@
+import { useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { api } from '../../../services/api';
+import { colors, radius, spacing, typography } from '../../../utils/theme';
+import { Input } from '../../../components/ui/Input';
+import { Button } from '../../../components/ui/Button';
+import { Card } from '../../../components/ui/Card';
+import { Toast } from '../../../components/ui/Toast';
+import { VolumeChart } from '../../../components/analytics/VolumeChart';
+import { downloadOrShareJson } from '../../../services/dataExport';
+import { authStore } from '../../../stores/authStore';
+import { getErrorMessage } from '../../../utils/errors';
+import { User } from '../../../types';
+
+type WeightUnit = 'kg' | 'lbs';
+type DistanceUnit = 'km' | 'mi';
+
+interface BodyWeightLog {
+  weight: number;
+  logged_at: string;
+}
+
+export default function SettingsScreen() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [username, setUsername] = useState('');
+  const [bodyWeight, setBodyWeight] = useState('');
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
+  const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km');
+  const [profilePublic, setProfilePublic] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+
+  const { data: user } = useQuery({
+    queryKey: ['users', 'me'],
+    queryFn: () => api.get<User>('/users/me').then((r) => r.data),
+  });
+
+  const { data: weightHistory } = useQuery({
+    queryKey: ['users', 'body-weight-history'],
+    queryFn: () => api.get<BodyWeightLog[]>('/users/me/body-weight-history?days=90').then((r) => r.data),
+  });
+
+  useEffect(() => {
+    if (user?.weight_unit) setWeightUnit(user.weight_unit);
+  }, [user?.weight_unit]);
+
+  useEffect(() => {
+    if (user?.distance_unit) setDistanceUnit(user.distance_unit);
+  }, [user?.distance_unit]);
+
+  useEffect(() => {
+    if (user) setProfilePublic(!!user.profile_public);
+  }, [user?.profile_public]);
+
+  useEffect(() => {
+    if (user?.username) setUsername(user.username);
+  }, [user?.username]);
+
+  const chartData = (weightHistory || []).slice(-8).map((log) => ({
+    label: new Date(log.logged_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+    volume: Number(log.weight),
+  }));
+
+  const handleSave = async () => {
+    setSaveError('');
+    const trimmedUsername = username.trim().toLowerCase();
+    if (trimmedUsername.length < 3 || !/^[a-z0-9_.]+$/.test(trimmedUsername)) {
+      setSaveError('El usuario debe tener al menos 3 caracteres: minúsculas, números, puntos o guiones bajos');
+      return;
+    }
+    const parsedBodyWeight = bodyWeight.trim() ? parseFloat(bodyWeight) : undefined;
+    if (bodyWeight.trim() && !Number.isFinite(parsedBodyWeight)) {
+      setSaveError('El peso corporal no es un número válido');
+      return;
+    }
+
+    setSaving(true);
+    setSaved(false);
+    try {
+      await api.put('/users/me', {
+        username: trimmedUsername,
+        body_weight: parsedBodyWeight,
+        weight_unit: weightUnit,
+        distance_unit: distanceUnit,
+        profile_public: profilePublic,
+      });
+      await queryClient.invalidateQueries({ queryKey: ['users', 'body-weight-history'] });
+      await queryClient.invalidateQueries({ queryKey: ['users', 'me'] });
+      // Same underlying profile data (username, profile_public) also backs
+      // the public-profile view under a different key (social/index.tsx,
+      // social/user/[id].tsx) — without this it keeps showing the
+      // pre-save username/visibility there.
+      const ownUserId = authStore.getState().user?.id;
+      if (ownUserId) await queryClient.invalidateQueries({ queryKey: ['users', ownUserId] });
+      authStore.setState((s) =>
+        s.user
+          ? {
+              user: {
+                ...s.user,
+                username: trimmedUsername,
+                weight_unit: weightUnit,
+                distance_unit: distanceUnit,
+                profile_public: profilePublic,
+              },
+            }
+          : {}
+      );
+      setSaved(true);
+    } catch (err) {
+      setSaveError(getErrorMessage(err, 'No se pudo guardar. Inténtalo de nuevo.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSelectUnit = (unit: WeightUnit) => {
+    setWeightUnit(unit);
+    setSaved(false);
+    setSaveError('');
+  };
+
+  const handleSelectProfilePublic = (value: boolean) => {
+    setProfilePublic(value);
+    setSaved(false);
+    setSaveError('');
+  };
+
+  const handleSelectDistanceUnit = (unit: DistanceUnit) => {
+    setDistanceUnit(unit);
+    setSaved(false);
+    setSaveError('');
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError('');
+    setPasswordSaved(false);
+
+    if (!currentPassword || !newPassword) {
+      setPasswordError('Rellena ambos campos');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('La nueva contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Las contraseñas nuevas no coinciden');
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      await api.put('/users/me/password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordSaved(true);
+    } catch (err) {
+      setPasswordError(getErrorMessage(err, 'No se pudo cambiar la contraseña'));
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setExportError('');
+    setExporting(true);
+    try {
+      const { data } = await api.get('/users/me/export');
+      const date = new Date().toISOString().split('T')[0];
+      await downloadOrShareJson(`overlevel-export-${date}.json`, data);
+    } catch (err) {
+      setExportError(getErrorMessage(err, 'No se pudieron exportar los datos'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.backButton}
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+        >
+          <ChevronLeft size={22} color={colors.text.primary} />
+        </TouchableOpacity>
+        <Text style={styles.title} accessibilityRole="header">Ajustes</Text>
+      </View>
+
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
+        <Input
+          label="Nombre de usuario"
+          placeholder="tu_usuario"
+          value={username}
+          onChangeText={(text) => {
+            setUsername(text);
+            setSaved(false);
+            setSaveError('');
+          }}
+          autoCapitalize="none"
+        />
+
+        <Text style={styles.label}>Perfil</Text>
+        <View style={styles.chipsRow}>
+          {([true, false] as boolean[]).map((value) => {
+            const selected = value === profilePublic;
+            return (
+              <TouchableOpacity
+                key={String(value)}
+                style={[styles.chip, selected && styles.chipSelected]}
+                onPress={() => handleSelectProfilePublic(value)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  {value ? 'Público' : 'Privado'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Text style={styles.helperText}>
+          {profilePublic
+            ? 'Cualquier persona puede encontrarte, ver tus entrenamientos y seguirte.'
+            : 'Nadie puede encontrarte, ver tus entrenamientos ni seguirte.'}
+        </Text>
+
+        <Text style={styles.label}>Unidad de peso</Text>
+        <View style={styles.chipsRow}>
+          {(['kg', 'lbs'] as WeightUnit[]).map((unit) => {
+            const selected = unit === weightUnit;
+            return (
+              <TouchableOpacity
+                key={unit}
+                style={[styles.chip, selected && styles.chipSelected]}
+                onPress={() => handleSelectUnit(unit)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  {unit.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Text style={styles.label}>Unidad de distancia</Text>
+        <View style={styles.chipsRow}>
+          {(['km', 'mi'] as DistanceUnit[]).map((unit) => {
+            const selected = unit === distanceUnit;
+            return (
+              <TouchableOpacity
+                key={unit}
+                style={[styles.chip, selected && styles.chipSelected]}
+                onPress={() => handleSelectDistanceUnit(unit)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  {unit.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Input
+          label={`Peso corporal (${weightUnit})`}
+          placeholder={user?.body_weight?.toString() || '0'}
+          value={bodyWeight}
+          onChangeText={(text) => {
+            setBodyWeight(text);
+            setSaved(false);
+            setSaveError('');
+          }}
+          keyboardType="decimal-pad"
+        />
+
+        {saveError ? (
+          <Text style={styles.passwordError} accessibilityLiveRegion="polite">
+            {saveError}
+          </Text>
+        ) : null}
+
+        <Button
+          label={saving ? 'Guardando…' : 'GUARDAR'}
+          loading={saving}
+          onPress={handleSave}
+        />
+
+        {chartData.length > 0 && (
+          <Card style={styles.chartCard}>
+            <Text style={styles.chartTitle}>Evolución del peso corporal</Text>
+            <VolumeChart data={chartData} unit={weightUnit} title="Evolución del peso corporal" />
+          </Card>
+        )}
+
+        <Card style={styles.passwordCard}>
+          <Text style={styles.chartTitle}>Cambiar contraseña</Text>
+
+          <Input
+            label="Contraseña actual"
+            value={currentPassword}
+            onChangeText={(text) => {
+              setCurrentPassword(text);
+              setPasswordSaved(false);
+            }}
+            secureTextEntry
+          />
+          <Input
+            label="Nueva contraseña"
+            value={newPassword}
+            onChangeText={(text) => {
+              setNewPassword(text);
+              setPasswordSaved(false);
+            }}
+            secureTextEntry
+          />
+          <Input
+            label="Confirmar nueva contraseña"
+            value={confirmPassword}
+            onChangeText={(text) => {
+              setConfirmPassword(text);
+              setPasswordSaved(false);
+            }}
+            secureTextEntry
+          />
+
+          {passwordError ? (
+            <Text style={styles.passwordError} accessibilityLiveRegion="polite">
+              {passwordError}
+            </Text>
+          ) : null}
+
+          <Button
+            label={passwordSaving ? 'Guardando…' : 'CAMBIAR CONTRASEÑA'}
+            loading={passwordSaving}
+            onPress={handleChangePassword}
+          />
+        </Card>
+
+        <Card style={styles.dataCard}>
+          <Text style={styles.chartTitle}>Datos</Text>
+
+          {exportError ? (
+            <Text style={styles.passwordError} accessibilityLiveRegion="polite">
+              {exportError}
+            </Text>
+          ) : null}
+
+          <Button
+            label={exporting ? 'Exportando…' : 'EXPORTAR MIS DATOS'}
+            variant="outline"
+            loading={exporting}
+            onPress={handleExport}
+          />
+
+          <TouchableOpacity
+            style={styles.importRow}
+            onPress={() => router.push('/profile/import-hevy')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.importRowText}>Importar desde Hevy</Text>
+            <ChevronRight size={18} color={colors.text.muted} />
+          </TouchableOpacity>
+        </Card>
+      </ScrollView>
+
+      <Toast message="Guardado" visible={saved} onHide={() => setSaved(false)} tone="success" />
+      <Toast
+        message="Contraseña actualizada"
+        visible={passwordSaved}
+        onHide={() => setPasswordSaved(false)}
+        tone="success"
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.bg.primary,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  backButton: {
+    marginRight: spacing.sm,
+  },
+  title: {
+    ...typography.h1,
+    color: colors.text.primary,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+  },
+  contentInner: {
+    paddingBottom: spacing.xxl,
+  },
+  chartCard: {
+    marginTop: spacing.xl,
+  },
+  passwordCard: {
+    marginTop: spacing.xl,
+  },
+  dataCard: {
+    marginTop: spacing.xl,
+  },
+  importRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.subtle,
+  },
+  importRowText: {
+    ...typography.body,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  passwordError: {
+    ...typography.small,
+    color: colors.semantic.error,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  chartTitle: {
+    ...typography.h3,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+  },
+  label: {
+    ...typography.label,
+    color: colors.text.secondary,
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  helperText: {
+    ...typography.tiny,
+    color: colors.text.muted,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  chip: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.border.default,
+    alignItems: 'center',
+  },
+  chipSelected: {
+    borderColor: colors.accent.fire,
+    backgroundColor: `${colors.accent.fire}1a`,
+  },
+  chipText: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+    fontWeight: '700',
+  },
+  chipTextSelected: {
+    color: colors.accent.fire,
+  },
+});

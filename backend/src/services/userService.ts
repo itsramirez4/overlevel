@@ -90,7 +90,7 @@ export class UserService {
     const user = await this.getUserById(userId);
 
     try {
-      const [exercises, routines, bodyWeightLogs, workouts] = await Promise.all([
+      const [exercises, routines, bodyWeightLogs, workouts, character, battles] = await Promise.all([
         fetchAllRows<any>((from, to) =>
           supabaseAdmin.from('exercises').select('*').eq('user_id', userId).range(from, to)
         ),
@@ -113,6 +113,13 @@ export class UserService {
             .order('started_at', { ascending: true })
             .range(from, to)
         ),
+        // The RPG layer is additive/optional (see characterService), but a
+        // user with a character reasonably expects its level/XP to show up
+        // in an "export all my data" — this and battles were missing before.
+        supabaseAdmin.from('characters').select('*').eq('user_id', userId).maybeSingle().then((r) => r.data),
+        fetchAllRows<any>((from, to) =>
+          supabaseAdmin.from('exercise_battles').select('*').eq('user_id', userId).range(from, to)
+        ),
       ]);
 
       return {
@@ -122,6 +129,8 @@ export class UserService {
         routines,
         workouts,
         body_weight_logs: bodyWeightLogs,
+        character,
+        exercise_battles: battles,
       };
     } catch {
       throw new AppError('Failed to export data');

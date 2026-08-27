@@ -116,7 +116,11 @@ export const changePasswordSchema = z.object({
 });
 
 export const importHevySchema = z.object({
-  csv: z.string().min(1),
+  // 5MB of CSV text — generous for even a multi-year export, well under the
+  // global 10MB JSON body limit (index.ts), and small enough that a
+  // maximal-size upload can't tie up importService's fully sequential
+  // per-row inserts for an unbounded amount of time.
+  csv: z.string().min(1).max(5_000_000),
 });
 
 export const updateWorkoutSchema = z.object({

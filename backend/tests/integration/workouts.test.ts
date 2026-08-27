@@ -29,6 +29,34 @@ describe('workouts', () => {
     expect(started.body.routines).toBeFalsy();
   });
 
+  it('starting a workout while one is already incomplete returns the existing one instead of creating a second', async () => {
+    const first = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+    expect(first.status).toBe(201);
+    expect(first.body.resumed).toBeFalsy();
+
+    const second = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+    expect(second.status).toBe(201);
+    expect(second.body.id).toBe(first.body.id);
+    expect(second.body.resumed).toBe(true);
+
+    const list = await request(app).get('/api/workouts').set(authHeader(user));
+    expect(list.body).toHaveLength(1);
+  });
+
+  it('resuming an incomplete workout embeds its already-logged sets (for rebuilding the session exercise list)', async () => {
+    const started = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+    const exercise = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Resume Test Row', category: 'compound' });
+    await request(app)
+      .post('/api/sets')
+      .set(authHeader(user))
+      .send({ workout_id: started.body.id, exercise_id: exercise.body.id, set_number: 1, weight: 40, reps: 10 });
+
+    const resumed = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+    expect(resumed.body.resumed).toBe(true);
+    expect(resumed.body.sets).toHaveLength(1);
+    expect(resumed.body.sets[0].exercises.name).toBe('Resume Test Row');
+  });
+
   it('rejects starting a workout against another user\'s routine_id', async () => {
     const victim = await createTestUser('workouts-victim');
     try {

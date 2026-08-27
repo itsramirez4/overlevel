@@ -1,5 +1,6 @@
 import request from 'supertest';
 import app from '../../src/index';
+import { supabaseAdmin } from '../../src/config/supabase';
 import { createTestUser, deleteTestUser } from '../helpers/testUser';
 
 describe('auth', () => {
@@ -9,6 +10,55 @@ describe('auth', () => {
       .send({ email: 'nobody-jest@example.com', password: 'wrong-password' });
 
     expect(res.status).toBe(401);
+  });
+
+  describe('login', () => {
+    // Every other test in this file uses createTestUser, which inserts
+    // straight into public.users via the admin client — it never exercises
+    // the real POST /api/auth/login happy path. That path used to 500 for
+    // every brand-new account (the only account-creation flow this app
+    // has), because it issued a refresh token — which has a hard FK to
+    // users(id) — before the lazy users-row provisioning that same request
+    // is supposed to do. Caught by actually running the app, not by any
+    // test; this is that missing coverage.
+    it("provisions the users profile and logs in successfully on a brand-new account's first login", async () => {
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const email = `jest-first-login-${suffix}@example.com`;
+      const password = `Test-${suffix}!`;
+
+      const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      });
+      expect(createError).toBeNull();
+      const userId = created.user!.id;
+
+      try {
+        // No public.users row exists yet — this is the actual first-login case.
+        const res = await request(app).post('/api/auth/login').send({ email, password });
+
+        expect(res.status).toBe(200);
+        expect(res.body.access_token).toBeTruthy();
+        expect(res.body.refresh_token).toBeTruthy();
+        expect(res.body.user.id).toBe(userId);
+        // Mirrors deriveUsername exactly: strip disallowed chars, then clamp
+        // to the same 30-char max updateUserSchema enforces everywhere else.
+        expect(res.body.user.username).toBe(`jest-first-login-${suffix}`.replace(/[^a-z0-9_.]/g, '').slice(0, 30));
+
+        const { data: profile } = await supabaseAdmin.from('users').select('*').eq('id', userId).maybeSingle();
+        expect(profile).toBeTruthy();
+
+        // A second login for the same (now-provisioned) account must also
+        // succeed — the profile-already-exists path.
+        const second = await request(app).post('/api/auth/login').send({ email, password });
+        expect(second.status).toBe(200);
+        expect(second.body.user.id).toBe(userId);
+      } finally {
+        await supabaseAdmin.from('users').delete().eq('id', userId);
+        await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+      }
+    });
   });
 
   it('rejects a request with no Authorization header on a protected route', async () => {

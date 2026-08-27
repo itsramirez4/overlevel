@@ -4,7 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { errorHandler } from './middleware/errorHandler';
+import { errorHandler, AppError } from './middleware/errorHandler';
 import { authRateLimiter, apiRateLimiter } from './middleware/rateLimiter';
 import { logger } from './utils/logger';
 
@@ -36,16 +36,37 @@ process.on('uncaughtException', (err) => {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Explicit allowlist (ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com)
+// plus, outside production, localhost/LAN origins for Expo web / phone testing.
+// Requests with no Origin header (native apps, curl, server-to-server) are
+// always allowed — cors only invokes this callback when Origin is present.
+const configuredOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+const devOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+):\d+$/;
+
+const allowedOrigin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+  if (!origin) return callback(null, true);
+  if (configuredOrigins.includes(origin)) return callback(null, true);
+  if (process.env.NODE_ENV !== 'production' && devOriginPattern.test(origin)) return callback(null, true);
+  // AppError, not a plain Error — otherwise errorHandler has no statusCode
+  // to key off and this falls through to a generic 500, logging a policy
+  // rejection as a server error instead of the 403 it actually is.
+  callback(new AppError('Not allowed by CORS', 403));
+};
+
 // Middleware
-// Dev backend reachable from localhost, LAN IPs (phone testing), and native
-// clients (no Origin header at all) — there's no fixed production origin to
-// pin down, and auth uses Bearer tokens rather than cookies, so reflecting
-// any origin here doesn't weaken anything.
 app.use(helmet());
 
+// Native clients (Expo/React Native) don't send an Origin header at all, so
+// they're unaffected by this and always pass through. Origin checks only
+// matter for browser-based callers (Expo web, a future dashboard, or someone
+// probing the API from a page). Auth is Bearer-only (no cookies — see
+// frontend/services/api.ts), so `credentials` stays off; reflecting any
+// origin with credentials on would have been the actual anti-pattern here.
 app.use(cors({
-  origin: true,
-  credentials: true,
+  origin: allowedOrigin,
 }));
 
 // Piped through the existing winston logger instead of writing straight to

@@ -1,0 +1,13 @@
+-- workoutService.complete() used to do three independent Supabase calls
+-- (mark workout complete -> award XP -> finish battles) with nothing tying
+-- them together. If it died between steps, the workout was stuck forever:
+-- completed_at was already set, so a retry hit the "already completed" guard
+-- and refused to run the remaining steps.
+--
+-- xp_awarded_at turns the XP step into a claim-then-act operation
+-- (UPDATE ... WHERE xp_awarded_at IS NULL) so a retry can tell "never
+-- attempted" apart from "already awarded" and never double-grants XP, while
+-- workoutService.complete() uses it (together with whether the user even has
+-- a character) to decide whether a completed-but-unfinished workout should
+-- resume instead of being rejected outright.
+ALTER TABLE workouts ADD COLUMN xp_awarded_at TIMESTAMPTZ;

@@ -4,12 +4,7 @@
     "strict": true,
     "types": [
       "jest"
-    ],
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
+    ]
   },
   "include": [
     "**/*.ts",
