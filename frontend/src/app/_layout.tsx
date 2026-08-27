@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { QueryClientProvider, QueryClient, focusManager, onlineManager } from '@tanstack/react-query';
 import axios from 'axios';
 import NetInfo from '@react-native-community/netinfo';
+import * as Updates from 'expo-updates';
 import { useAuth } from '../hooks/useAuth';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { Loader } from '../components/ui/Loader';
@@ -68,6 +69,34 @@ function OfflineSyncMount() {
   return null;
 }
 
+// expo-updates' own default behavior only downloads a new OTA update on cold
+// start and applies it on the *next* one — so a published update used to
+// need two closes/reopens before it was visible. Checking, fetching, and
+// reloading right here means one reopen is enough: this fires once at
+// launch, before the user has done anything worth preserving, so the reload
+// it triggers reads as a slightly slower first launch rather than a
+// disruptive restart. isEnabled is false in Expo Go/dev builds; any failure
+// (offline, update server down) is swallowed — the app just keeps running
+// the version it already has.
+function AutoUpdateMount() {
+  useEffect(() => {
+    if (!Updates.isEnabled) return;
+    (async () => {
+      try {
+        const result = await Updates.checkForUpdateAsync();
+        if (result.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch {
+        // Offline or the update check/fetch failed — not fatal, just stay
+        // on the currently running version.
+      }
+    })();
+  }, []);
+  return null;
+}
+
 export default function RootLayout() {
   // useAuth() already calls authStore.checkAuth() internally and tracks
   // isLoading against it — a second direct call here just fired the same
@@ -101,6 +130,7 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
+        <AutoUpdateMount />
         <OfflineSyncMount />
         {isLoading ? (
           <Loader />
