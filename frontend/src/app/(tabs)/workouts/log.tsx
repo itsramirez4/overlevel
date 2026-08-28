@@ -3,7 +3,7 @@ import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'rea
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calculator, Dumbbell, Plus } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, spacing, typography } from '../../../utils/theme';
@@ -21,6 +21,7 @@ import { ExerciseBattle, Set } from '../../../types';
 
 export default function WorkoutLogScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { hasHydrated, currentWorkout, completeWorkout } = useWorkout();
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -106,7 +107,14 @@ export default function WorkoutLogScreen() {
     try {
       const result = await completeWorkout(title, feltLike, notes);
       setCompleteDialogOpen(false);
+      // The dashboard's ['stats']/['workouts'] queries (and, if this
+      // workout awarded XP, ['character']) were fetched before this
+      // workout existed — without this they'd keep showing pre-workout
+      // numbers on the very next screen, staleTime not being up yet.
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: ['workouts'] });
       if (result?.xp_award) {
+        queryClient.invalidateQueries({ queryKey: ['character'] });
         setXpAward(result.xp_award);
       } else {
         router.replace('/(tabs)/dashboard');
