@@ -165,6 +165,36 @@ describe('auth', () => {
     });
   });
 
+  describe('forgot-password', () => {
+    // Same response whether or not the email has an account — this endpoint
+    // must not let a caller enumerate registered emails by comparing statuses.
+    it('accepts a request for a non-existent email and returns 200', async () => {
+      const res = await request(app).post('/api/auth/forgot-password').send({ email: 'nobody-jest@example.com' });
+      expect(res.status).toBe(200);
+    });
+
+    it('rejects a malformed email', async () => {
+      const res = await request(app).post('/api/auth/forgot-password').send({ email: 'not-an-email' });
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('reset-password', () => {
+    it('rejects an invalid/expired access token', async () => {
+      const res = await request(app)
+        .post('/api/auth/reset-password')
+        .send({ access_token: 'not-a-real-token', new_password: 'newpassword123' });
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects a password shorter than 6 characters', async () => {
+      const res = await request(app)
+        .post('/api/auth/reset-password')
+        .send({ access_token: 'irrelevant', new_password: '123' });
+      expect(res.status).toBe(400);
+    });
+  });
+
   describe('malformed request bodies', () => {
     it('returns 400 (not 500) for invalid JSON', async () => {
       const res = await request(app)

@@ -78,6 +78,12 @@ export default function LoginScreen() {
               onPress={handleLogin}
               style={styles.submitButton}
             />
+
+            <Button
+              label="¿Olvidaste tu contraseña?"
+              variant="ghost"
+              onPress={() => router.push('/(auth)/forgot-password')}
+            />
           </View>
 
           <Text style={styles.footnote}>

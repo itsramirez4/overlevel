@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
+import { Sentry } from '../config/sentry';
 
 export class AppError extends Error {
   constructor(public message: string, public statusCode: number = 500) {
@@ -33,6 +34,11 @@ export const errorHandler = (
       message: err?.message || 'Invalid request',
     });
   }
+
+  // Only genuinely unexpected failures reach here — AppError and the 4xx
+  // passthrough above both mean something already identified and handled
+  // the situation, not a bug worth paging anyone about.
+  Sentry.captureException(err);
 
   res.status(500).json({
     error: 'INTERNAL_ERROR',

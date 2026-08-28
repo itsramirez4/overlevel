@@ -2,6 +2,12 @@ import { render, fireEvent } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { ErrorBoundary } from './ErrorBoundary';
 
+// Without this, importing ErrorBoundary pulls in services/errorReporting ->
+// services/api -> expo-router, which Jest can't parse (its internal
+// standard-navigation module is ESM) — this test only needs to know
+// reportError was called, not exercise the real network call.
+jest.mock('../../services/errorReporting', () => ({ reportError: jest.fn() }));
+
 const Bomb = () => {
   throw new Error('boom');
 };

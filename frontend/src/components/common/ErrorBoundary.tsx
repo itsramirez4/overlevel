@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { AlertTriangle } from 'lucide-react-native';
 import { colors, radius, spacing, typography } from '../../utils/theme';
 import { Button } from '../ui/Button';
+import { reportError } from '../../services/errorReporting';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -28,10 +29,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
-    // No crash-reporting service wired up (no Sentry/etc. in this project) —
-    // console.error is the only signal available, but it's still strictly
-    // better than the alternative of a silent blank screen.
     console.error('Uncaught render error:', error, info.componentStack);
+    reportError(error, { componentStack: info.componentStack, context: 'ErrorBoundary' });
   }
 
   handleReset = () => {

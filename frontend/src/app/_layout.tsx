@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { Loader } from '../components/ui/Loader';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
+import { reportError } from '../services/errorReporting';
 
 // One deliberate policy instead of every screen's useQuery/useMutation
 // silently falling back to React Query's own library defaults (staleTime 0,
@@ -52,6 +53,20 @@ if (Platform.OS !== 'web') {
   onlineManager.setEventListener((setOnline) =>
     NetInfo.addEventListener((state) => setOnline(!!state.isConnected))
   );
+}
+
+// ErrorBoundary only catches render errors — this catches everything else
+// (event handlers, timers, anything outside React's render cycle), which is
+// otherwise reported nowhere in production (no dev red-box there). Chains to
+// whatever handler was already installed so the app's normal fatal-error
+// behavior (crash log, dev red-box) still happens after reporting.
+if (Platform.OS !== 'web' && typeof (globalThis as any).ErrorUtils !== 'undefined') {
+  const ErrorUtilsGlobal = (globalThis as any).ErrorUtils;
+  const defaultHandler = ErrorUtilsGlobal.getGlobalHandler();
+  ErrorUtilsGlobal.setGlobalHandler((error: Error, isFatal?: boolean) => {
+    reportError(error, { context: isFatal ? 'global-fatal' : 'global-nonfatal' });
+    defaultHandler(error, isFatal);
+  });
 }
 
 // useOfflineSync calls useQueryClient(), which needs a QueryClientProvider

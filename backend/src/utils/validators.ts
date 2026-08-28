@@ -25,6 +25,22 @@ export const loginSchema = z.object({
   password: z.string(),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  access_token: z.string().min(1),
+  new_password: z.string().min(6),
+});
+
+export const clientErrorSchema = z.object({
+  message: z.string().min(1).max(2000),
+  stack: z.string().max(10000).optional(),
+  componentStack: z.string().max(10000).optional(),
+  context: z.string().max(200).optional(),
+});
+
 export const createExerciseSchema = z.object({
   // .min(1) alone would let "   " through — trim first so a whitespace-only
   // name (or one with stray leading/trailing spaces) can't slip in.

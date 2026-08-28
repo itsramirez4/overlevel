@@ -4,6 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import { Sentry } from './config/sentry';
 import { errorHandler, AppError } from './middleware/errorHandler';
 import { authRateLimiter, apiRateLimiter } from './middleware/rateLimiter';
 import { logger } from './utils/logger';
@@ -18,6 +19,7 @@ import setRoutes from './routes/sets';
 import analyticsRoutes from './routes/analytics';
 import characterRoutes from './routes/characters';
 import battleRoutes from './routes/battles';
+import clientErrorRoutes from './routes/clientErrors';
 
 // Cron Jobs
 import { initCronJobs } from './services/cronService';
@@ -28,13 +30,25 @@ import { initCronJobs } from './services/cronService';
 // taking down the API for every user over one background job's bug.
 process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled promise rejection', reason);
+  Sentry.captureException(reason);
 });
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception', err);
+  Sentry.captureException(err);
 });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Railway puts one reverse proxy hop in front of the app, which sets
+// X-Forwarded-For. Without telling Express to trust it, express-rate-limit
+// refuses to key off that header (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR) and
+// falls back to the proxy's own IP for every request — meaning every user
+// behind it shares one rate-limit bucket instead of being limited
+// individually. `1` (not `true`): trust exactly the nearest hop, not the
+// whole header chain, which a client could otherwise forge arbitrary values
+// into.
+app.set('trust proxy', 1);
 
 // Explicit allowlist (ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com)
 // plus, outside production, localhost/LAN origins for Expo web / phone testing.
@@ -91,6 +105,7 @@ app.use('/api/sets', setRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/characters', characterRoutes);
 app.use('/api/battles', battleRoutes);
+app.use('/api/client-errors', clientErrorRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

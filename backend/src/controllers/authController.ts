@@ -2,7 +2,13 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { supabase, supabaseAdmin } from '../config/supabase';
 import { verifyToken } from '../config/auth';
-import { issueTokenPair, revokeRefreshToken, rotateRefreshToken, RefreshTokenReuseError } from '../services/tokenService';
+import {
+  issueTokenPair,
+  revokeAllForUser,
+  revokeRefreshToken,
+  rotateRefreshToken,
+  RefreshTokenReuseError,
+} from '../services/tokenService';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 
@@ -125,6 +131,43 @@ export class AuthController {
       await revokeRefreshToken(refresh_token);
     }
     res.json({ message: 'Logged out' });
+  }
+
+  /**
+   * Supabase Auth sends the actual email itself (its built-in mailer, no
+   * SMTP/API-key setup needed on our end) — this just triggers it, pointed
+   * at a deep link back into the app instead of a web page. Always responds
+   * the same way whether or not the email has an account, so this can't be
+   * used to enumerate registered emails.
+   */
+  async forgotPassword(req: Request, res: Response) {
+    const { email } = req.body;
+    await supabase.auth.resetPasswordForEmail(email, { redirectTo: 'overlevel://reset-password' });
+    res.json({ message: 'Si existe una cuenta con ese email, te hemos enviado un enlace para restablecer la contraseña' });
+  }
+
+  /**
+   * `access_token` here is the recovery token Supabase put in the deep
+   * link's URL fragment (app/(auth)/reset-password.tsx pulls it out
+   * client-side) — supabase.auth.getUser() both validates it and identifies
+   * whose password this is. Every other outstanding session gets revoked
+   * too: a password reset is exactly the moment an account may have just
+   * been compromised, so anything logged in under the old password
+   * shouldn't get to stay logged in silently.
+   */
+  async resetPassword(req: Request, res: Response) {
+    const { access_token, new_password } = req.body;
+
+    const { data, error } = await supabase.auth.getUser(access_token);
+    if (error || !data.user) throw new AppError('El enlace no es válido o ha caducado', 401);
+
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
+      password: new_password,
+    });
+    if (updateError) throw new AppError('No se pudo actualizar la contraseña');
+
+    await revokeAllForUser(data.user.id);
+    res.json({ message: 'Contraseña actualizada' });
   }
 }
 
