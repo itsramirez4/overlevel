@@ -9,18 +9,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
+    "moduleResolution": "node",
     "declaration": false,
-    "sourceMap": true,
-    // Explicit — whatever TypeScript version Render's build actually
-    // resolves (looks like something well past our locked 5.9.3, given the
-    // TS5108/TS7016 errors it threw) apparently doesn't auto-include
-    // @types/node's ambient globals (process, Buffer, setTimeout) or find
-    // @types/express etc. without this being spelled out, even though the
-    // exact same source compiles clean either way under 5.9.3. "jest" is
-    // here too because ts-jest type-checks test files against this same
-    // config regardless of "exclude": ["tests"] above.
-    "types": ["node", "jest"]
+    "sourceMap": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "tests"]
