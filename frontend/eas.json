@@ -14,7 +14,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://overlevel-backend-production.up.railway.app",
+        "EXPO_PUBLIC_API_URL": "https://overlevel-backend.onrender.com",
         "EXPO_PUBLIC_APP_ENV": "production"
       },
       "channel": "preview"
@@ -22,7 +22,7 @@
     "production": {
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://overlevel-backend-production.up.railway.app",
+        "EXPO_PUBLIC_API_URL": "https://overlevel-backend.onrender.com",
         "EXPO_PUBLIC_APP_ENV": "production"
       }
     }
