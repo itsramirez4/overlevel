@@ -1,0 +1,16 @@
+name: Cron - Weekly Stats
+
+on:
+  schedule:
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/internal/cron/weekly-stats
+        run: |
+          curl -sf -X POST "${{ vars.BACKEND_URL }}/api/internal/cron/weekly-stats" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            --max-time 90 --retry 5 --retry-delay 15 --retry-all-errors

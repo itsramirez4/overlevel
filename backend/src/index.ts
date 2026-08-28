@@ -20,6 +20,7 @@ import analyticsRoutes from './routes/analytics';
 import characterRoutes from './routes/characters';
 import battleRoutes from './routes/battles';
 import clientErrorRoutes from './routes/clientErrors';
+import internalCronRoutes from './routes/internalCron';
 
 // Cron Jobs
 import { initCronJobs } from './services/cronService';
@@ -106,6 +107,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/characters', characterRoutes);
 app.use('/api/battles', battleRoutes);
 app.use('/api/client-errors', clientErrorRoutes);
+app.use('/api/internal/cron', internalCronRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

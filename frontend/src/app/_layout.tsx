@@ -6,6 +6,7 @@ import axios from 'axios';
 import NetInfo from '@react-native-community/netinfo';
 import * as Updates from 'expo-updates';
 import { useAuth } from '../hooks/useAuth';
+import { useBackendWakeUp } from '../hooks/useBackendWakeUp';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { Loader } from '../components/ui/Loader';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
@@ -119,6 +120,7 @@ export default function RootLayout() {
   // directly from authStore by (tabs)/_layout and (auth)/_layout instead
   // of threaded through here — see the comment below the loading gate.
   const { isLoading } = useAuth();
+  const wakeState = useBackendWakeUp();
 
   useEffect(() => {
     // Mobile browsers size `html`/`body`/`#root` off the *layout* viewport,
@@ -148,7 +150,7 @@ export default function RootLayout() {
         <AutoUpdateMount />
         <OfflineSyncMount />
         {isLoading ? (
-          <Loader />
+          <Loader label={wakeState === 'waking' ? 'Preparando el gimnasio…' : 'Cargando…'} />
         ) : (
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />

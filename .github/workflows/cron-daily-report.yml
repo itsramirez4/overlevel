@@ -1,0 +1,19 @@
+name: Cron - Daily Report
+
+# Render's free tier sleeps the backend after 15 min idle, so it can't be
+# trusted to have a live process for node-cron's in-process timer to fire
+# in. This calls the backend instead — which also happens to wake it up.
+on:
+  schedule:
+    - cron: '30 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/internal/cron/daily-report
+        run: |
+          curl -sf -X POST "${{ vars.BACKEND_URL }}/api/internal/cron/daily-report" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            --max-time 90 --retry 5 --retry-delay 15 --retry-all-errors
