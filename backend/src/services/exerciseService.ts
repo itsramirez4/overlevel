@@ -2,6 +2,7 @@ import { supabaseAdmin } from '../config/supabase';
 import { Exercise } from '../types';
 import { AppError } from '../middleware/errorHandler';
 import { fetchAllRows } from '../utils/pagination';
+import { isAdmin } from '../utils/admin';
 
 export class ExerciseService {
   // Not bounded by a workout/time range — a user with a large exercise
@@ -87,14 +88,12 @@ export class ExerciseService {
     // matches zero rows, which .single() itself treats as an error with no
     // way to tell it apart from a real failure, collapsing to a generic 500
     // instead of the 404 this actually is.
-    const { data, error } = await supabaseAdmin
-      .from('exercises')
-      .update(updates)
-      .eq('id', id)
-      .eq('user_id', userId)
-      .is('deleted_at', null)
-      .select()
-      .maybeSingle();
+    let query = supabaseAdmin.from('exercises').update(updates).eq('id', id).is('deleted_at', null);
+    // Admins can moderate anyone's exercise — everyone can already use any
+    // exercise (see setService/routineService), so a bad name/category is a
+    // shared-visibility problem, not just its creator's.
+    if (!isAdmin(userId)) query = query.eq('user_id', userId);
+    const { data, error } = await query.select().maybeSingle();
 
     if (error) {
       if (error.code === '23505') {
@@ -110,14 +109,13 @@ export class ExerciseService {
    * (sets, routine slots, battles), stays intact and comes back exactly as
    * it was if restored. Only permanentlyDelete() actually destroys data. */
   async remove(id: string, userId: string): Promise<void> {
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('exercises')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
-      .eq('user_id', userId)
-      .is('deleted_at', null)
-      .select('id')
-      .maybeSingle();
+      .is('deleted_at', null);
+    if (!isAdmin(userId)) query = query.eq('user_id', userId);
+    const { data, error } = await query.select('id').maybeSingle();
 
     if (error) throw new AppError('Failed to delete exercise');
     if (!data) throw new AppError('Exercise not found', 404);

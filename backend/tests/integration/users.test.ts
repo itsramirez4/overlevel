@@ -13,6 +13,25 @@ describe('users', () => {
     await deleteTestUser(user.id);
   });
 
+  describe('GET /users/me is_admin', () => {
+    const originalAdminIds = process.env.ADMIN_USER_IDS;
+    afterEach(() => {
+      process.env.ADMIN_USER_IDS = originalAdminIds;
+    });
+
+    it('is false/absent for a regular account', async () => {
+      process.env.ADMIN_USER_IDS = '';
+      const res = await request(app).get('/api/users/me').set(authHeader(user));
+      expect(res.body.is_admin).toBeFalsy();
+    });
+
+    it('is true when the account id is in ADMIN_USER_IDS', async () => {
+      process.env.ADMIN_USER_IDS = `some-other-id,${user.id}`;
+      const res = await request(app).get('/api/users/me').set(authHeader(user));
+      expect(res.body.is_admin).toBe(true);
+    });
+  });
+
   describe('GET /users/me/export', () => {
     it('includes exercises, workouts, character, and battles — not just the tracker data', async () => {
       await request(app).post('/api/characters').set(authHeader(user)).send({ character_type: 'powerlifter' });

@@ -11,6 +11,7 @@ import { EmptyState } from '../../../components/common/EmptyState';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { Input } from '../../../components/ui/Input';
 import { getErrorMessage } from '../../../utils/errors';
+import { authStore } from '../../../stores/authStore';
 import { Exercise } from '../../../types';
 
 const categoryLabel: Record<string, string> = {
@@ -22,13 +23,18 @@ const categoryLabel: Record<string, string> = {
 export default function ManageExercisesScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const user = authStore((state) => state.user);
+  const isAdmin = !!user?.is_admin;
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
+  // Admins manage everyone's exercises here (moderation); everyone else
+  // still only sees their own — the backend enforces this either way, this
+  // just decides whether the extra rows are worth fetching at all.
   const { data: exercises, isLoading } = useQuery({
-    queryKey: ['exercises'],
-    queryFn: () => api.get<Exercise[]>('/exercises').then((r) => r.data),
+    queryKey: isAdmin ? ['exercises', 'all'] : ['exercises'],
+    queryFn: () => api.get<Exercise[]>(isAdmin ? '/exercises?scope=all' : '/exercises').then((r) => r.data),
   });
 
   const filteredExercises = (exercises || []).filter((e) =>
@@ -111,7 +117,10 @@ export default function ManageExercisesScreen() {
             </View>
             <View style={styles.info}>
               <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.meta}>{categoryLabel[item.category] || item.category}</Text>
+              <Text style={styles.meta}>
+                {categoryLabel[item.category] || item.category}
+                {isAdmin && item.user_id !== user?.id ? ' · de otro usuario' : ''}
+              </Text>
             </View>
             <TouchableOpacity
               onPress={() => router.push(`/profile/exercise-edit?id=${item.id}`)}

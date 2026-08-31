@@ -146,6 +146,57 @@ describe('exercises', () => {
     });
   });
 
+  describe('admin moderation (ADMIN_USER_IDS)', () => {
+    const originalAdminIds = process.env.ADMIN_USER_IDS;
+    afterEach(() => {
+      process.env.ADMIN_USER_IDS = originalAdminIds;
+    });
+
+    it('an admin can edit and delete another user\'s exercise', async () => {
+      const other = await createTestUser('exercises-admin-target');
+      try {
+        const created = await request(app)
+          .post('/api/exercises')
+          .set(authHeader(other))
+          .send({ name: 'Needs Moderation', category: 'compound' });
+
+        process.env.ADMIN_USER_IDS = user.id;
+
+        const update = await request(app)
+          .put(`/api/exercises/${created.body.id}`)
+          .set(authHeader(user))
+          .send({ name: 'Fixed Name' });
+        expect(update.status).toBe(200);
+        expect(update.body.name).toBe('Fixed Name');
+
+        const del = await request(app).delete(`/api/exercises/${created.body.id}`).set(authHeader(user));
+        expect(del.status).toBe(204);
+      } finally {
+        await deleteTestUser(other.id);
+      }
+    });
+
+    it('without ADMIN_USER_IDS set, the same user still gets 404 on another user\'s exercise', async () => {
+      const other = await createTestUser('exercises-not-admin');
+      try {
+        const created = await request(app)
+          .post('/api/exercises')
+          .set(authHeader(other))
+          .send({ name: 'Not Moderatable', category: 'compound' });
+
+        process.env.ADMIN_USER_IDS = '';
+
+        const update = await request(app)
+          .put(`/api/exercises/${created.body.id}`)
+          .set(authHeader(user))
+          .send({ name: 'Should Not Work' });
+        expect(update.status).toBe(404);
+      } finally {
+        await deleteTestUser(other.id);
+      }
+    });
+  });
+
   describe('trash lifecycle', () => {
     it('moves a deleted exercise to the trash instead of destroying it', async () => {
       const created = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Trash Me', category: 'compound' });

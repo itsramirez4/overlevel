@@ -5,11 +5,15 @@ import { importService } from '../services/importService';
 import { followService } from '../services/followService';
 import { workoutService } from '../services/workoutService';
 import { parsePositiveIntParam } from '../utils/queryParams';
+import { isAdmin } from '../utils/admin';
 
 export class UserController {
   async me(req: AuthRequest, res: Response) {
     const user = await userService.getUserById(req.userId!);
-    res.json(user);
+    // Computed, not stored — see utils/admin.ts. Frontend uses this to
+    // decide whether to show moderation controls, but every actual
+    // permission check happens server-side regardless of what this says.
+    res.json({ ...user, is_admin: isAdmin(req.userId!) });
   }
 
   async update(req: AuthRequest, res: Response) {

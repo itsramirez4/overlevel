@@ -11,6 +11,9 @@ export interface User {
   profile_public: boolean;
   created_at: string;
   updated_at: string;
+  // Computed server-side (see backend/src/utils/admin.ts), not stored —
+  // absent/false for everyone except accounts listed in ADMIN_USER_IDS.
+  is_admin?: boolean;
 }
 
 export interface Exercise {
