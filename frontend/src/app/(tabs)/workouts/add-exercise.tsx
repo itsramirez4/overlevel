@@ -12,11 +12,13 @@ import { ExerciseForm } from '../../../components/forms/ExerciseForm';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Input } from '../../../components/ui/Input';
 import { getErrorMessage } from '../../../utils/errors';
+import { authStore } from '../../../stores/authStore';
 import { Exercise } from '../../../types';
 
 export default function WorkoutAddExerciseScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const currentUserId = authStore((state) => state.user?.id);
   const sessionExercises = workoutStore((state) => state.sessionExercises);
   const addSessionExercise = workoutStore((state) => state.addSessionExercise);
 
@@ -125,7 +127,12 @@ export default function WorkoutAddExerciseScreen() {
               <View style={styles.iconBadge}>
                 <Dumbbell size={16} color={colors.accent.fire} strokeWidth={2} />
               </View>
-              <Text style={styles.exerciseName}>{item.name}</Text>
+              <View style={styles.exerciseInfo}>
+                <Text style={styles.exerciseName}>{item.name}</Text>
+                {item.user_id !== currentUserId && item.users?.username ? (
+                  <Text style={styles.exerciseAuthor}>creado por @{item.users.username}</Text>
+                ) : null}
+              </View>
             </AnimatedTouchable>
           )
         }
@@ -211,11 +218,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.sm,
   },
+  exerciseInfo: {
+    flex: 1,
+  },
   exerciseName: {
     ...typography.body,
     color: colors.text.primary,
     fontWeight: '700',
-    flex: 1,
+  },
+  exerciseAuthor: {
+    ...typography.tiny,
+    color: colors.text.muted,
+    marginTop: 2,
   },
   error: {
     ...typography.small,

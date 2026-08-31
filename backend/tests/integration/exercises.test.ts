@@ -197,6 +197,105 @@ describe('exercises', () => {
     });
   });
 
+  describe('merge (admin only)', () => {
+    const originalAdminIds = process.env.ADMIN_USER_IDS;
+    afterEach(() => {
+      process.env.ADMIN_USER_IDS = originalAdminIds;
+    });
+
+    it('rejects a non-admin with 403', async () => {
+      process.env.ADMIN_USER_IDS = '';
+      const a = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Merge A', category: 'compound' });
+      const b = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Merge B', category: 'compound' });
+
+      const res = await request(app)
+        .post(`/api/exercises/${a.body.id}/merge`)
+        .set(authHeader(user))
+        .send({ into: b.body.id });
+      expect(res.status).toBe(403);
+    });
+
+    it('rejects merging an exercise into itself', async () => {
+      process.env.ADMIN_USER_IDS = user.id;
+      const a = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Self Merge', category: 'compound' });
+
+      const res = await request(app)
+        .post(`/api/exercises/${a.body.id}/merge`)
+        .set(authHeader(user))
+        .send({ into: a.body.id });
+      expect(res.status).toBe(400);
+    });
+
+    it('repoints sets and routine slots from the loser to the survivor, and trashes the loser', async () => {
+      process.env.ADMIN_USER_IDS = user.id;
+      const loser = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Loser', category: 'compound' });
+      const survivor = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Survivor', category: 'compound' });
+
+      const workout = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+      const set = await request(app)
+        .post('/api/sets')
+        .set(authHeader(user))
+        .send({ workout_id: workout.body.id, exercise_id: loser.body.id, set_number: 1, weight: 50, reps: 5 });
+      expect(set.status).toBe(201);
+
+      const routine = await request(app).post('/api/routines').set(authHeader(user)).send({ name: 'Merge Routine' });
+      const routineExercise = await request(app)
+        .post(`/api/routines/${routine.body.id}/exercises`)
+        .set(authHeader(user))
+        .send({ exercise_id: loser.body.id, order_num: 1 });
+      expect(routineExercise.status).toBe(201);
+
+      const merge = await request(app)
+        .post(`/api/exercises/${loser.body.id}/merge`)
+        .set(authHeader(user))
+        .send({ into: survivor.body.id });
+      expect(merge.status).toBe(200);
+      expect(merge.body.deleted_at).toBeTruthy();
+
+      const setsAfter = await request(app).get(`/api/sets/workout/${workout.body.id}`).set(authHeader(user));
+      expect(setsAfter.body.find((s: any) => s.id === set.body.id).exercise_id).toBe(survivor.body.id);
+
+      const routineAfter = await request(app).get(`/api/routines/${routine.body.id}`).set(authHeader(user));
+      expect(routineAfter.body.routine_exercises.map((re: any) => re.exercise_id)).toContain(survivor.body.id);
+
+      // The loser no longer shows up as usable — logging against it now 404s.
+      const setAfterMerge = await request(app)
+        .post('/api/sets')
+        .set(authHeader(user))
+        .send({ workout_id: workout.body.id, exercise_id: loser.body.id, set_number: 2, weight: 50, reps: 5 });
+      expect(setAfterMerge.status).toBe(404);
+    });
+
+    it('when both loser and survivor already have a battle in the same workout, keeps the survivor\'s and drops the loser\'s', async () => {
+      process.env.ADMIN_USER_IDS = user.id;
+      const loser = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Battle Loser', category: 'compound' });
+      const survivor = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Battle Survivor', category: 'compound' });
+
+      const workout = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+      await request(app)
+        .post('/api/sets')
+        .set(authHeader(user))
+        .send({ workout_id: workout.body.id, exercise_id: loser.body.id, set_number: 1, weight: 50, reps: 5 });
+      await request(app)
+        .post('/api/sets')
+        .set(authHeader(user))
+        .send({ workout_id: workout.body.id, exercise_id: survivor.body.id, set_number: 1, weight: 50, reps: 5 });
+
+      const battlesBefore = await request(app).get(`/api/battles/workout/${workout.body.id}`).set(authHeader(user));
+      expect(battlesBefore.body.length).toBe(2);
+
+      const merge = await request(app)
+        .post(`/api/exercises/${loser.body.id}/merge`)
+        .set(authHeader(user))
+        .send({ into: survivor.body.id });
+      expect(merge.status).toBe(200);
+
+      const battlesAfter = await request(app).get(`/api/battles/workout/${workout.body.id}`).set(authHeader(user));
+      expect(battlesAfter.body.length).toBe(1);
+      expect(battlesAfter.body[0].exercise_id).toBe(survivor.body.id);
+    });
+  });
+
   describe('trash lifecycle', () => {
     it('moves a deleted exercise to the trash instead of destroying it', async () => {
       const created = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Trash Me', category: 'compound' });

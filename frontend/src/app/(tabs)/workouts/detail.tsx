@@ -60,6 +60,7 @@ export default function WorkoutDetailScreen() {
   const [removing, setRemoving] = useState(false);
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
   const globalDistanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
+  const currentUserId = authStore((s) => s.user?.id);
 
   const { data: workout, isLoading, refetch } = useQuery({
     queryKey: ['workouts', id],
@@ -407,6 +408,9 @@ export default function WorkoutDetailScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.pickerRow} onPress={() => handlePickExercise(item)} activeOpacity={0.7}>
               <Text style={styles.pickerRowText}>{item.name}</Text>
+              {item.user_id !== currentUserId && item.users?.username ? (
+                <Text style={styles.pickerRowAuthor}>creado por @{item.users.username}</Text>
+              ) : null}
             </TouchableOpacity>
           )}
         />
@@ -586,5 +590,10 @@ const styles = StyleSheet.create({
   pickerRowText: {
     ...typography.body,
     color: colors.text.primary,
+  },
+  pickerRowAuthor: {
+    ...typography.tiny,
+    color: colors.text.muted,
+    marginTop: 2,
   },
 });

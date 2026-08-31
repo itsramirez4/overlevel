@@ -4,7 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Dumbbell, Pencil, Plus, Trash, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Combine, Dumbbell, Pencil, Plus, Trash, Trash2 } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { EmptyState } from '../../../components/common/EmptyState';
@@ -122,6 +122,16 @@ export default function ManageExercisesScreen() {
                 {isAdmin && item.user_id !== user?.id ? ' · de otro usuario' : ''}
               </Text>
             </View>
+            {isAdmin ? (
+              <TouchableOpacity
+                onPress={() => router.push(`/profile/exercise-merge?id=${item.id}&name=${encodeURIComponent(item.name)}`)}
+                hitSlop={8}
+                style={styles.controlButton}
+                accessibilityLabel={`Fusionar ${item.name} con otro ejercicio`}
+              >
+                <Combine size={16} color={colors.text.secondary} />
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               onPress={() => router.push(`/profile/exercise-edit?id=${item.id}`)}
               hitSlop={8}

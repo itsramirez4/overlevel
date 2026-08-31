@@ -26,12 +26,13 @@ export class ExerciseService {
    * own catalog (that's list()). Anyone can log a set or build a routine
    * with an exercise someone else created; only its creator can edit,
    * trash, or delete it (see update/remove/restore below, still user-id
-   * scoped). */
+   * scoped). Embeds the creator's username so the picker can show "creado
+   * por @x" for anything that isn't the caller's own. */
   async listAll(): Promise<Exercise[]> {
     const data = await fetchAllRows<Exercise>((from, to) =>
       supabaseAdmin
         .from('exercises')
-        .select('*')
+        .select('*, users(username)')
         .is('deleted_at', null)
         .order('name')
         .range(from, to)
@@ -138,6 +139,60 @@ export class ExerciseService {
       throw new AppError('Exercise not found in trash', 404);
     }
     return data as Exercise;
+  }
+
+  /**
+   * Admin-only (gated by adminOnlyMiddleware at the route, not re-checked
+   * here). Absorbs `loserId` into `survivorId`: every set and routine slot
+   * that referenced the loser now references the survivor, and the loser
+   * is soft-deleted — recoverable from trash like any other delete, in
+   * case two exercises turn out not to actually be duplicates.
+   *
+   * Battles are trickier — exercise_battles has a UNIQUE(workout_id,
+   * exercise_id), so a workout that already has a battle against *both*
+   * the loser and the survivor can't just have the loser's repointed onto
+   * the survivor's slot. Its HP/defeated state isn't worth reconciling for
+   * what's a cosmetic gameplay detail, so those just get dropped in favor
+   * of the survivor's own battle for that workout.
+   */
+  async merge(loserId: string, survivorId: string): Promise<Exercise> {
+    if (loserId === survivorId) throw new AppError('No se puede fusionar un ejercicio consigo mismo', 400);
+
+    const { data: both } = await supabaseAdmin
+      .from('exercises')
+      .select('id')
+      .in('id', [loserId, survivorId])
+      .is('deleted_at', null);
+    if (!both || both.length !== 2) throw new AppError('Exercise not found', 404);
+
+    const [{ data: loserBattles }, { data: survivorBattles }] = await Promise.all([
+      supabaseAdmin.from('exercise_battles').select('id, workout_id').eq('exercise_id', loserId),
+      supabaseAdmin.from('exercise_battles').select('workout_id').eq('exercise_id', survivorId),
+    ]);
+    const survivorWorkoutIds = new Set((survivorBattles || []).map((b) => b.workout_id));
+    const battlesToRepoint = (loserBattles || []).filter((b) => !survivorWorkoutIds.has(b.workout_id)).map((b) => b.id);
+    const battlesToDrop = (loserBattles || []).filter((b) => survivorWorkoutIds.has(b.workout_id)).map((b) => b.id);
+
+    await Promise.all([
+      battlesToRepoint.length > 0
+        ? supabaseAdmin.from('exercise_battles').update({ exercise_id: survivorId }).in('id', battlesToRepoint)
+        : Promise.resolve(),
+      battlesToDrop.length > 0
+        ? supabaseAdmin.from('exercise_battles').delete().in('id', battlesToDrop)
+        : Promise.resolve(),
+      supabaseAdmin.from('sets').update({ exercise_id: survivorId }).eq('exercise_id', loserId),
+      supabaseAdmin.from('routine_exercises').update({ exercise_id: survivorId }).eq('exercise_id', loserId),
+    ]);
+
+    const { data: merged, error } = await supabaseAdmin
+      .from('exercises')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', loserId)
+      .select()
+      .single();
+
+    if (error || !merged) throw new AppError('Failed to merge exercise');
+    return merged as Exercise;
   }
 
   /** Real, irreversible delete — only reachable for something already in the

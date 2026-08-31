@@ -33,6 +33,9 @@ export interface Exercise {
   // Per-exercise unit override — unset means "use the user's global preference".
   weight_unit?: 'kg' | 'lbs';
   distance_unit?: 'km' | 'mi';
+  // Only present from listAll() — who created it, for attribution when it's
+  // not yours (exercises are shared, see exerciseService).
+  users?: { username: string };
 }
 
 export interface Routine {

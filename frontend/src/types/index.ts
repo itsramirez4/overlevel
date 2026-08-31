@@ -36,6 +36,9 @@ export interface Exercise {
   // Per-exercise unit override — unset means "use the user's global preference".
   weight_unit?: 'kg' | 'lbs';
   distance_unit?: 'km' | 'mi';
+  // Only present from GET /exercises?scope=all — who created it, for
+  // attribution when it's not yours (exercises are shared across users).
+  users?: { username: string };
 }
 
 export interface PublicUser {

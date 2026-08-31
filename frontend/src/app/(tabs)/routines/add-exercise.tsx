@@ -21,6 +21,7 @@ export default function AddExerciseScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
+  const currentUserId = authStore((s) => s.user?.id);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
@@ -168,7 +169,12 @@ export default function AddExerciseScreen() {
               <View style={styles.iconBadge}>
                 <Dumbbell size={16} color={colors.accent.fire} strokeWidth={2} />
               </View>
-              <Text style={styles.exerciseName}>{item.name}</Text>
+              <View style={styles.exerciseInfo}>
+                <Text style={styles.exerciseName}>{item.name}</Text>
+                {item.user_id !== currentUserId && item.users?.username ? (
+                  <Text style={styles.exerciseAuthor}>creado por @{item.users.username}</Text>
+                ) : null}
+              </View>
               {selectedId === item.id && <Check size={18} color={colors.accent.fire} strokeWidth={2.4} />}
             </AnimatedTouchable>
           )
@@ -299,11 +305,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.sm,
   },
+  exerciseInfo: {
+    flex: 1,
+  },
   exerciseName: {
     ...typography.body,
     color: colors.text.primary,
     fontWeight: '700',
-    flex: 1,
+  },
+  exerciseAuthor: {
+    ...typography.tiny,
+    color: colors.text.muted,
+    marginTop: 2,
   },
   targetsSection: {
     marginTop: spacing.lg,

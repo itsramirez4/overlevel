@@ -64,6 +64,10 @@ export const updateExerciseSchema = z.object({
   distance_unit: z.enum(['km', 'mi']).nullable().optional(),
 });
 
+export const mergeExerciseSchema = z.object({
+  into: z.string().uuid(),
+});
+
 export const createRoutineSchema = z.object({
   name: z.string().min(1).max(100),
   day_of_week: z.string().optional(),

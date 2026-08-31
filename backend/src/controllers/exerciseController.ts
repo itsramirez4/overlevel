@@ -43,6 +43,11 @@ export class ExerciseController {
     await exerciseService.permanentlyDelete(req.params.id, req.userId!);
     res.status(204).send();
   }
+
+  async merge(req: AuthRequest, res: Response) {
+    const merged = await exerciseService.merge(req.params.id, req.body.into);
+    res.json(merged);
+  }
 }
 
 export const exerciseController = new ExerciseController();
