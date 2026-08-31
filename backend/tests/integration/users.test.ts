@@ -58,6 +58,36 @@ describe('users', () => {
       expect(res.body.exercise_battles.some((b: any) => b.exercise_id === exercise.body.id)).toBe(true);
     });
 
+    it('includes an exercise created by someone else, if this user\'s workout/routine references it', async () => {
+      const other = await createTestUser('users-export-other');
+      try {
+        const sharedExercise = await request(app)
+          .post('/api/exercises')
+          .set(authHeader(other))
+          .send({ name: 'Export Shared Exercise', category: 'compound' });
+
+        const workout = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+        await request(app)
+          .post('/api/sets')
+          .set(authHeader(user))
+          .send({ workout_id: workout.body.id, exercise_id: sharedExercise.body.id, set_number: 1, weight: 40, reps: 10 });
+
+        const routine = await request(app).post('/api/routines').set(authHeader(user)).send({ name: 'Export Routine' });
+        await request(app)
+          .post(`/api/routines/${routine.body.id}/exercises`)
+          .set(authHeader(user))
+          .send({ exercise_id: sharedExercise.body.id, order_num: 1 });
+
+        const res = await request(app).get('/api/users/me/export').set(authHeader(user));
+        expect(res.status).toBe(200);
+        // Not in this user's own exercises table rows (someone else owns
+        // it), but must still appear so sets/routine_exercises resolve.
+        expect(res.body.exercises.filter((e: any) => e.id === sharedExercise.body.id).length).toBe(1);
+      } finally {
+        await deleteTestUser(other.id);
+      }
+    });
+
     it('has a null character for a user who never created one — the RPG layer is optional', async () => {
       const res = await request(app).get('/api/users/me/export').set(authHeader(user));
       expect(res.status).toBe(200);

@@ -90,7 +90,7 @@ export class UserService {
     const user = await this.getUserById(userId);
 
     try {
-      const [exercises, routines, bodyWeightLogs, workouts, character, battles] = await Promise.all([
+      const [ownExercises, routines, bodyWeightLogs, workouts, character, battles] = await Promise.all([
         fetchAllRows<any>((from, to) =>
           supabaseAdmin.from('exercises').select('*').eq('user_id', userId).range(from, to)
         ),
@@ -122,10 +122,29 @@ export class UserService {
         ),
       ]);
 
+      // Exercises are shared across users now (see exerciseService) — a
+      // workout or routine here can reference one this user didn't create.
+      // Without also fetching those, the export's sets/routine_exercises
+      // would carry exercise_ids that don't resolve to anything in it.
+      const ownedIds = new Set(ownExercises.map((e: any) => e.id));
+      const referencedIds = new Set<string>();
+      for (const w of workouts) {
+        for (const s of w.sets || []) referencedIds.add(s.exercise_id);
+      }
+      for (const r of routines) {
+        for (const re of r.routine_exercises || []) referencedIds.add(re.exercise_id);
+      }
+      const missingIds = [...referencedIds].filter((id) => !ownedIds.has(id));
+      const otherExercises = missingIds.length
+        ? await fetchAllRows<any>((from, to) =>
+            supabaseAdmin.from('exercises').select('*').in('id', missingIds).range(from, to)
+          )
+        : [];
+
       return {
         exported_at: new Date().toISOString(),
         user: { email: user.email, username: user.username, full_name: user.full_name },
-        exercises,
+        exercises: [...ownExercises, ...otherExercises],
         routines,
         workouts,
         body_weight_logs: bodyWeightLogs,
