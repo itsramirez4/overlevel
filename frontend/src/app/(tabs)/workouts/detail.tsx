@@ -68,8 +68,8 @@ export default function WorkoutDetailScreen() {
   });
 
   const { data: allExercises } = useQuery({
-    queryKey: ['exercises'],
-    queryFn: () => api.get<Exercise[]>('/exercises').then((r) => r.data),
+    queryKey: ['exercises', 'all'],
+    queryFn: () => api.get<Exercise[]>('/exercises?scope=all').then((r) => r.data),
     enabled: pickerOpen,
   });
 

@@ -99,10 +99,13 @@ export class ImportService {
       throw new AppError('No se pudo leer ninguna fecha del CSV. ¿Es un export de Hevy válido?', 400);
     }
 
-    // Excludes trashed exercises — matching a CSV row to one would silently
-    // attach imported sets to something the user deliberately deleted.
+    // Matches against every user's exercises, not just this one's — exercises
+    // are shared, so reuse whatever already exists globally under this name
+    // instead of creating a redundant duplicate. Excludes trashed exercises —
+    // matching a CSV row to one would silently attach imported sets to
+    // something its creator deliberately deleted.
     const existing = await fetchAllRows<{ id: string; name: string }>((from, to) =>
-      supabaseAdmin.from('exercises').select('id, name').eq('user_id', userId).is('deleted_at', null).range(from, to)
+      supabaseAdmin.from('exercises').select('id, name').is('deleted_at', null).range(from, to)
     );
     const exerciseIdByName = new Map(existing.map((e) => [e.name.toLowerCase(), e.id]));
 

@@ -87,6 +87,65 @@ describe('exercises', () => {
     }
   });
 
+  describe('sharing — exercises are usable across users, but only editable by their creator', () => {
+    it('GET /exercises stays scoped to your own; ?scope=all includes everyone\'s', async () => {
+      const other = await createTestUser('exercises-shared-owner');
+      try {
+        const created = await request(app)
+          .post('/api/exercises')
+          .set(authHeader(other))
+          .send({ name: 'Shared By Other', category: 'compound' });
+
+        const mine = await request(app).get('/api/exercises').set(authHeader(user));
+        expect(mine.body.map((e: any) => e.id)).not.toContain(created.body.id);
+
+        const all = await request(app).get('/api/exercises?scope=all').set(authHeader(user));
+        expect(all.status).toBe(200);
+        expect(all.body.map((e: any) => e.id)).toContain(created.body.id);
+      } finally {
+        await deleteTestUser(other.id);
+      }
+    });
+
+    it('can log a set against another user\'s exercise', async () => {
+      const other = await createTestUser('exercises-shared-log');
+      try {
+        const created = await request(app)
+          .post('/api/exercises')
+          .set(authHeader(other))
+          .send({ name: 'Shared For Logging', category: 'compound' });
+
+        const workout = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+        const setRes = await request(app)
+          .post('/api/sets')
+          .set(authHeader(user))
+          .send({ workout_id: workout.body.id, exercise_id: created.body.id, set_number: 1, weight: 50, reps: 5 });
+        expect(setRes.status).toBe(201);
+      } finally {
+        await deleteTestUser(other.id);
+      }
+    });
+
+    it('can add another user\'s exercise to a routine', async () => {
+      const other = await createTestUser('exercises-shared-routine');
+      try {
+        const created = await request(app)
+          .post('/api/exercises')
+          .set(authHeader(other))
+          .send({ name: 'Shared For Routine', category: 'compound' });
+
+        const routine = await request(app).post('/api/routines').set(authHeader(user)).send({ name: 'Shared Routine' });
+        const addRes = await request(app)
+          .post(`/api/routines/${routine.body.id}/exercises`)
+          .set(authHeader(user))
+          .send({ exercise_id: created.body.id, order_num: 1 });
+        expect(addRes.status).toBe(201);
+      } finally {
+        await deleteTestUser(other.id);
+      }
+    });
+  });
+
   describe('trash lifecycle', () => {
     it('moves a deleted exercise to the trash instead of destroying it', async () => {
       const created = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Trash Me', category: 'compound' });

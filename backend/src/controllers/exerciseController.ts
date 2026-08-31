@@ -4,7 +4,8 @@ import { exerciseService } from '../services/exerciseService';
 
 export class ExerciseController {
   async list(req: AuthRequest, res: Response) {
-    const exercises = await exerciseService.list(req.userId!);
+    const exercises =
+      req.query.scope === 'all' ? await exerciseService.listAll() : await exerciseService.list(req.userId!);
     res.json(exercises);
   }
 

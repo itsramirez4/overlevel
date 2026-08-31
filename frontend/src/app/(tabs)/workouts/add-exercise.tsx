@@ -26,8 +26,8 @@ export default function WorkoutAddExerciseScreen() {
   const [search, setSearch] = useState('');
 
   const { data: exercises, isLoading } = useQuery({
-    queryKey: ['exercises'],
-    queryFn: () => api.get<Exercise[]>('/exercises').then((r) => r.data),
+    queryKey: ['exercises', 'all'],
+    queryFn: () => api.get<Exercise[]>('/exercises?scope=all').then((r) => r.data),
   });
 
   const alreadyAddedIds = new Set(sessionExercises.map((e) => e.id));

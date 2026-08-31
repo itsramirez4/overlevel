@@ -21,6 +21,24 @@ export class ExerciseService {
     return data;
   }
 
+  /** Every user's exercises — for picking/using one, not for managing your
+   * own catalog (that's list()). Anyone can log a set or build a routine
+   * with an exercise someone else created; only its creator can edit,
+   * trash, or delete it (see update/remove/restore below, still user-id
+   * scoped). */
+  async listAll(): Promise<Exercise[]> {
+    const data = await fetchAllRows<Exercise>((from, to) =>
+      supabaseAdmin
+        .from('exercises')
+        .select('*')
+        .is('deleted_at', null)
+        .order('name')
+        .range(from, to)
+    );
+
+    return data;
+  }
+
   async getById(id: string, userId: string): Promise<Exercise> {
     const { data, error } = await supabaseAdmin
       .from('exercises')

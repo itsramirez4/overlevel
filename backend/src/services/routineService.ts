@@ -130,14 +130,15 @@ export class RoutineService {
     userId: string,
     input: Partial<RoutineExercise>
   ): Promise<RoutineExercise> {
-    // Ownership checks: both the routine and the exercise being attached must belong to this user.
+    // The routine must belong to this user; the exercise itself doesn't —
+    // exercises are shared, so building a routine around one someone else
+    // created is expected, same as logging a set against it.
     const routine = await this.getById(routineId, userId);
 
     const { data: exercise } = await supabaseAdmin
       .from('exercises')
       .select('id')
       .eq('id', input.exercise_id)
-      .eq('user_id', userId)
       .is('deleted_at', null)
       .single();
 

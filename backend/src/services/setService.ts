@@ -172,11 +172,13 @@ export class SetService {
   async log(userId: string, input: Partial<Set>): Promise<Set & { battle?: ExerciseBattle }> {
     const workout = await this.getWorkoutForLog(input.workout_id!, userId);
 
+    // Not ownership-scoped — exercises are shared: logging a set against
+    // one someone else created is exactly the point, only editing/deleting
+    // the exercise itself stays restricted to its creator.
     const { data: exercise } = await supabaseAdmin
       .from('exercises')
       .select('id, category')
       .eq('id', input.exercise_id)
-      .eq('user_id', userId)
       .is('deleted_at', null)
       .single();
 
