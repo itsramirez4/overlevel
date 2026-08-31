@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, Image, StyleSheet, ImageSourcePropType } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { Skull } from 'lucide-react-native';
 import { colors, radius, spacing, typography } from '../../utils/theme';
 import { ExerciseBattle } from '../../types';
@@ -32,6 +33,12 @@ export const EnemyCard = ({ enemyName, battle, imageSource }: EnemyCardProps) =>
   // mid-workout), the jump from that placeholder max down to the real
   // value reads as "damage" and flashes, even though nothing was just hit.
   const prevHp = useRef<number | null>(null);
+  // Same reasoning, for the defeat punch below — only the live false→true
+  // transition should animate, not a battle that was already defeated
+  // when this card first mounted (reopening a workout, a remount mid-set).
+  const prevDefeated = useRef<boolean | null>(null);
+  const scale = useSharedValue(1);
+  const flashOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (!battle) return;
@@ -45,9 +52,21 @@ export const EnemyCard = ({ enemyName, battle, imageSource }: EnemyCardProps) =>
     prevHp.current = hpCurrent;
   }, [battle, hpCurrent]);
 
+  useEffect(() => {
+    if (!battle) return;
+    if (prevDefeated.current === false && defeated) {
+      scale.value = withSequence(withTiming(1.25, { duration: 120 }), withSpring(1, { damping: 6 }));
+      flashOpacity.value = withSequence(withTiming(1, { duration: 80 }), withTiming(0, { duration: 500 }));
+    }
+    prevDefeated.current = defeated;
+  }, [battle, defeated, scale, flashOpacity]);
+
+  const spriteAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const flashAnimatedStyle = useAnimatedStyle(() => ({ opacity: flashOpacity.value }));
+
   return (
     <View style={styles.container}>
-      <View style={[styles.spriteBox, defeated && styles.spriteBoxDefeated]}>
+      <Animated.View style={[styles.spriteBox, defeated && styles.spriteBoxDefeated, spriteAnimatedStyle]}>
         {imageSource ? (
           <Image source={imageSource} style={styles.spriteImage} resizeMode="contain" />
         ) : (
@@ -65,7 +84,9 @@ export const EnemyCard = ({ enemyName, battle, imageSource }: EnemyCardProps) =>
             <Text style={styles.defeatedText}>DERROTADO</Text>
           </View>
         )}
-      </View>
+
+        <Animated.View style={[styles.defeatFlash, flashAnimatedStyle]} pointerEvents="none" />
+      </Animated.View>
 
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>
@@ -137,6 +158,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: radius.md,
+  },
+  // The kill punch — briefly floods the sprite gold/white, then fades. Only
+  // ever driven by flashOpacity (starts and stays at 0 otherwise), so it's
+  // invisible outside the moment defeated flips true.
+  defeatFlash: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: colors.accent.gold,
     borderRadius: radius.md,
   },
   defeatedText: {

@@ -30,6 +30,11 @@ export default function WorkoutLogScreen() {
     leveledUp: boolean;
     newLevel: number;
   } | null>(null);
+  // completeWorkout() below clears sessionExercises/currentWorkout (which
+  // disables the battles query) the moment it resolves, so by the time
+  // XpRewardDialog would render there'd be nothing left to read "who did
+  // this session defeat" from — snapshotted in handleComplete instead.
+  const [defeatedNames, setDefeatedNames] = useState<string[]>([]);
   const sessionExercises = workoutStore((state) => state.sessionExercises);
   const removeSessionExercise = workoutStore((state) => state.removeSessionExercise);
   const moveSessionExercise = workoutStore((state) => state.moveSessionExercise);
@@ -81,6 +86,15 @@ export default function WorkoutLogScreen() {
     );
   }
 
+  const handleXpAwardClose = () => {
+    setXpAward(null);
+    router.replace('/(tabs)/dashboard');
+  };
+
+  // completeWorkout() clears currentWorkout the moment it resolves, which
+  // re-renders straight into this branch — xpAward is still set at that
+  // point, so the dialog has to render here too, or it never gets a chance
+  // to show at all (this early return happens before the one further down).
   if (!currentWorkout) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -97,6 +111,17 @@ export default function WorkoutLogScreen() {
             style={styles.emptyButton}
           />
         </View>
+
+        {xpAward && (
+          <XpRewardDialog
+            visible
+            xpGained={xpAward.xpGained}
+            leveledUp={xpAward.leveledUp}
+            newLevel={xpAward.newLevel}
+            defeatedEnemies={defeatedNames}
+            onClose={handleXpAwardClose}
+          />
+        )}
       </SafeAreaView>
     );
   }
@@ -105,8 +130,12 @@ export default function WorkoutLogScreen() {
     if (completing) return;
     setCompleting(true);
     try {
+      const namesSnapshot = sessionExercises
+        .filter((exercise) => (battles || []).find((b) => b.exercise_id === exercise.id)?.defeated)
+        .map((exercise) => exercise.name);
       const result = await completeWorkout(title, feltLike, notes);
       setCompleteDialogOpen(false);
+      setDefeatedNames(namesSnapshot);
       // The dashboard's ['stats']/['workouts'] queries (and, if this
       // workout awarded XP, ['character']) were fetched before this
       // workout existed — without this they'd keep showing pre-workout
@@ -124,11 +153,6 @@ export default function WorkoutLogScreen() {
     } finally {
       setCompleting(false);
     }
-  };
-
-  const handleXpAwardClose = () => {
-    setXpAward(null);
-    router.replace('/(tabs)/dashboard');
   };
 
   return (
@@ -208,16 +232,6 @@ export default function WorkoutLogScreen() {
         onConfirm={handleComplete}
         onCancel={() => !completing && setCompleteDialogOpen(false)}
       />
-
-      {xpAward && (
-        <XpRewardDialog
-          visible
-          xpGained={xpAward.xpGained}
-          leveledUp={xpAward.leveledUp}
-          newLevel={xpAward.newLevel}
-          onClose={handleXpAwardClose}
-        />
-      )}
     </SafeAreaView>
   );
 }
