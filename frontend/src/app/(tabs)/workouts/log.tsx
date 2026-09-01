@@ -130,8 +130,13 @@ export default function WorkoutLogScreen() {
     if (completing) return;
     setCompleting(true);
     try {
+      // Not filtering on battle.defeated here — completeWorkout() below
+      // unconditionally finishes off every still-active battle in this
+      // workout (the "kill guarantee", see migration 031), so anything
+      // that ever took a hit this session ends up defeated regardless of
+      // how much HP it had left the instant Terminar was pressed.
       const namesSnapshot = sessionExercises
-        .filter((exercise) => (battles || []).find((b) => b.exercise_id === exercise.id)?.defeated)
+        .filter((exercise) => (battles || []).some((b) => b.exercise_id === exercise.id))
         .map((exercise) => exercise.name);
       const result = await completeWorkout(title, feltLike, notes);
       setCompleteDialogOpen(false);
