@@ -157,12 +157,16 @@ export interface Workout {
   routine_id?: string;
   routine?: Routine;
   routines?: { name: string };
-  title?: string;
+  // These three are nullable TEXT columns — an unset one comes back as a
+  // real `null`, not a missing key, so `| null` here isn't optional detail:
+  // code that treats "unset" as only `undefined` (e.g. a naive `?? default`)
+  // misses the null case and can round-trip it back to the API unexpectedly.
+  title?: string | null;
   started_at: string;
   completed_at?: string;
   duration_minutes?: number;
-  felt_like?: 'terrible' | 'bad' | 'ok' | 'good' | 'amazing';
-  notes?: string;
+  felt_like?: 'terrible' | 'bad' | 'ok' | 'good' | 'amazing' | null;
+  notes?: string | null;
   sets?: Set[];
   created_at: string;
   // Only present in the response to PUT /workouts/:id/complete, and only

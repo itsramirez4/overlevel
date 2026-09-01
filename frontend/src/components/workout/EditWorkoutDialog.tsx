@@ -9,9 +9,11 @@ import { Button } from '../ui/Button';
 interface EditWorkoutDialogProps {
   visible: boolean;
   loading?: boolean;
-  initialTitle?: string;
-  initialNotes?: string;
-  initialFeltLike?: string;
+  initialTitle?: string | null;
+  initialNotes?: string | null;
+  // A workout with no felt_like set comes back from the API as null (a
+  // real Postgres NULL), not a missing/undefined field.
+  initialFeltLike?: string | null;
   onSave: (title?: string, notes?: string, feltLike?: string) => void;
   onCancel: () => void;
 }
@@ -27,7 +29,9 @@ export const EditWorkoutDialog = ({
 }: EditWorkoutDialogProps) => {
   const [title, setTitle] = useState(initialTitle || '');
   const [notes, setNotes] = useState(initialNotes || '');
-  const [feltLike, setFeltLike] = useState<string | undefined>(initialFeltLike);
+  // ?? not ||: coalesces null (never-set) the same way, but a falsy string
+  // value can't happen here anyway (feltLike is always a whole enum option).
+  const [feltLike, setFeltLike] = useState<string | undefined>(initialFeltLike ?? undefined);
 
   // Dialog instance is shared across opens — resync to the current workout
   // each time it's shown rather than only on first mount.
@@ -35,7 +39,7 @@ export const EditWorkoutDialog = ({
     if (visible) {
       setTitle(initialTitle || '');
       setNotes(initialNotes || '');
-      setFeltLike(initialFeltLike);
+      setFeltLike(initialFeltLike ?? undefined);
     }
   }, [visible, initialTitle, initialNotes, initialFeltLike]);
 
