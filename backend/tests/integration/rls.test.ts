@@ -81,6 +81,27 @@ describe('row level security', () => {
     expect(data).toEqual([]);
   });
 
+  it("blocks a user from reading another user's exercise notes", async () => {
+    const { data: workout } = await supabaseAdmin
+      .from('workouts')
+      .insert({ user_id: userB.id, started_at: new Date().toISOString() })
+      .select()
+      .single();
+    const { data: exercise } = await supabaseAdmin
+      .from('exercises')
+      .insert({ user_id: userB.id, name: 'RLS Note Exercise', category: 'compound' })
+      .select()
+      .single();
+    await supabaseAdmin
+      .from('workout_exercise_notes')
+      .insert({ workout_id: workout.id, exercise_id: exercise.id, user_id: userB.id, notes: 'private' });
+
+    const { data, error } = await userA.client.from('workout_exercise_notes').select('*').eq('workout_id', workout.id);
+
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+  });
+
   it('has no policies granting the refresh_tokens table to non-service roles', async () => {
     await supabaseAdmin.from('refresh_tokens').insert({
       user_id: userB.id,

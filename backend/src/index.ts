@@ -19,6 +19,7 @@ import setRoutes from './routes/sets';
 import analyticsRoutes from './routes/analytics';
 import characterRoutes from './routes/characters';
 import battleRoutes from './routes/battles';
+import workoutExerciseNoteRoutes from './routes/workoutExerciseNotes';
 import clientErrorRoutes from './routes/clientErrors';
 import internalCronRoutes from './routes/internalCron';
 
@@ -106,6 +107,7 @@ app.use('/api/sets', setRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/characters', characterRoutes);
 app.use('/api/battles', battleRoutes);
+app.use('/api/workout-exercise-notes', workoutExerciseNoteRoutes);
 app.use('/api/client-errors', clientErrorRoutes);
 app.use('/api/internal/cron', internalCronRoutes);
 

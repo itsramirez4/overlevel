@@ -151,6 +151,10 @@ export const updateWorkoutSchema = z.object({
   title: z.string().max(200).optional(),
   notes: z.string().optional(),
   felt_like: z.enum(['terrible', 'bad', 'ok', 'good', 'amazing']).optional(),
+  // For logging a workout after the fact and correcting which day it
+  // actually happened on — workoutService.update() enforces it can't be
+  // future-dated or land after completed_at.
+  started_at: z.string().datetime().optional(),
 });
 
 // Same allowed fields as updateWorkoutSchema — completing a workout can
@@ -160,6 +164,12 @@ export const completeWorkoutSchema = updateWorkoutSchema;
 
 export const startWorkoutSchema = z.object({
   routine_id: z.string().uuid().optional(),
+});
+
+// The whole-exercise note (distinct from a single set's form_notes) — empty
+// string is a valid value, meaning "clear it" (see workoutExerciseNoteService.set).
+export const setWorkoutExerciseNoteSchema = z.object({
+  notes: z.string().max(2000),
 });
 
 export const createCharacterSchema = z.object({

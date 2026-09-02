@@ -121,6 +121,41 @@ describe('workouts', () => {
     expect(setRes.body.is_pr).toBe(true);
   });
 
+  it('corrects the date of a completed workout (logging it after the fact)', async () => {
+    const started = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+    const workoutId = started.body.id;
+    await request(app).put(`/api/workouts/${workoutId}/complete`).set(authHeader(user)).send({});
+
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const res = await request(app).put(`/api/workouts/${workoutId}`).set(authHeader(user)).send({ started_at: yesterday });
+
+    expect(res.status).toBe(200);
+    // Postgres round-trips the timestamp as "+00:00" instead of "Z" — same
+    // instant, different string, so compare parsed values.
+    expect(new Date(res.body.started_at).getTime()).toBe(new Date(yesterday).getTime());
+  });
+
+  it('rejects a future started_at', async () => {
+    const started = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+    const workoutId = started.body.id;
+
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const res = await request(app).put(`/api/workouts/${workoutId}`).set(authHeader(user)).send({ started_at: tomorrow });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a started_at set after the workout was already completed', async () => {
+    const started = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+    const workoutId = started.body.id;
+    const completed = await request(app).put(`/api/workouts/${workoutId}/complete`).set(authHeader(user)).send({});
+
+    const afterCompletion = new Date(new Date(completed.body.completed_at).getTime() + 60_000).toISOString();
+    const res = await request(app).put(`/api/workouts/${workoutId}`).set(authHeader(user)).send({ started_at: afterCompletion });
+
+    expect(res.status).toBe(400);
+  });
+
   it('one user cannot view or complete another user\'s workout', async () => {
     const victim = await createTestUser('workouts-view-victim');
     try {

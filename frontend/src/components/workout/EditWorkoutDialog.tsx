@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { colors, radius, spacing, typography } from '../../utils/theme';
 import { feltLikeLabel, feltLikeOptions } from '../../utils/feltLike';
 import { Modal } from '../ui/Modal';
@@ -14,7 +15,8 @@ interface EditWorkoutDialogProps {
   // A workout with no felt_like set comes back from the API as null (a
   // real Postgres NULL), not a missing/undefined field.
   initialFeltLike?: string | null;
-  onSave: (title?: string, notes?: string, feltLike?: string) => void;
+  initialStartedAt: string;
+  onSave: (title?: string, notes?: string, feltLike?: string, startedAt?: string) => void;
   onCancel: () => void;
 }
 
@@ -24,6 +26,7 @@ export const EditWorkoutDialog = ({
   initialTitle,
   initialNotes,
   initialFeltLike,
+  initialStartedAt,
   onSave,
   onCancel,
 }: EditWorkoutDialogProps) => {
@@ -32,6 +35,8 @@ export const EditWorkoutDialog = ({
   // ?? not ||: coalesces null (never-set) the same way, but a falsy string
   // value can't happen here anyway (feltLike is always a whole enum option).
   const [feltLike, setFeltLike] = useState<string | undefined>(initialFeltLike ?? undefined);
+  const [startedAt, setStartedAt] = useState(new Date(initialStartedAt));
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Dialog instance is shared across opens — resync to the current workout
   // each time it's shown rather than only on first mount.
@@ -40,11 +45,25 @@ export const EditWorkoutDialog = ({
       setTitle(initialTitle || '');
       setNotes(initialNotes || '');
       setFeltLike(initialFeltLike ?? undefined);
+      setStartedAt(new Date(initialStartedAt));
     }
-  }, [visible, initialTitle, initialNotes, initialFeltLike]);
+  }, [visible, initialTitle, initialNotes, initialFeltLike, initialStartedAt]);
+
+  const handleDateChange = (event: DateTimePickerEvent, selected?: Date) => {
+    setShowDatePicker(false);
+    if (event.type !== 'set' || !selected) return;
+    // Only the day changes — the original time-of-day carries over, so this
+    // can't collide with another workout's exact timestamp and doesn't
+    // pretend to know what time it actually happened.
+    setStartedAt((prev) => {
+      const next = new Date(prev);
+      next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+      return next;
+    });
+  };
 
   const handleSave = () => {
-    onSave(title.trim() || undefined, notes.trim() || undefined, feltLike);
+    onSave(title.trim() || undefined, notes.trim() || undefined, feltLike, startedAt.toISOString());
   };
 
   return (
@@ -52,6 +71,22 @@ export const EditWorkoutDialog = ({
       <Text style={styles.title}>Editar entrenamiento</Text>
 
       <Input label="Título (opcional)" placeholder="Nombre del entrenamiento" value={title} onChangeText={setTitle} />
+
+      <Text style={styles.label}>Fecha</Text>
+      <TouchableOpacity
+        style={styles.dateButton}
+        onPress={() => setShowDatePicker(true)}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Cambiar la fecha del entrenamiento"
+      >
+        <Text style={styles.dateButtonText}>
+          {startedAt.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        </Text>
+      </TouchableOpacity>
+      {showDatePicker && (
+        <DateTimePicker value={startedAt} mode="date" display="default" maximumDate={new Date()} onChange={handleDateChange} />
+      )}
 
       <Text style={styles.label}>¿Cómo te sentiste?</Text>
       <View style={styles.options}>
@@ -103,6 +138,20 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginBottom: spacing.xs,
     textTransform: 'uppercase',
+  },
+  dateButton: {
+    backgroundColor: colors.bg.secondary,
+    borderColor: colors.border.default,
+    borderWidth: 1.5,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  dateButtonText: {
+    ...typography.body,
+    color: colors.text.primary,
+    textTransform: 'capitalize',
   },
   options: {
     flexDirection: 'row',

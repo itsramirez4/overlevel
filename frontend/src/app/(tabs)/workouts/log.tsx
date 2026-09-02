@@ -17,7 +17,7 @@ import { XpRewardDialog } from '../../../components/workout/XpRewardDialog';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Button } from '../../../components/ui/Button';
 import { Loader } from '../../../components/ui/Loader';
-import { ExerciseBattle, Set } from '../../../types';
+import { ExerciseBattle, Set, WorkoutExerciseNote } from '../../../types';
 
 export default function WorkoutLogScreen() {
   const router = useRouter();
@@ -77,6 +77,17 @@ export default function WorkoutLogScreen() {
     queryFn: () => api.get<ExerciseBattle[]>(`/battles/workout/${currentWorkout!.id}`).then((r) => r.data),
     enabled: !!currentWorkout,
   });
+
+  const { data: exerciseNotes, refetch: refetchNotes } = useQuery({
+    queryKey: ['exercise-notes', currentWorkout?.id],
+    queryFn: () =>
+      api.get<WorkoutExerciseNote[]>(`/workout-exercise-notes/workout/${currentWorkout!.id}`).then((r) => r.data),
+    enabled: !!currentWorkout,
+  });
+
+  const handleNoteSaved = (exerciseId: string, notes: string) => {
+    api.put(`/workout-exercise-notes/${currentWorkout!.id}/${exerciseId}`, { notes }).then(() => refetchNotes());
+  };
 
   if (!hasHydrated) {
     return (
@@ -194,6 +205,8 @@ export default function WorkoutLogScreen() {
                 exercise={exercise}
                 loggedSets={(sets || []).filter((s) => s.exercise_id === exercise.id)}
                 battle={(battles || []).find((b) => b.exercise_id === exercise.id)}
+                note={(exerciseNotes || []).find((n) => n.exercise_id === exercise.id)?.notes}
+                onNoteSaved={(notes) => handleNoteSaved(exercise.id, notes)}
                 onSetLogged={() => {
                   refetch();
                   refetchBattles();

@@ -30,12 +30,14 @@ import { Input } from '../../../components/ui/Input';
 import { EditWorkoutDialog } from '../../../components/workout/EditWorkoutDialog';
 import { LoggedSetRow } from '../../../components/workout/LoggedSetRow';
 import { SetLogger } from '../../../components/workout/SetLogger';
+import { ExerciseNoteField } from '../../../components/workout/ExerciseNoteField';
 import { getWorkoutName } from '../../../utils/workoutName';
 import { feltLikeLabel } from '../../../utils/feltLike';
 import { formatWeight, kgToUnit, formatDistance } from '../../../utils/units';
 import { formatDuration, formatSetDuration } from '../../../utils/duration';
 import { authStore } from '../../../stores/authStore';
-import { Exercise, Set as WorkoutSet, Workout } from '../../../types';
+import { getErrorMessage } from '../../../utils/errors';
+import { Exercise, Set as WorkoutSet, Workout, WorkoutExerciseNote } from '../../../types';
 
 interface ExerciseGroup {
   exerciseId: string;
@@ -74,6 +76,16 @@ export default function WorkoutDetailScreen() {
     enabled: pickerOpen,
   });
 
+  const { data: exerciseNotes, refetch: refetchNotes } = useQuery({
+    queryKey: ['exercise-notes', id],
+    queryFn: () => api.get<WorkoutExerciseNote[]>(`/workout-exercise-notes/workout/${id}`).then((r) => r.data),
+    enabled: !!id,
+  });
+
+  const handleNoteSaved = (exerciseId: string, notes: string) => {
+    api.put(`/workout-exercise-notes/${id}/${exerciseId}`, { notes }).then(() => refetchNotes());
+  };
+
   const confirmDelete = async () => {
     try {
       await api.delete(`/workouts/${id}`);
@@ -86,16 +98,16 @@ export default function WorkoutDetailScreen() {
     }
   };
 
-  const handleSaveEdit = async (title?: string, notes?: string, feltLike?: string) => {
+  const handleSaveEdit = async (title?: string, notes?: string, feltLike?: string, startedAt?: string) => {
     if (savingEdit) return;
     setSavingEdit(true);
     try {
-      await api.put(`/workouts/${id}`, { title, notes, felt_like: feltLike });
+      await api.put(`/workouts/${id}`, { title, notes, felt_like: feltLike, started_at: startedAt });
       setEditOpen(false);
       await queryClient.invalidateQueries({ queryKey: ['workouts', id] });
       await queryClient.invalidateQueries({ queryKey: ['workouts'] });
-    } catch {
-      Alert.alert('Error', 'No se pudieron guardar los cambios. Inténtalo de nuevo.');
+    } catch (err) {
+      Alert.alert('Error', getErrorMessage(err, 'No se pudieron guardar los cambios. Inténtalo de nuevo.'));
     } finally {
       setSavingEdit(false);
     }
@@ -297,6 +309,11 @@ export default function WorkoutDetailScreen() {
                 )}
               </View>
 
+              <ExerciseNoteField
+                value={exerciseNotes?.find((n) => n.exercise_id === item.exerciseId)?.notes}
+                onSave={(notes) => handleNoteSaved(item.exerciseId, notes)}
+              />
+
               {editingSets ? (
                 <>
                   {item.sets.length > 0 && (
@@ -391,6 +408,7 @@ export default function WorkoutDetailScreen() {
         initialTitle={workout.title}
         initialNotes={workout.notes}
         initialFeltLike={workout.felt_like}
+        initialStartedAt={workout.started_at}
         onSave={handleSaveEdit}
         onCancel={() => !savingEdit && setEditOpen(false)}
       />

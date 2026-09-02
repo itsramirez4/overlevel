@@ -122,9 +122,29 @@ export class WorkoutService {
     return { ...(data.workout as Workout), xp_award: data.xp_award || undefined };
   }
 
-  /** Editing title/notes/felt_like after the fact — deliberately separate from
-   * complete() so it never touches completed_at/duration_minutes. */
+  /** Editing title/notes/felt_like/started_at after the fact — deliberately
+   * separate from complete() so it never touches completed_at/duration_minutes
+   * (a corrected started_at leaves the already-recorded duration as-is; it's
+   * only fixing which day this was logged under, not recomputing anything). */
   async update(id: string, userId: string, updates: Partial<Workout>): Promise<Workout> {
+    if (updates.started_at) {
+      const startedAt = new Date(updates.started_at);
+      if (startedAt.getTime() > Date.now()) {
+        throw new AppError('La fecha no puede ser en el futuro', 400);
+      }
+
+      const { data: existing } = await supabaseAdmin
+        .from('workouts')
+        .select('completed_at')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (!existing) throw new AppError('Workout not found', 404);
+      if (existing.completed_at && startedAt.getTime() > new Date(existing.completed_at).getTime()) {
+        throw new AppError('La fecha no puede ser posterior a cuando terminaste el entrenamiento', 400);
+      }
+    }
+
     // .maybeSingle(), not .single() — same reasoning as workoutService's
     // sibling update-by-ownership methods elsewhere: zero rows matched
     // (not-owned/nonexistent) shouldn't collapse into a generic 500.
@@ -136,7 +156,14 @@ export class WorkoutService {
       .select()
       .maybeSingle();
 
-    if (error) throw new AppError('Failed to update workout');
+    if (error) {
+      // workouts_user_started_at_unique (migration 018) — another workout of
+      // this user already has that exact timestamp.
+      if (error.code === '23505') {
+        throw new AppError('Ya tienes otro entrenamiento registrado en esa fecha y hora exacta', 409);
+      }
+      throw new AppError('Failed to update workout');
+    }
     if (!data) throw new AppError('Workout not found', 404);
     return data as Workout;
   }

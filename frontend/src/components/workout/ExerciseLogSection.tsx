@@ -10,6 +10,7 @@ import { Card } from '../ui/Card';
 import { SetLogger } from './SetLogger';
 import { LoggedSetRow } from './LoggedSetRow';
 import { EnemyCard } from './EnemyCard';
+import { ExerciseNoteField } from './ExerciseNoteField';
 import { Exercise, ExerciseBattle, Set } from '../../types';
 
 interface LastSession {
@@ -29,6 +30,8 @@ interface ExerciseLogSectionProps {
   exercise: Exercise;
   loggedSets: Set[];
   battle?: ExerciseBattle;
+  note?: string;
+  onNoteSaved: (notes: string) => void;
   onSetLogged: () => void;
   onRemove: () => void;
   isFirst: boolean;
@@ -47,6 +50,8 @@ export const ExerciseLogSection = ({
   exercise,
   loggedSets,
   battle,
+  note,
+  onNoteSaved,
   onSetLogged,
   onRemove,
   isFirst,
@@ -179,6 +184,8 @@ export const ExerciseLogSection = ({
         supersetGroup={supersetGroup}
         shouldRest={shouldRest}
       />
+
+      <ExerciseNoteField value={note} onSave={onNoteSaved} />
     </Card>
   );
 };

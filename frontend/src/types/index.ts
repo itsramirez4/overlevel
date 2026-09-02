@@ -151,6 +151,16 @@ export interface ExerciseBattle {
   defeated_at: string | null;
 }
 
+export interface WorkoutExerciseNote {
+  id: string;
+  workout_id: string;
+  exercise_id: string;
+  user_id: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Workout {
   id: string;
   user_id: string;
