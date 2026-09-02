@@ -189,7 +189,10 @@ export class SetService {
       if (!input.duration_seconds || !input.distance_km) {
         throw new AppError('Los ejercicios de cardio necesitan duración y distancia', 400);
       }
-    } else if (!input.weight || !input.reps) {
+      // input.weight/reps === undefined, not the falsy check this used to
+      // be — 0 is a real, valid value for both (bodyweight work, a failed
+      // rep) and must not be treated as "missing".
+    } else if (input.weight === undefined || input.reps === undefined) {
       throw new AppError('Este ejercicio necesita peso y repeticiones', 400);
     }
 

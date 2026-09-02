@@ -119,8 +119,12 @@ export class BattleService {
     const referenceVolumePerSet = await this.getReferenceEffort(exerciseId, userId, category);
 
     // A set matching your usual effort for this exercise does ~1/4 of the
-    // bar; a noticeably harder-than-usual set does more.
-    const damage = Math.max(1, Math.round((effort / referenceVolumePerSet) * (battle.hp_max / 4)));
+    // bar; a noticeably harder-than-usual set does more. Falls back to the
+    // minimum hit instead of an nonsensical value if this ratio is ever
+    // NaN/Infinity — getReferenceEffort already guards against a 0
+    // denominator, but a 0-effort hit still deserves to land as *something*.
+    const rawDamage = Math.round((effort / referenceVolumePerSet) * (battle.hp_max / 4));
+    const damage = Number.isFinite(rawDamage) ? Math.max(1, rawDamage) : 1;
 
     // apply_battle_damage (migration 032) does the hp_current read-and-write
     // in one atomic SQL statement — two sets landing close together each
@@ -184,9 +188,15 @@ export class BattleService {
       .eq('user_id', userId)
       .maybeSingle();
 
-    return stats?.set_count && stats.set_count > 0
-      ? (stats.total_volume as number) / (stats.set_count as number)
-      : DEFAULT_REFERENCE_VOLUME_PER_SET;
+    // This runs after the current set is already inserted (see setService.
+    // log()), so a history of exactly one 0-weight/0-rep set — logging your
+    // very first set as bodyweight-only or a failed rep — makes this average
+    // out to a real, non-null 0, not "no history". Falls back to the
+    // default the same as no history at all: dividing damage by an actual
+    // 0 reference a moment from now would be effort/0, always NaN.
+    const average =
+      stats?.set_count && stats.set_count > 0 ? (stats.total_volume as number) / (stats.set_count as number) : 0;
+    return average > 0 ? average : DEFAULT_REFERENCE_VOLUME_PER_SET;
   }
 
   private async getOrCreate(workoutId: string, exerciseId: string, userId: string): Promise<ExerciseBattle> {

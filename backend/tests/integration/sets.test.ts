@@ -32,6 +32,18 @@ describe('sets / PR detection', () => {
         is_warmup: overrides.is_warmup ?? false,
       });
 
+  it('accepts 0 for both weight and reps — a failed rep or bodyweight-only work is a real set', async () => {
+    const res = await logSet({ set_number: 1, weight: 0, reps: 0 });
+    expect(res.status).toBe(201);
+    expect(res.body.weight).toBe(0);
+    expect(res.body.reps).toBe(0);
+  });
+
+  it('still rejects a negative weight or reps', async () => {
+    const res = await logSet({ set_number: 1, weight: -10, reps: 5 });
+    expect(res.status).toBe(400);
+  });
+
   it('the first set logged for an exercise is a PR', async () => {
     const res = await logSet({ set_number: 1, weight: 60, reps: 5 });
     expect(res.status).toBe(201);

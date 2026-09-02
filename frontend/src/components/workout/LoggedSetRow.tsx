@@ -80,8 +80,9 @@ export const LoggedSetRow = ({
     } else {
       const parsedWeight = parseFloat(weight);
       const parsedReps = parseInt(reps, 10);
-      if (!Number.isFinite(parsedWeight) || parsedWeight <= 0 || !Number.isFinite(parsedReps) || parsedReps <= 0) {
-        setError('Reps y peso deben ser números mayores que cero');
+      // < 0, not <= 0: 0 is a real, valid value for both.
+      if (!Number.isFinite(parsedWeight) || parsedWeight < 0 || !Number.isFinite(parsedReps) || parsedReps < 0) {
+        setError('Reps y peso no pueden ser negativos');
         return;
       }
       payload = { weight: unitToKg(parsedWeight, unit), reps: parsedReps };

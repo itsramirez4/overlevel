@@ -38,12 +38,12 @@ describe('SetLogger validation', () => {
 
     await fireEvent.press(getByText('REGISTRAR SERIE'));
 
-    await waitFor(() => expect(getByText(/mayores que cero/)).toBeTruthy());
+    await waitFor(() => expect(getByText(/no pueden ser negativos/)).toBeTruthy());
     expect(mockedApi.post).not.toHaveBeenCalled();
     expect(onSetLogged).not.toHaveBeenCalled();
   });
 
-  it('rejects zero and negative values', async () => {
+  it('rejects negative values', async () => {
     const onSetLogged = jest.fn();
     const { getByText, getByPlaceholderText } = await render(
       <SetLogger workoutId="w1" exercise={exercise} setNumber={1} onSetLogged={onSetLogged} />
@@ -53,8 +53,26 @@ describe('SetLogger validation', () => {
     await fireEvent.changeText(getByPlaceholderText('Reps'), '-5');
     await fireEvent.press(getByText('REGISTRAR SERIE'));
 
-    await waitFor(() => expect(getByText(/mayores que cero/)).toBeTruthy());
+    await waitFor(() => expect(getByText(/no pueden ser negativos/)).toBeTruthy());
     expect(mockedApi.post).not.toHaveBeenCalled();
+  });
+
+  it('accepts zero for both weight and reps — a failed rep or bodyweight-only work is a real set', async () => {
+    const onSetLogged = jest.fn();
+    mockedApi.post.mockResolvedValue({ data: { id: 'set1' } });
+    const { getByText, getByPlaceholderText, queryByText } = await render(
+      <SetLogger workoutId="w1" exercise={exercise} setNumber={1} onSetLogged={onSetLogged} />
+    );
+
+    await fireEvent.changeText(getByPlaceholderText('Kg'), '0');
+    await fireEvent.changeText(getByPlaceholderText('Reps'), '0');
+    await fireEvent.press(getByText('REGISTRAR SERIE'));
+
+    await waitFor(() => expect(mockedApi.post).toHaveBeenCalled());
+    expect(queryByText(/no pueden ser negativos/)).toBeNull();
+    const payload = mockedApi.post.mock.calls[0][1];
+    expect((payload as any).weight).toBe(0);
+    expect((payload as any).reps).toBe(0);
   });
 });
 
@@ -182,7 +200,7 @@ describe('SetLogger submission', () => {
 
     await waitFor(() => expect(getByText(/Sin conexión/)).toBeTruthy());
     expect(mockedEnqueue).toHaveBeenCalledWith('/sets', expect.objectContaining({ reps: 5 }));
-    expect(queryByText(/mayores que cero/)).toBeNull();
+    expect(queryByText(/no pueden ser negativos/)).toBeNull();
   });
 
   it('drops the stale "Sin conexión" banner once the parent set count advances (the queued set synced)', async () => {

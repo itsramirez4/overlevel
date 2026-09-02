@@ -55,7 +55,23 @@ describe('display', () => {
 });
 
 describe('editing', () => {
-  it('rejects saving zero/negative values without calling the API', async () => {
+  it('rejects saving a negative value without calling the API', async () => {
+    const onChanged = jest.fn();
+    const { getByText, getByLabelText, getByPlaceholderText } = await render(
+      <LoggedSetRow set={baseSet} exerciseId="ex1" weightUnit="kg" distanceUnit="km" onChanged={onChanged} />
+    );
+
+    await fireEvent.press(getByLabelText('Editar serie 1'));
+    await fireEvent.changeText(getByPlaceholderText('Kg'), '-5');
+    await fireEvent.press(getByText('Guardar'));
+
+    await waitFor(() => expect(getByText(/no pueden ser negativos/)).toBeTruthy());
+    expect(mockedApi.put).not.toHaveBeenCalled();
+    expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it('accepts zero weight — bodyweight-only work is a real set', async () => {
+    mockedApi.put.mockResolvedValue({ data: {} });
     const onChanged = jest.fn();
     const { getByText, getByLabelText, getByPlaceholderText } = await render(
       <LoggedSetRow set={baseSet} exerciseId="ex1" weightUnit="kg" distanceUnit="km" onChanged={onChanged} />
@@ -65,9 +81,7 @@ describe('editing', () => {
     await fireEvent.changeText(getByPlaceholderText('Kg'), '0');
     await fireEvent.press(getByText('Guardar'));
 
-    await waitFor(() => expect(getByText(/mayores que cero/)).toBeTruthy());
-    expect(mockedApi.put).not.toHaveBeenCalled();
-    expect(onChanged).not.toHaveBeenCalled();
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalledWith('/sets/set1', { weight: 0, reps: 8 }));
   });
 
   it('saves a valid edit, converting into kg, and exits edit mode', async () => {

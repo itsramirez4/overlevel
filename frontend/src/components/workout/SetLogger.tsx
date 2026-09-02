@@ -111,8 +111,10 @@ export const SetLogger = ({
     } else {
       const parsedReps = parseInt(reps, 10);
       const parsedWeight = parseFloat(weight);
-      if (!Number.isFinite(parsedReps) || parsedReps <= 0 || !Number.isFinite(parsedWeight) || parsedWeight <= 0) {
-        setError('Reps y peso deben ser números mayores que cero');
+      // < 0, not <= 0: 0 reps (a failed attempt) and 0 weight (bodyweight
+      // work, an unloaded bar) are both real sets someone might log.
+      if (!Number.isFinite(parsedReps) || parsedReps < 0 || !Number.isFinite(parsedWeight) || parsedWeight < 0) {
+        setError('Reps y peso no pueden ser negativos');
         return;
       }
       strengthPayload = { reps: parsedReps, weight: unitToKg(parsedWeight, unit) };

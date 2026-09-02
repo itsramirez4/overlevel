@@ -102,8 +102,10 @@ export const logSetSchema = z.object({
   workout_id: z.string().uuid(),
   exercise_id: z.string().uuid(),
   set_number: z.number().int().positive(),
-  reps: z.number().int().positive().optional(),
-  weight: z.number().positive().optional(),
+  // nonnegative, not positive: 0 reps (a failed attempt) and 0 weight
+  // (bodyweight-only, or an unloaded bar) are both real, loggable sets.
+  reps: z.number().int().nonnegative().optional(),
+  weight: z.number().nonnegative().optional(),
   duration_seconds: z.number().int().positive().optional(),
   distance_km: z.number().positive().optional(),
   rpe: z.number().int().min(1).max(10).optional(),
@@ -115,8 +117,10 @@ export const logSetSchema = z.object({
 });
 
 export const updateSetSchema = z.object({
-  reps: z.number().int().positive().optional(),
-  weight: z.number().positive().optional(),
+  // nonnegative, not positive: 0 reps (a failed attempt) and 0 weight
+  // (bodyweight-only, or an unloaded bar) are both real, loggable sets.
+  reps: z.number().int().nonnegative().optional(),
+  weight: z.number().nonnegative().optional(),
   duration_seconds: z.number().int().positive().optional(),
   distance_km: z.number().positive().optional(),
   rpe: z.number().int().min(1).max(10).optional(),
