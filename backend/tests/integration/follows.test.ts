@@ -121,4 +121,83 @@ describe('social (follows + public profiles)', () => {
     const res = await request(app).get(`/api/users/${b.id}/workouts`).set(authHeader(a));
     expect(res.status).toBe(404);
   });
+
+  describe('public workout detail', () => {
+    it("shows a public user's completed workout in full, including its sets", async () => {
+      await makePublic(b);
+      const workout = await request(app).post('/api/workouts').set(authHeader(b)).send({});
+      const exercise = await request(app)
+        .post('/api/exercises')
+        .set(authHeader(b))
+        .send({ name: 'Public Profile Bench', category: 'compound' });
+      await request(app)
+        .post('/api/sets')
+        .set(authHeader(b))
+        .send({ workout_id: workout.body.id, exercise_id: exercise.body.id, set_number: 1, weight: 60, reps: 8 });
+      await request(app).put(`/api/workouts/${workout.body.id}/complete`).set(authHeader(b)).send({});
+
+      const res = await request(app).get(`/api/users/${b.id}/workouts/${workout.body.id}`).set(authHeader(a));
+      expect(res.status).toBe(200);
+      expect(res.body.id).toBe(workout.body.id);
+      expect(res.body.sets).toHaveLength(1);
+      expect(res.body.sets[0].exercises.name).toBe('Public Profile Bench');
+    });
+
+    it("404s for a public user's in-progress workout — not real content yet", async () => {
+      await makePublic(b);
+      const workout = await request(app).post('/api/workouts').set(authHeader(b)).send({});
+
+      const res = await request(app).get(`/api/users/${b.id}/workouts/${workout.body.id}`).set(authHeader(a));
+      expect(res.status).toBe(404);
+    });
+
+    it('404s for a private account\'s workout, even a completed one', async () => {
+      const workout = await request(app).post('/api/workouts').set(authHeader(b)).send({});
+      await request(app).put(`/api/workouts/${workout.body.id}/complete`).set(authHeader(b)).send({});
+
+      const res = await request(app).get(`/api/users/${b.id}/workouts/${workout.body.id}`).set(authHeader(a));
+      expect(res.status).toBe(404);
+    });
+
+    it("404s for a workout id that belongs to someone else entirely, even under a public profile's url", async () => {
+      await makePublic(b);
+      const other = await createTestUser('social-other-workout');
+      try {
+        const otherWorkout = await request(app).post('/api/workouts').set(authHeader(other)).send({});
+        await request(app).put(`/api/workouts/${otherWorkout.body.id}/complete`).set(authHeader(other)).send({});
+
+        const res = await request(app)
+          .get(`/api/users/${b.id}/workouts/${otherWorkout.body.id}`)
+          .set(authHeader(a));
+        expect(res.status).toBe(404);
+      } finally {
+        await deleteTestUser(other.id);
+      }
+    });
+  });
+
+  describe('public character', () => {
+    it("shows a public user's character", async () => {
+      await makePublic(b);
+      await request(app).post('/api/characters').set(authHeader(b)).send({ character_type: 'powerlifter' });
+
+      const res = await request(app).get(`/api/users/${b.id}/character`).set(authHeader(a));
+      expect(res.status).toBe(200);
+      expect(res.body.character_type).toBe('powerlifter');
+      expect(res.body.level).toBeDefined();
+    });
+
+    it('is null for a public user with no character — the RPG layer is optional', async () => {
+      await makePublic(b);
+      const res = await request(app).get(`/api/users/${b.id}/character`).set(authHeader(a));
+      expect(res.status).toBe(200);
+      expect(res.body).toBeNull();
+    });
+
+    it("hides a private user's character from strangers", async () => {
+      await request(app).post('/api/characters').set(authHeader(b)).send({ character_type: 'powerlifter' });
+      const res = await request(app).get(`/api/users/${b.id}/character`).set(authHeader(a));
+      expect(res.status).toBe(404);
+    });
+  });
 });

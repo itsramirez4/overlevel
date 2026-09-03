@@ -22,7 +22,9 @@ router.post('/me/import/hevy', validateBody(importHevySchema), userController.im
 // itself get captured as `id: "search"` by the param route below.
 router.get('/search', userController.search);
 router.get('/:id', userController.publicProfile);
+router.get('/:id/character', userController.publicCharacter);
 router.get('/:id/workouts', userController.publicWorkouts);
+router.get('/:id/workouts/:workoutId', userController.publicWorkoutDetail);
 router.get('/:id/followers', userController.followers);
 router.get('/:id/following', userController.following);
 router.post('/:id/follow', userController.follow);

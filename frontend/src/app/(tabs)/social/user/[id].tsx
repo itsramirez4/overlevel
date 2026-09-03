@@ -4,15 +4,18 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Dumbbell } from 'lucide-react-native';
+import { ChevronLeft, Dumbbell, Trophy } from 'lucide-react-native';
 import { api } from '../../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../../utils/theme';
 import { EmptyState } from '../../../../components/common/EmptyState';
 import { Loader } from '../../../../components/ui/Loader';
 import { Button } from '../../../../components/ui/Button';
+import { Card } from '../../../../components/ui/Card';
+import { ProgressBar } from '../../../../components/ui/ProgressBar';
 import { UserAvatar } from '../../../../components/character/UserAvatar';
+import { CharacterAvatar } from '../../../../components/character/CharacterAvatar';
 import { getWorkoutName } from '../../../../utils/workoutName';
-import { PublicProfile, Workout } from '../../../../types';
+import { Character, PublicProfile, Workout } from '../../../../types';
 import { authStore } from '../../../../stores/authStore';
 
 export default function PublicProfileScreen() {
@@ -31,6 +34,12 @@ export default function PublicProfileScreen() {
   const { data: workouts, isLoading: workoutsLoading } = useQuery({
     queryKey: ['users', id, 'workouts'],
     queryFn: () => api.get<Workout[]>(`/users/${id}/workouts`).then((r) => r.data),
+    enabled: !!id && !!profile,
+  });
+
+  const { data: character } = useQuery<Character | null>({
+    queryKey: ['users', id, 'character'],
+    queryFn: () => api.get<Character | null>(`/users/${id}/character`).then((r) => r.data),
     enabled: !!id && !!profile,
   });
 
@@ -123,6 +132,39 @@ export default function PublicProfileScreen() {
               )}
             </View>
 
+            {character && (
+              <Card style={styles.characterCard}>
+                <View style={styles.characterHeader}>
+                  <View style={styles.characterAvatarWrap}>
+                    <CharacterAvatar type={character.character_type} size={56} animated={false} />
+                  </View>
+                  <View style={styles.characterInfo}>
+                    <Text style={styles.characterName}>{character.name}</Text>
+                    <Text style={styles.characterTagline} numberOfLines={1}>
+                      {character.type_info?.tagline}
+                    </Text>
+                  </View>
+                  <View style={styles.levelBadge}>
+                    <Text style={styles.levelBadgeLabel}>NIVEL</Text>
+                    <Text style={styles.levelBadgeValue}>{character.level}</Text>
+                  </View>
+                </View>
+                <ProgressBar progress={character.progress} height={8} />
+                <View style={styles.characterStatsRow}>
+                  <View style={styles.characterStat}>
+                    <Trophy size={14} color={colors.accent.ember} strokeWidth={2.2} />
+                    <Text style={styles.characterStatText}>Fuerza {character.stats.fuerza}kg</Text>
+                  </View>
+                  <View style={styles.characterStat}>
+                    <Text style={styles.characterStatText}>Resistencia {character.stats.resistencia}</Text>
+                  </View>
+                  <View style={styles.characterStat}>
+                    <Text style={styles.characterStatText}>Constancia {character.stats.constancia}d</Text>
+                  </View>
+                </View>
+              </Card>
+            )}
+
             <Text style={styles.sectionTitle}>Entrenamientos</Text>
           </>
         }
@@ -132,7 +174,12 @@ export default function PublicProfileScreen() {
           )
         }
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(index * 50).duration(250)} style={styles.workoutCard}>
+          <AnimatedTouchable
+            entering={FadeInDown.delay(index * 50).duration(250)}
+            style={styles.workoutCard}
+            onPress={() => router.push(`/social/user-workout?ownerId=${id}&workoutId=${item.id}`)}
+            activeOpacity={0.7}
+          >
             <Text style={styles.workoutName} numberOfLines={1}>
               {getWorkoutName(item)}
             </Text>
@@ -141,7 +188,7 @@ export default function PublicProfileScreen() {
               {' · '}
               {(item.sets || []).length} series
             </Text>
-          </Animated.View>
+          </AnimatedTouchable>
         )}
       />
     </SafeAreaView>
@@ -149,6 +196,7 @@ export default function PublicProfileScreen() {
 }
 
 const AVATAR_SIZE = 72;
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -212,6 +260,65 @@ const styles = StyleSheet.create({
   followButton: {
     marginTop: spacing.md,
     minWidth: 180,
+  },
+  characterCard: {
+    marginBottom: spacing.lg,
+  },
+  characterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  characterAvatarWrap: {
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+    marginRight: spacing.sm,
+  },
+  characterInfo: {
+    flex: 1,
+  },
+  characterName: {
+    ...typography.h3,
+    color: colors.text.primary,
+  },
+  characterTagline: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  levelBadge: {
+    alignItems: 'center',
+    backgroundColor: colors.bg.elevated,
+    borderWidth: 1.5,
+    borderColor: colors.accent.fire,
+    borderRadius: radius.md,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+  },
+  levelBadgeLabel: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+    fontWeight: '700',
+    fontSize: 9,
+  },
+  levelBadgeValue: {
+    ...typography.h3,
+    color: colors.accent.fire,
+  },
+  characterStatsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  characterStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  characterStatText: {
+    ...typography.tiny,
+    color: colors.text.secondary,
   },
   sectionTitle: {
     ...typography.h3,

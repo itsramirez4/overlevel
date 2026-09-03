@@ -62,6 +62,16 @@ export class CharacterService {
     };
   }
 
+  /** Same shape as getMyCharacter, for someone else's public profile — gated
+   * by the same assertViewable rule as the profile itself. Reuses
+   * getMyCharacter's own computation directly since it's already scoped to
+   * whichever userId is passed in, not literally "the caller". */
+  async getPublicCharacter(targetId: string, viewerId: string) {
+    const { userService } = await import('./userService');
+    await userService.assertViewable(targetId, viewerId);
+    return this.getMyCharacter(targetId);
+  }
+
   async create(userId: string, characterType: string) {
     if (!isCharacterType(characterType)) {
       throw new AppError('Invalid character type', 400);

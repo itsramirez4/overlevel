@@ -4,6 +4,7 @@ import { AppError } from '../middleware/errorHandler';
 import { routineService } from './routineService';
 import { userService } from './userService';
 import { recomputeIsPrForExercise } from './setService';
+import { fetchAllRows } from '../utils/pagination';
 
 export class WorkoutService {
   async list(userId: string, limit = 20): Promise<Workout[]> {
@@ -23,21 +24,22 @@ export class WorkoutService {
    * the same assertViewable rule as the profile itself (own account, or a
    * public one). Only completed ones: an in-progress session isn't really
    * "content" to show on a profile, and showing it would leak that they're
-   * mid-workout right now.
+   * mid-workout right now. Every one of them, not a capped recent slice —
+   * fetchAllRows pages past PostgREST's per-response row cap instead of
+   * silently truncating a prolific account's history.
    */
-  async listPublic(targetId: string, viewerId: string, limit = 20): Promise<Workout[]> {
+  async listPublic(targetId: string, viewerId: string): Promise<Workout[]> {
     await userService.assertViewable(targetId, viewerId);
 
-    const { data, error } = await supabaseAdmin
-      .from('workouts')
-      .select('*, sets(*, exercises(name)), routines(name)')
-      .eq('user_id', targetId)
-      .not('completed_at', 'is', null)
-      .order('started_at', { ascending: false })
-      .limit(limit);
-
-    if (error) throw new AppError('Failed to fetch workouts');
-    return (data || []) as Workout[];
+    return fetchAllRows<Workout>((from, to) =>
+      supabaseAdmin
+        .from('workouts')
+        .select('*, sets(*, exercises(name)), routines(name)')
+        .eq('user_id', targetId)
+        .not('completed_at', 'is', null)
+        .order('started_at', { ascending: false })
+        .range(from, to)
+    );
   }
 
   async getById(id: string, userId: string): Promise<Workout> {
@@ -49,6 +51,25 @@ export class WorkoutService {
       .single();
 
     if (error || !data) throw new AppError('Workout not found', 404);
+    return data as Workout;
+  }
+
+  /** A single completed workout from someone else's public profile — same
+   * visibility gate and "completed only" rule as listPublic, embedding the
+   * full sets(exercises) shape so the detail screen needs no separate fetch. */
+  async getPublicById(workoutId: string, targetId: string, viewerId: string): Promise<Workout> {
+    await userService.assertViewable(targetId, viewerId);
+
+    const { data, error } = await supabaseAdmin
+      .from('workouts')
+      .select('*, sets(*, exercises(*)), routines(name)')
+      .eq('id', workoutId)
+      .eq('user_id', targetId)
+      .not('completed_at', 'is', null)
+      .maybeSingle();
+
+    if (error) throw new AppError('Failed to fetch workout');
+    if (!data) throw new AppError('Workout not found', 404);
     return data as Workout;
   }
 

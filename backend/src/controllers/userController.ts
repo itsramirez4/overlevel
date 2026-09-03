@@ -4,6 +4,7 @@ import { userService } from '../services/userService';
 import { importService } from '../services/importService';
 import { followService } from '../services/followService';
 import { workoutService } from '../services/workoutService';
+import { characterService } from '../services/characterService';
 import { parsePositiveIntParam } from '../utils/queryParams';
 import { isAdmin } from '../utils/admin';
 
@@ -55,9 +56,18 @@ export class UserController {
   }
 
   async publicWorkouts(req: AuthRequest, res: Response) {
-    const limit = parsePositiveIntParam(req.query.limit, 20);
-    const workouts = await workoutService.listPublic(req.params.id, req.userId!, limit);
+    const workouts = await workoutService.listPublic(req.params.id, req.userId!);
     res.json(workouts);
+  }
+
+  async publicWorkoutDetail(req: AuthRequest, res: Response) {
+    const workout = await workoutService.getPublicById(req.params.workoutId, req.params.id, req.userId!);
+    res.json(workout);
+  }
+
+  async publicCharacter(req: AuthRequest, res: Response) {
+    const character = await characterService.getPublicCharacter(req.params.id, req.userId!);
+    res.json(character);
   }
 
   async follow(req: AuthRequest, res: Response) {
