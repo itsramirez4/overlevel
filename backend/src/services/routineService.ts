@@ -177,13 +177,14 @@ export class RoutineService {
     // created is expected, same as logging a set against it.
     const routine = await this.getById(routineId, userId);
 
-    const { data: exercise } = await supabaseAdmin
+    const { data: exercise, error: exerciseError } = await supabaseAdmin
       .from('exercises')
       .select('id')
       .eq('id', input.exercise_id)
       .is('deleted_at', null)
-      .single();
+      .maybeSingle();
 
+    if (exerciseError) throw new AppError('Failed to fetch exercise');
     if (!exercise) throw new AppError('Exercise not found', 404);
 
     // Computed server-side rather than trusting a client-supplied order_num —

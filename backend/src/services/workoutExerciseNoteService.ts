@@ -30,15 +30,21 @@ export class WorkoutExerciseNoteService {
    * it's read.
    */
   async set(workoutId: string, exerciseId: string, userId: string, notes: string): Promise<WorkoutExerciseNote | null> {
-    const { data: workout } = await supabaseAdmin
+    const { data: workout, error: workoutError } = await supabaseAdmin
       .from('workouts')
       .select('id')
       .eq('id', workoutId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
+    if (workoutError) throw new AppError('Failed to fetch workout');
     if (!workout) throw new AppError('Workout not found', 404);
 
-    const { data: exercise } = await supabaseAdmin.from('exercises').select('id').eq('id', exerciseId).single();
+    const { data: exercise, error: exerciseError } = await supabaseAdmin
+      .from('exercises')
+      .select('id')
+      .eq('id', exerciseId)
+      .maybeSingle();
+    if (exerciseError) throw new AppError('Failed to fetch exercise');
     if (!exercise) throw new AppError('Exercise not found', 404);
 
     const trimmed = notes.trim();

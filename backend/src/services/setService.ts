@@ -124,13 +124,14 @@ export async function recomputeIsPrForExercise(exerciseId: string, userId: strin
 
 export class SetService {
   private async assertWorkoutOwnership(workoutId: string, userId: string): Promise<void> {
-    const { data } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('workouts')
       .select('id')
       .eq('id', workoutId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
+    if (error) throw new AppError('Failed to fetch workout');
     if (!data) throw new AppError('Workout not found', 404);
   }
 
@@ -145,13 +146,14 @@ export class SetService {
    * that's already a defeated one-way ratchet.
    */
   private async getWorkoutForLog(workoutId: string, userId: string): Promise<{ completed_at: string | null }> {
-    const { data } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('workouts')
       .select('id, completed_at')
       .eq('id', workoutId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
+    if (error) throw new AppError('Failed to fetch workout');
     if (!data) throw new AppError('Workout not found', 404);
     return data;
   }
@@ -175,13 +177,14 @@ export class SetService {
     // Not ownership-scoped — exercises are shared: logging a set against
     // one someone else created is exactly the point, only editing/deleting
     // the exercise itself stays restricted to its creator.
-    const { data: exercise } = await supabaseAdmin
+    const { data: exercise, error: exerciseError } = await supabaseAdmin
       .from('exercises')
       .select('id, category')
       .eq('id', input.exercise_id)
       .is('deleted_at', null)
-      .single();
+      .maybeSingle();
 
+    if (exerciseError) throw new AppError('Failed to fetch exercise');
     if (!exercise) throw new AppError('Exercise not found', 404);
 
     const category: ExerciseCategory = exercise.category;
@@ -235,13 +238,14 @@ export class SetService {
   }
 
   async update(id: string, userId: string, updates: Partial<Set>): Promise<Set> {
-    const { data: existing } = await supabaseAdmin
+    const { data: existing, error: existingError } = await supabaseAdmin
       .from('sets')
       .select('*, workouts!inner(user_id)')
       .eq('id', id)
       .eq('workouts.user_id', userId)
-      .single();
+      .maybeSingle();
 
+    if (existingError) throw new AppError('Failed to fetch set');
     if (!existing) throw new AppError('Set not found', 404);
 
     const nextIsWarmup = updates.is_warmup ?? existing.is_warmup;
@@ -265,7 +269,7 @@ export class SetService {
     // later sets of the same exercise still count as PRs, not just this one.
     if (affectsRanking) {
       await recomputeIsPrForExercise(existing.exercise_id, userId);
-      const { data: refreshed } = await supabaseAdmin.from('sets').select('*').eq('id', id).single();
+      const { data: refreshed } = await supabaseAdmin.from('sets').select('*').eq('id', id).maybeSingle();
       return (refreshed || data) as Set;
     }
 
@@ -318,13 +322,14 @@ export class SetService {
   }
 
   async remove(id: string, userId: string): Promise<void> {
-    const { data: set } = await supabaseAdmin
+    const { data: set, error: setError } = await supabaseAdmin
       .from('sets')
       .select('id, exercise_id, is_warmup, workouts!inner(user_id)')
       .eq('id', id)
       .eq('workouts.user_id', userId)
-      .single();
+      .maybeSingle();
 
+    if (setError) throw new AppError('Failed to fetch set');
     if (!set) throw new AppError('Set not found', 404);
 
     const { error } = await supabaseAdmin.from('sets').delete().eq('id', id);
