@@ -154,6 +154,11 @@ export class ExerciseService {
    * the survivor's slot. Its HP/defeated state isn't worth reconciling for
    * what's a cosmetic gameplay detail, so those just get dropped in favor
    * of the survivor's own battle for that workout.
+   *
+   * workout_exercise_notes has the same UNIQUE(workout_id, exercise_id)
+   * shape, but unlike a battle's HP its content is real user-written text —
+   * dropping one on conflict would be silent data loss, so those get
+   * concatenated onto the survivor's note instead.
    */
   async merge(loserId: string, survivorId: string): Promise<Exercise> {
     if (loserId === survivorId) throw new AppError('No se puede fusionar un ejercicio consigo mismo', 400);
@@ -165,13 +170,20 @@ export class ExerciseService {
       .is('deleted_at', null);
     if (!both || both.length !== 2) throw new AppError('Exercise not found', 404);
 
-    const [{ data: loserBattles }, { data: survivorBattles }] = await Promise.all([
-      supabaseAdmin.from('exercise_battles').select('id, workout_id').eq('exercise_id', loserId),
-      supabaseAdmin.from('exercise_battles').select('workout_id').eq('exercise_id', survivorId),
-    ]);
+    const [{ data: loserBattles }, { data: survivorBattles }, { data: loserNotes }, { data: survivorNotes }] =
+      await Promise.all([
+        supabaseAdmin.from('exercise_battles').select('id, workout_id').eq('exercise_id', loserId),
+        supabaseAdmin.from('exercise_battles').select('workout_id').eq('exercise_id', survivorId),
+        supabaseAdmin.from('workout_exercise_notes').select('id, workout_id, notes').eq('exercise_id', loserId),
+        supabaseAdmin.from('workout_exercise_notes').select('id, workout_id, notes').eq('exercise_id', survivorId),
+      ]);
     const survivorWorkoutIds = new Set((survivorBattles || []).map((b) => b.workout_id));
     const battlesToRepoint = (loserBattles || []).filter((b) => !survivorWorkoutIds.has(b.workout_id)).map((b) => b.id);
     const battlesToDrop = (loserBattles || []).filter((b) => survivorWorkoutIds.has(b.workout_id)).map((b) => b.id);
+
+    const survivorNoteByWorkout = new Map((survivorNotes || []).map((n) => [n.workout_id, n]));
+    const notesToRepoint = (loserNotes || []).filter((n) => !survivorNoteByWorkout.has(n.workout_id));
+    const notesToMerge = (loserNotes || []).filter((n) => survivorNoteByWorkout.has(n.workout_id));
 
     await Promise.all([
       battlesToRepoint.length > 0
@@ -180,6 +192,20 @@ export class ExerciseService {
       battlesToDrop.length > 0
         ? supabaseAdmin.from('exercise_battles').delete().in('id', battlesToDrop)
         : Promise.resolve(),
+      notesToRepoint.length > 0
+        ? supabaseAdmin
+            .from('workout_exercise_notes')
+            .update({ exercise_id: survivorId })
+            .in('id', notesToRepoint.map((n) => n.id))
+        : Promise.resolve(),
+      ...notesToMerge.map((loserNote) => {
+        const survivorNote = survivorNoteByWorkout.get(loserNote.workout_id)!;
+        return supabaseAdmin
+          .from('workout_exercise_notes')
+          .update({ notes: `${survivorNote.notes}\n\n${loserNote.notes}` })
+          .eq('id', survivorNote.id)
+          .then(() => supabaseAdmin.from('workout_exercise_notes').delete().eq('id', loserNote.id));
+      }),
       supabaseAdmin.from('sets').update({ exercise_id: survivorId }).eq('exercise_id', loserId),
       supabaseAdmin.from('routine_exercises').update({ exercise_id: survivorId }).eq('exercise_id', loserId),
     ]);

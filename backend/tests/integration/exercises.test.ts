@@ -294,6 +294,55 @@ describe('exercises', () => {
       expect(battlesAfter.body.length).toBe(1);
       expect(battlesAfter.body[0].exercise_id).toBe(survivor.body.id);
     });
+
+    it('repoints a per-exercise note from the loser to the survivor', async () => {
+      process.env.ADMIN_USER_IDS = user.id;
+      const loser = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Note Loser', category: 'compound' });
+      const survivor = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Note Survivor', category: 'compound' });
+
+      const workout = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+      await request(app)
+        .put(`/api/workout-exercise-notes/${workout.body.id}/${loser.body.id}`)
+        .set(authHeader(user))
+        .send({ notes: 'Nota original' });
+
+      const merge = await request(app)
+        .post(`/api/exercises/${loser.body.id}/merge`)
+        .set(authHeader(user))
+        .send({ into: survivor.body.id });
+      expect(merge.status).toBe(200);
+
+      const notesAfter = await request(app).get(`/api/workout-exercise-notes/workout/${workout.body.id}`).set(authHeader(user));
+      expect(notesAfter.body).toHaveLength(1);
+      expect(notesAfter.body[0].exercise_id).toBe(survivor.body.id);
+      expect(notesAfter.body[0].notes).toBe('Nota original');
+    });
+
+    it('when both loser and survivor already have a note in the same workout, concatenates them instead of dropping one', async () => {
+      process.env.ADMIN_USER_IDS = user.id;
+      const loser = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Note Conflict Loser', category: 'compound' });
+      const survivor = await request(app).post('/api/exercises').set(authHeader(user)).send({ name: 'Note Conflict Survivor', category: 'compound' });
+
+      const workout = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+      await request(app)
+        .put(`/api/workout-exercise-notes/${workout.body.id}/${loser.body.id}`)
+        .set(authHeader(user))
+        .send({ notes: 'Nota del perdedor' });
+      await request(app)
+        .put(`/api/workout-exercise-notes/${workout.body.id}/${survivor.body.id}`)
+        .set(authHeader(user))
+        .send({ notes: 'Nota del superviviente' });
+
+      const merge = await request(app)
+        .post(`/api/exercises/${loser.body.id}/merge`)
+        .set(authHeader(user))
+        .send({ into: survivor.body.id });
+      expect(merge.status).toBe(200);
+
+      const notesAfter = await request(app).get(`/api/workout-exercise-notes/workout/${workout.body.id}`).set(authHeader(user));
+      expect(notesAfter.body).toHaveLength(1);
+      expect(notesAfter.body[0].notes).toBe('Nota del superviviente\n\nNota del perdedor');
+    });
   });
 
   describe('trash lifecycle', () => {
