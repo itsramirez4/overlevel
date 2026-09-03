@@ -90,7 +90,7 @@ export class UserService {
     const user = await this.getUserById(userId);
 
     try {
-      const [ownExercises, routines, bodyWeightLogs, workouts, character, battles] = await Promise.all([
+      const [ownExercises, routines, bodyWeightLogs, workouts, character, battles, exerciseNotes] = await Promise.all([
         fetchAllRows<any>((from, to) =>
           supabaseAdmin.from('exercises').select('*').eq('user_id', userId).range(from, to)
         ),
@@ -119,6 +119,12 @@ export class UserService {
         supabaseAdmin.from('characters').select('*').eq('user_id', userId).maybeSingle().then((r) => r.data),
         fetchAllRows<any>((from, to) =>
           supabaseAdmin.from('exercise_battles').select('*').eq('user_id', userId).range(from, to)
+        ),
+        // Missing here before — a user exporting "all my data" lost every
+        // per-exercise note they'd written, same class of gap battles/
+        // character had before the comment above.
+        fetchAllRows<any>((from, to) =>
+          supabaseAdmin.from('workout_exercise_notes').select('*').eq('user_id', userId).range(from, to)
         ),
       ]);
 
@@ -150,6 +156,7 @@ export class UserService {
         body_weight_logs: bodyWeightLogs,
         character,
         exercise_battles: battles,
+        workout_exercise_notes: exerciseNotes,
       };
     } catch {
       throw new AppError('Failed to export data');

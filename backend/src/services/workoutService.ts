@@ -3,6 +3,7 @@ import { Workout } from '../types';
 import { AppError } from '../middleware/errorHandler';
 import { routineService } from './routineService';
 import { userService } from './userService';
+import { recomputeIsPrForExercise } from './setService';
 
 export class WorkoutService {
   async list(userId: string, limit = 20): Promise<Workout[]> {
@@ -165,6 +166,18 @@ export class WorkoutService {
       throw new AppError('Failed to update workout');
     }
     if (!data) throw new AppError('Workout not found', 404);
+
+    // A workout's started_at feeds every exercise's chronological PR
+    // ordering (see recomputeIsPrForExercise in setService) — moving it
+    // earlier/later than other sessions of the same exercise can change
+    // which sets were genuinely PRs, so every exercise this workout
+    // touched needs its is_pr flags rechecked, not just this workout's own row.
+    if (updates.started_at) {
+      const { data: setRows } = await supabaseAdmin.from('sets').select('exercise_id').eq('workout_id', id);
+      const exerciseIds = [...new Set((setRows || []).map((s) => s.exercise_id))];
+      await Promise.all(exerciseIds.map((exerciseId) => recomputeIsPrForExercise(exerciseId, userId)));
+    }
+
     return data as Workout;
   }
 

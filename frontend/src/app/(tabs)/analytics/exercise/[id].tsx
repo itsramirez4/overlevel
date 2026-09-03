@@ -106,12 +106,12 @@ export default function ExerciseAnalyticsScreen() {
             <View style={styles.statsRow}>
               <StatCard
                 label="Distancia máxima"
-                value={stats?.max_distance_km ? formatDistance(stats.max_distance_km, distanceUnit) : '—'}
+                value={stats?.max_distance_km != null ? formatDistance(stats.max_distance_km, distanceUnit) : '—'}
                 icon={MapPin}
               />
               <StatCard
                 label="Distancia total"
-                value={stats?.total_distance_km ? formatDistance(stats.total_distance_km, distanceUnit) : '—'}
+                value={stats?.total_distance_km != null ? formatDistance(stats.total_distance_km, distanceUnit) : '—'}
                 icon={Flame}
               />
             </View>
@@ -125,19 +125,19 @@ export default function ExerciseAnalyticsScreen() {
             <View style={styles.statsRow}>
               <StatCard
                 label="1RM estimado"
-                value={stats?.estimated_1rm ? `${Math.round(kgToUnit(stats.estimated_1rm, unit))}${unit}` : '—'}
+                value={stats?.estimated_1rm != null ? `${Math.round(kgToUnit(stats.estimated_1rm, unit))}${unit}` : '—'}
                 icon={Trophy}
               />
               <StatCard
                 label="Peso máximo"
-                value={stats?.max_weight ? `${kgToUnit(stats.max_weight, unit)}${unit}` : '—'}
+                value={stats?.max_weight != null ? `${kgToUnit(stats.max_weight, unit)}${unit}` : '—'}
                 icon={Dumbbell}
               />
             </View>
             <View style={styles.statsRow}>
               <StatCard
                 label="Volumen total"
-                value={stats?.total_volume ? `${Math.round(kgToUnit(stats.total_volume, unit))}${unit}` : '—'}
+                value={stats?.total_volume != null ? `${Math.round(kgToUnit(stats.total_volume, unit))}${unit}` : '—'}
                 icon={Flame}
               />
               <StatCard label="RPE medio" value={stats?.avg_rpe ?? '—'} icon={Activity} />

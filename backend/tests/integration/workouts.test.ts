@@ -156,6 +156,45 @@ describe('workouts', () => {
     expect(res.status).toBe(400);
   });
 
+  it('editing a workout\'s date recomputes is_pr for every exercise it touched', async () => {
+    const exercise = await request(app)
+      .post('/api/exercises')
+      .set(authHeader(user))
+      .send({ name: 'PR Date Bench', category: 'compound' });
+
+    const workoutA = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+    const setA = await request(app)
+      .post('/api/sets')
+      .set(authHeader(user))
+      .send({ workout_id: workoutA.body.id, exercise_id: exercise.body.id, set_number: 1, weight: 60, reps: 5 });
+    expect(setA.body.is_pr).toBe(true); // first set ever for this exercise
+
+    // Complete A so a second workout can be started (only one incomplete
+    // workout is allowed at a time — see the "resumed" test above).
+    await request(app).put(`/api/workouts/${workoutA.body.id}/complete`).set(authHeader(user)).send({});
+
+    const workoutB = await request(app).post('/api/workouts').set(authHeader(user)).send({});
+    const setB = await request(app)
+      .post('/api/sets')
+      .set(authHeader(user))
+      .send({ workout_id: workoutB.body.id, exercise_id: exercise.body.id, set_number: 1, weight: 70, reps: 5 });
+    expect(setB.body.is_pr).toBe(true); // heavier than A, beats it
+
+    // Move B chronologically before A. B is now the earliest (and heaviest)
+    // set, so A's lighter weight is no longer a PR — but nothing about A
+    // itself was touched, only B's workout date.
+    const beforeA = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const editRes = await request(app)
+      .put(`/api/workouts/${workoutB.body.id}`)
+      .set(authHeader(user))
+      .send({ started_at: beforeA });
+    expect(editRes.status).toBe(200);
+
+    const list = await request(app).get(`/api/sets/workout/${workoutA.body.id}`).set(authHeader(user));
+    const refreshedA = list.body.find((s: any) => s.id === setA.body.id);
+    expect(refreshedA.is_pr).toBe(false);
+  });
+
   it('one user cannot view or complete another user\'s workout', async () => {
     const victim = await createTestUser('workouts-view-victim');
     try {

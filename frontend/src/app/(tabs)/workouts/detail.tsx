@@ -106,6 +106,14 @@ export default function WorkoutDetailScreen() {
       setEditOpen(false);
       await queryClient.invalidateQueries({ queryKey: ['workouts', id] });
       await queryClient.invalidateQueries({ queryKey: ['workouts'] });
+      // A changed date can move this workout across a month/streak boundary
+      // or a weekly-volume bucket, and the backend recomputes is_pr for
+      // every exercise it touched — the dashboard's stats and the analytics
+      // screens read all of that from their own separate queries.
+      if (startedAt) {
+        await queryClient.invalidateQueries({ queryKey: ['stats'] });
+        await queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      }
     } catch (err) {
       Alert.alert('Error', getErrorMessage(err, 'No se pudieron guardar los cambios. Inténtalo de nuevo.'));
     } finally {

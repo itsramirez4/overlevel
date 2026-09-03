@@ -33,7 +33,7 @@ describe('users', () => {
   });
 
   describe('GET /users/me/export', () => {
-    it('includes exercises, workouts, character, and battles — not just the tracker data', async () => {
+    it('includes exercises, workouts, character, battles, and per-exercise notes — not just the tracker data', async () => {
       await request(app).post('/api/characters').set(authHeader(user)).send({ character_type: 'powerlifter' });
 
       const exercise = await request(app)
@@ -45,6 +45,10 @@ describe('users', () => {
         .post('/api/sets')
         .set(authHeader(user))
         .send({ workout_id: workout.body.id, exercise_id: exercise.body.id, set_number: 1, weight: 60, reps: 8 });
+      await request(app)
+        .put(`/api/workout-exercise-notes/${workout.body.id}/${exercise.body.id}`)
+        .set(authHeader(user))
+        .send({ notes: 'Se sintió pesado' });
 
       const res = await request(app).get('/api/users/me/export').set(authHeader(user));
 
@@ -56,6 +60,11 @@ describe('users', () => {
       expect(res.body.character).toBeTruthy();
       expect(res.body.character.character_type).toBe('powerlifter');
       expect(res.body.exercise_battles.some((b: any) => b.exercise_id === exercise.body.id)).toBe(true);
+      expect(
+        res.body.workout_exercise_notes.some(
+          (n: any) => n.exercise_id === exercise.body.id && n.notes === 'Se sintió pesado'
+        )
+      ).toBe(true);
     });
 
     it('includes an exercise created by someone else, if this user\'s workout/routine references it', async () => {
@@ -93,6 +102,7 @@ describe('users', () => {
       expect(res.status).toBe(200);
       expect(res.body.character).toBeNull();
       expect(res.body.exercise_battles).toEqual([]);
+      expect(res.body.workout_exercise_notes).toEqual([]);
     });
   });
 });
