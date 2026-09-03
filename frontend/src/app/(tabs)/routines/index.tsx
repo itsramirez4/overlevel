@@ -15,7 +15,7 @@ import { Routine } from '../../../types';
 export default function RoutinesScreen() {
   const router = useRouter();
 
-  const { data: routines, isLoading, refetch } = useQuery({
+  const { data: routines, isLoading, isError, refetch } = useQuery({
     queryKey: ['routines'],
     queryFn: () => api.get<Routine[]>('/routines').then((r) => r.data),
   });
@@ -53,7 +53,14 @@ export default function RoutinesScreen() {
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.fire} />}
           ListEmptyComponent={
-            isLoading ? null : (
+            isLoading ? null : isError ? (
+              <EmptyState
+                icon={ListChecks}
+                title="No se pudo cargar"
+                message="Revisa tu conexión e inténtalo de nuevo."
+                onRetry={refetch}
+              />
+            ) : (
               <EmptyState
                 icon={ListChecks}
                 title="Sin rutinas todavía"

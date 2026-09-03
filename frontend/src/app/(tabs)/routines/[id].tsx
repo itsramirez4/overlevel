@@ -35,7 +35,7 @@ export default function RoutineDetailScreen() {
   const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
   const [duplicating, setDuplicating] = useState(false);
 
-  const { data: routine, isLoading } = useQuery({
+  const { data: routine, isLoading, isError, refetch } = useQuery({
     queryKey: ['routines', id],
     queryFn: () => api.get<Routine>(`/routines/${id}`).then((r) => r.data),
   });
@@ -164,7 +164,14 @@ export default function RoutineDetailScreen() {
           />
         }
         ListEmptyComponent={
-          isLoading ? null : (
+          isLoading ? null : isError ? (
+            <EmptyState
+              icon={ListChecks}
+              title="No se pudo cargar"
+              message="Revisa tu conexión e inténtalo de nuevo."
+              onRetry={refetch}
+            />
+          ) : (
             <EmptyState
               icon={ListChecks}
               title="Sin ejercicios"

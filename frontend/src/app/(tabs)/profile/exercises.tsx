@@ -34,7 +34,7 @@ export default function ManageExercisesScreen() {
   // Admins manage everyone's exercises here (moderation); everyone else
   // still only sees their own — the backend enforces this either way, this
   // just decides whether the extra rows are worth fetching at all.
-  const { data: exercises, isLoading } = useQuery({
+  const { data: exercises, isLoading, isError, refetch } = useQuery({
     queryKey: isAdmin ? ['exercises', 'all'] : ['exercises'],
     queryFn: () => api.get<Exercise[]>(isAdmin ? '/exercises?scope=all' : '/exercises').then((r) => r.data),
   });
@@ -105,7 +105,14 @@ export default function ManageExercisesScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          isLoading ? null : (
+          isLoading ? null : isError ? (
+            <EmptyState
+              icon={Dumbbell}
+              title="No se pudo cargar"
+              message="Revisa tu conexión e inténtalo de nuevo."
+              onRetry={refetch}
+            />
+          ) : (
             <EmptyState
               icon={Dumbbell}
               title={search || muscleGroup ? 'Sin resultados' : 'Sin ejercicios todavía'}

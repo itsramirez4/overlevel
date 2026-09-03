@@ -38,7 +38,7 @@ export default function MeasurementsScreen() {
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; summary: string } | null>(null);
 
-  const { data: measurements, isLoading } = useQuery<BodyMeasurement[]>({
+  const { data: measurements, isLoading, isError, refetch } = useQuery<BodyMeasurement[]>({
     queryKey: ['users', 'measurements'],
     queryFn: () => api.get<BodyMeasurement[]>('/users/me/measurements').then((r) => r.data),
   });
@@ -133,7 +133,14 @@ export default function MeasurementsScreen() {
           </Card>
         }
         ListEmptyComponent={
-          isLoading ? null : (
+          isLoading ? null : isError ? (
+            <EmptyState
+              icon={Ruler}
+              title="No se pudo cargar"
+              message="Revisa tu conexión e inténtalo de nuevo."
+              onRetry={refetch}
+            />
+          ) : (
             <EmptyState
               icon={Ruler}
               title="Sin medidas todavía"

@@ -25,7 +25,7 @@ export default function WorkoutHistoryScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
 
-  const { data: workouts, isLoading, refetch: refetchWorkouts } = useQuery({
+  const { data: workouts, isLoading, isError, refetch: refetchWorkouts } = useQuery({
     queryKey: ['workouts', 'history'],
     queryFn: () => api.get<Workout[]>('/workouts?limit=200').then((r) => r.data),
   });
@@ -92,7 +92,14 @@ export default function WorkoutHistoryScreen() {
           ) : null
         }
         ListEmptyComponent={
-          isLoading ? null : (
+          isLoading ? null : isError ? (
+            <EmptyState
+              icon={Dumbbell}
+              title="No se pudo cargar"
+              message="Revisa tu conexión e inténtalo de nuevo."
+              onRetry={refetchWorkouts}
+            />
+          ) : (
             <EmptyState
               icon={Dumbbell}
               title={query ? 'Sin resultados' : 'Sin entrenamientos'}

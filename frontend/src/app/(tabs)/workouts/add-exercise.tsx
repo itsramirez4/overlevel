@@ -29,7 +29,7 @@ export default function WorkoutAddExerciseScreen() {
   const [search, setSearch] = useState('');
   const [muscleGroup, setMuscleGroup] = useState<string | null>(null);
 
-  const { data: exercises, isLoading } = useQuery({
+  const { data: exercises, isLoading, isError, refetch: refetchExercises } = useQuery({
     queryKey: ['exercises', 'all'],
     queryFn: () => api.get<Exercise[]>('/exercises?scope=all').then((r) => r.data),
   });
@@ -112,7 +112,14 @@ export default function WorkoutAddExerciseScreen() {
           )
         }
         ListEmptyComponent={
-          creatingNew || isLoading ? null : (
+          creatingNew || isLoading ? null : isError ? (
+            <EmptyState
+              icon={Dumbbell}
+              title="No se pudo cargar"
+              message="Revisa tu conexión e inténtalo de nuevo."
+              onRetry={refetchExercises}
+            />
+          ) : (
             <EmptyState
               icon={Dumbbell}
               title={search || muscleGroup ? 'Sin resultados' : 'Sin ejercicios disponibles'}

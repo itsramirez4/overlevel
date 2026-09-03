@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { colors, radius, spacing, typography } from '../../utils/theme';
 
@@ -6,9 +6,13 @@ interface EmptyStateProps {
   title: string;
   message?: string;
   icon?: LucideIcon;
+  /** Shows a "Reintentar" action below the message — pass a query's
+   * refetch() when this state might mean "the request failed", not just
+   * "there's genuinely nothing here yet". */
+  onRetry?: () => void;
 }
 
-export const EmptyState = ({ title, message, icon: Icon }: EmptyStateProps) => (
+export const EmptyState = ({ title, message, icon: Icon, onRetry }: EmptyStateProps) => (
   <View style={styles.container} accessible accessibilityLabel={[title, message].filter(Boolean).join('. ')}>
     {Icon && (
       <View style={styles.iconBadge}>
@@ -17,6 +21,11 @@ export const EmptyState = ({ title, message, icon: Icon }: EmptyStateProps) => (
     )}
     <Text style={styles.title}>{title}</Text>
     {!!message && <Text style={styles.message}>{message}</Text>}
+    {onRetry && (
+      <TouchableOpacity onPress={onRetry} style={styles.retryButton} accessibilityRole="button">
+        <Text style={styles.retryText}>Reintentar</Text>
+      </TouchableOpacity>
+    )}
   </View>
 );
 
@@ -49,5 +58,18 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: colors.text.secondary,
     textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.accent.fire,
+  },
+  retryText: {
+    ...typography.tiny,
+    color: colors.accent.fire,
+    fontWeight: '700',
   },
 });

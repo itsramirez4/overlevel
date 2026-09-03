@@ -33,7 +33,7 @@ export default function AnalyticsScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
 
-  const { data: exercises, isLoading, refetch: refetchExercises } = useQuery({
+  const { data: exercises, isLoading, isError, refetch: refetchExercises } = useQuery({
     queryKey: ['analytics', 'trained-exercises'],
     queryFn: () => api.get<TrainedExercise[]>('/analytics/trained-exercises').then((r) => r.data),
   });
@@ -109,7 +109,14 @@ export default function AnalyticsScreen() {
             </>
           }
           ListEmptyComponent={
-            isLoading ? null : (
+            isLoading ? null : isError ? (
+              <EmptyState
+                icon={BarChart3}
+                title="No se pudo cargar"
+                message="Revisa tu conexión e inténtalo de nuevo."
+                onRetry={refetchExercises}
+              />
+            ) : (
               <EmptyState
                 icon={BarChart3}
                 title={search ? 'Sin resultados' : 'Sin ejercicios todavía'}

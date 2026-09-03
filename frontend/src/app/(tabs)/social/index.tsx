@@ -43,7 +43,7 @@ export default function SocialScreen() {
 
   const isSearching = !!debouncedQuery.trim();
 
-  const { data: feed, isLoading: feedLoading, refetch: refetchFeed } = useQuery<Workout[]>({
+  const { data: feed, isLoading: feedLoading, isError: feedIsError, refetch: refetchFeed } = useQuery<Workout[]>({
     queryKey: ['users', 'me', 'feed'],
     queryFn: () => api.get<Workout[]>('/users/me/feed').then((r) => r.data),
     enabled: !isSearching,
@@ -112,7 +112,14 @@ export default function SocialScreen() {
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.fire} />}
           ListEmptyComponent={
-            feedLoading ? null : (
+            feedLoading ? null : feedIsError ? (
+              <EmptyState
+                icon={Dumbbell}
+                title="No se pudo cargar"
+                message="Revisa tu conexión e inténtalo de nuevo."
+                onRetry={refetchFeed}
+              />
+            ) : (
               <EmptyState
                 icon={Dumbbell}
                 title="Sin actividad todavía"
