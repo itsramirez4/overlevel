@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import { ChevronRight, History, ListChecks, Repeat, Zap } from 'lucide-react-nat
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { useWorkout } from '../../../hooks/useWorkout';
+import { usePullToRefresh } from '../../../hooks/usePullToRefresh';
 import { workoutStore } from '../../../stores/workoutStore';
 import { Header } from '../../../components/common/Header';
 import { Button } from '../../../components/ui/Button';
@@ -20,22 +21,26 @@ export default function WorkoutsScreen() {
   const { hasHydrated, currentWorkout, startWorkout } = useWorkout();
   const [starting, setStarting] = useState(false);
 
-  const { data: routines, isLoading } = useQuery({
+  const { data: routines, isLoading, refetch: refetchRoutines } = useQuery({
     queryKey: ['routines'],
     queryFn: () => api.get<Routine[]>('/routines').then((r) => r.data),
   });
 
-  const { data: recentWorkouts } = useQuery({
+  const { data: recentWorkouts, refetch: refetchRecentWorkouts } = useQuery({
     queryKey: ['workouts', 'recent'],
     queryFn: () => api.get<Workout[]>('/workouts?limit=1').then((r) => r.data),
   });
   const lastWorkout = (recentWorkouts || []).find((w) => w.completed_at);
 
-  const { data: lastWorkoutDetail } = useQuery({
+  const { data: lastWorkoutDetail, refetch: refetchLastWorkoutDetail } = useQuery({
     queryKey: ['workouts', lastWorkout?.id],
     queryFn: () => api.get<Workout>(`/workouts/${lastWorkout!.id}`).then((r) => r.data),
     enabled: !!lastWorkout,
   });
+
+  const { refreshing, onRefresh } = usePullToRefresh(() =>
+    Promise.all([refetchRoutines(), refetchRecentWorkouts(), refetchLastWorkoutDetail()])
+  );
 
   const handleStart = async (routineId?: string) => {
     if (starting) return;
@@ -77,7 +82,11 @@ export default function WorkoutsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.fire} />}
+      >
         <Header title="Entrenamientos" subtitle="Elige una rutina o improvisa" showLogo />
 
         {!hasHydrated ? (

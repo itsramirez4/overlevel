@@ -1,4 +1,4 @@
-import { TouchableOpacity, View, FlatList, StyleSheet } from 'react-native';
+import { TouchableOpacity, View, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -9,15 +9,18 @@ import { Header } from '../../../components/common/Header';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { RoutineCard } from '../../../components/routine/RoutineCard';
+import { usePullToRefresh } from '../../../hooks/usePullToRefresh';
 import { Routine } from '../../../types';
 
 export default function RoutinesScreen() {
   const router = useRouter();
 
-  const { data: routines, isLoading } = useQuery({
+  const { data: routines, isLoading, refetch } = useQuery({
     queryKey: ['routines'],
     queryFn: () => api.get<Routine[]>('/routines').then((r) => r.data),
   });
+
+  const { refreshing, onRefresh } = usePullToRefresh(refetch);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -48,6 +51,7 @@ export default function RoutinesScreen() {
           data={routines || []}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.fire} />}
           ListEmptyComponent={
             isLoading ? null : (
               <EmptyState

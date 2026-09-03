@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,6 +11,7 @@ import { EmptyState } from '../../../components/common/EmptyState';
 import { Card } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
 import { WorkoutHeatmap } from '../../../components/analytics/WorkoutHeatmap';
+import { usePullToRefresh } from '../../../hooks/usePullToRefresh';
 import { getWorkoutName } from '../../../utils/workoutName';
 import { formatDuration } from '../../../utils/duration';
 import { Workout } from '../../../types';
@@ -24,15 +25,17 @@ export default function WorkoutHistoryScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
 
-  const { data: workouts, isLoading } = useQuery({
+  const { data: workouts, isLoading, refetch: refetchWorkouts } = useQuery({
     queryKey: ['workouts', 'history'],
     queryFn: () => api.get<Workout[]>('/workouts?limit=200').then((r) => r.data),
   });
 
-  const { data: heatmapData } = useQuery({
+  const { data: heatmapData, refetch: refetchHeatmap } = useQuery({
     queryKey: ['analytics', 'heatmap'],
     queryFn: () => api.get<HeatmapPoint[]>('/analytics/heatmap?weeks=10').then((r) => r.data),
   });
+
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([refetchWorkouts(), refetchHeatmap()]));
 
   const exerciseNames = (workout: Workout): string[] => {
     const names = new Set<string>();
@@ -79,6 +82,7 @@ export default function WorkoutHistoryScreen() {
         data={filteredWorkouts}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.fire} />}
         ListHeaderComponent={
           !query && heatmapData?.length ? (
             <Card style={styles.heatmapCard}>

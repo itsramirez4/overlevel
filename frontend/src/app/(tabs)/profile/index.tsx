@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -24,6 +24,7 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { UserAvatar } from '../../../components/character/UserAvatar';
+import { usePullToRefresh } from '../../../hooks/usePullToRefresh';
 import { Character } from '../../../types';
 
 const MENU_ITEMS: { icon: LucideIcon; label: string; href: string }[] = [
@@ -42,10 +43,12 @@ export default function ProfileScreen() {
   const user = authStore((state) => state.user);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
 
-  const { data: character } = useQuery<Character | null>({
+  const { data: character, refetch } = useQuery<Character | null>({
     queryKey: ['character'],
     queryFn: () => api.get('/characters/me').then((r) => r.data),
   });
+
+  const { refreshing, onRefresh } = usePullToRefresh(refetch);
 
   const handleLogout = async () => {
     setConfirmingLogout(false);
@@ -55,7 +58,11 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentInner}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.fire} />}
+      >
         <Header title="Perfil" showLogo />
 
         <Card style={styles.profileCard}>

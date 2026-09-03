@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -12,6 +12,7 @@ import { EmptyState } from '../../../components/common/EmptyState';
 import { Input } from '../../../components/ui/Input';
 import { UserAvatar } from '../../../components/character/UserAvatar';
 import { getWorkoutName } from '../../../utils/workoutName';
+import { usePullToRefresh } from '../../../hooks/usePullToRefresh';
 import { authStore } from '../../../stores/authStore';
 import { PublicUser, PublicProfile, Workout } from '../../../types';
 
@@ -28,7 +29,7 @@ export default function SocialScreen() {
     return () => clearTimeout(timeout);
   }, [query]);
 
-  const { data: ownProfile } = useQuery<PublicProfile>({
+  const { data: ownProfile, refetch: refetchOwnProfile } = useQuery<PublicProfile>({
     queryKey: ['users', user?.id],
     queryFn: () => api.get(`/users/${user!.id}`).then((r) => r.data),
     enabled: !!user?.id,
@@ -42,11 +43,13 @@ export default function SocialScreen() {
 
   const isSearching = !!debouncedQuery.trim();
 
-  const { data: feed, isLoading: feedLoading } = useQuery<Workout[]>({
+  const { data: feed, isLoading: feedLoading, refetch: refetchFeed } = useQuery<Workout[]>({
     queryKey: ['users', 'me', 'feed'],
     queryFn: () => api.get<Workout[]>('/users/me/feed').then((r) => r.data),
     enabled: !isSearching,
   });
+
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([refetchOwnProfile(), refetchFeed()]));
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -107,6 +110,7 @@ export default function SocialScreen() {
           data={feed || []}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.fire} />}
           ListEmptyComponent={
             feedLoading ? null : (
               <EmptyState

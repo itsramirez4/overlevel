@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -12,6 +12,7 @@ import { EmptyState } from '../../../components/common/EmptyState';
 import { Card } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
 import { VolumeChart } from '../../../components/analytics/VolumeChart';
+import { usePullToRefresh } from '../../../hooks/usePullToRefresh';
 
 interface TrainedExercise {
   id: string;
@@ -32,7 +33,7 @@ export default function AnalyticsScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
 
-  const { data: exercises, isLoading } = useQuery({
+  const { data: exercises, isLoading, refetch: refetchExercises } = useQuery({
     queryKey: ['analytics', 'trained-exercises'],
     queryFn: () => api.get<TrainedExercise[]>('/analytics/trained-exercises').then((r) => r.data),
   });
@@ -41,15 +42,19 @@ export default function AnalyticsScreen() {
     e.name.toLowerCase().includes(search.trim().toLowerCase())
   );
 
-  const { data: volumeHistory } = useQuery({
+  const { data: volumeHistory, refetch: refetchVolumeHistory } = useQuery({
     queryKey: ['analytics', 'volume-history'],
     queryFn: () => api.get<VolumeHistoryPoint[]>('/analytics/volume-history?weeks=8').then((r) => r.data),
   });
 
-  const { data: muscleDistribution } = useQuery({
+  const { data: muscleDistribution, refetch: refetchMuscleDistribution } = useQuery({
     queryKey: ['analytics', 'muscle-distribution'],
     queryFn: () => api.get<MuscleDistributionEntry[]>('/analytics/muscle-distribution?weeks=8').then((r) => r.data),
   });
+
+  const { refreshing, onRefresh } = usePullToRefresh(() =>
+    Promise.all([refetchExercises(), refetchVolumeHistory(), refetchMuscleDistribution()])
+  );
 
   const chartData = (volumeHistory || []).map((w) => ({
     label: new Date(w.week_start).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
@@ -74,6 +79,7 @@ export default function AnalyticsScreen() {
           data={filteredExercises}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.fire} />}
           ListHeaderComponent={
             <>
               {(hasVolume || hasMuscleDistribution) && (

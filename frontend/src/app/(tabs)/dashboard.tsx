@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import { ChevronRight, Dumbbell, Flame, CalendarDays, Zap } from 'lucide-react-n
 import { api } from '../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { useWorkout } from '../../hooks/useWorkout';
+import { usePullToRefresh } from '../../hooks/usePullToRefresh';
 import { authStore } from '../../stores/authStore';
 import { StatCard } from '../../components/analytics/StatCard';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -30,20 +31,24 @@ export default function DashboardScreen() {
   const { hasHydrated, currentWorkout, startWorkout } = useWorkout();
   const [startingWorkout, setStartingWorkout] = useState(false);
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
     queryKey: ['stats'],
     queryFn: () => api.get<AnalyticsSummary>('/analytics/summary').then((r) => r.data),
   });
 
-  const { data: workouts, isLoading: workoutsLoading } = useQuery({
+  const { data: workouts, isLoading: workoutsLoading, refetch: refetchWorkouts } = useQuery({
     queryKey: ['workouts'],
     queryFn: () => api.get<Workout[]>('/workouts?limit=3').then((r) => r.data),
   });
 
-  const { data: character } = useQuery({
+  const { data: character, refetch: refetchCharacter } = useQuery({
     queryKey: ['character'],
     queryFn: () => api.get<Character | null>('/characters/me').then((r) => r.data),
   });
+
+  const { refreshing, onRefresh } = usePullToRefresh(() =>
+    Promise.all([refetchStats(), refetchWorkouts(), refetchCharacter()])
+  );
 
   useEffect(() => {
     if (workoutsLoading) return;
@@ -78,7 +83,11 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent.fire} />}
+      >
         <View style={styles.header}>
           <Logo variant="horizontal" size="sm" />
           <Text style={styles.greeting}>Hola{username ? `, ${username}` : ''}</Text>
