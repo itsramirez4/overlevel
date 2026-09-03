@@ -90,43 +90,52 @@ export class UserService {
     const user = await this.getUserById(userId);
 
     try {
-      const [ownExercises, routines, bodyWeightLogs, workouts, character, battles, exerciseNotes] = await Promise.all([
-        fetchAllRows<any>((from, to) =>
-          supabaseAdmin.from('exercises').select('*').eq('user_id', userId).range(from, to)
-        ),
-        fetchAllRows<any>((from, to) =>
-          supabaseAdmin.from('routines').select('*, routine_exercises(*)').eq('user_id', userId).range(from, to)
-        ),
-        fetchAllRows<any>((from, to) =>
-          supabaseAdmin
-            .from('body_weight_logs')
-            .select('*')
-            .eq('user_id', userId)
-            .order('logged_at', { ascending: true })
-            .range(from, to)
-        ),
-        fetchAllRows<any>((from, to) =>
-          supabaseAdmin
-            .from('workouts')
-            .select('*, sets(*)')
-            .eq('user_id', userId)
-            .order('started_at', { ascending: true })
-            .range(from, to)
-        ),
-        // The RPG layer is additive/optional (see characterService), but a
-        // user with a character reasonably expects its level/XP to show up
-        // in an "export all my data" — this and battles were missing before.
-        supabaseAdmin.from('characters').select('*').eq('user_id', userId).maybeSingle().then((r) => r.data),
-        fetchAllRows<any>((from, to) =>
-          supabaseAdmin.from('exercise_battles').select('*').eq('user_id', userId).range(from, to)
-        ),
-        // Missing here before — a user exporting "all my data" lost every
-        // per-exercise note they'd written, same class of gap battles/
-        // character had before the comment above.
-        fetchAllRows<any>((from, to) =>
-          supabaseAdmin.from('workout_exercise_notes').select('*').eq('user_id', userId).range(from, to)
-        ),
-      ]);
+      const [ownExercises, routines, bodyWeightLogs, bodyMeasurements, workouts, character, battles, exerciseNotes] =
+        await Promise.all([
+          fetchAllRows<any>((from, to) =>
+            supabaseAdmin.from('exercises').select('*').eq('user_id', userId).range(from, to)
+          ),
+          fetchAllRows<any>((from, to) =>
+            supabaseAdmin.from('routines').select('*, routine_exercises(*)').eq('user_id', userId).range(from, to)
+          ),
+          fetchAllRows<any>((from, to) =>
+            supabaseAdmin
+              .from('body_weight_logs')
+              .select('*')
+              .eq('user_id', userId)
+              .order('logged_at', { ascending: true })
+              .range(from, to)
+          ),
+          fetchAllRows<any>((from, to) =>
+            supabaseAdmin
+              .from('body_measurements')
+              .select('*')
+              .eq('user_id', userId)
+              .order('logged_at', { ascending: true })
+              .range(from, to)
+          ),
+          fetchAllRows<any>((from, to) =>
+            supabaseAdmin
+              .from('workouts')
+              .select('*, sets(*)')
+              .eq('user_id', userId)
+              .order('started_at', { ascending: true })
+              .range(from, to)
+          ),
+          // The RPG layer is additive/optional (see characterService), but a
+          // user with a character reasonably expects its level/XP to show up
+          // in an "export all my data" — this and battles were missing before.
+          supabaseAdmin.from('characters').select('*').eq('user_id', userId).maybeSingle().then((r) => r.data),
+          fetchAllRows<any>((from, to) =>
+            supabaseAdmin.from('exercise_battles').select('*').eq('user_id', userId).range(from, to)
+          ),
+          // Missing here before — a user exporting "all my data" lost every
+          // per-exercise note they'd written, same class of gap battles/
+          // character had before the comment above.
+          fetchAllRows<any>((from, to) =>
+            supabaseAdmin.from('workout_exercise_notes').select('*').eq('user_id', userId).range(from, to)
+          ),
+        ]);
 
       // Exercises are shared across users now (see exerciseService) — a
       // workout or routine here can reference one this user didn't create.
@@ -154,6 +163,7 @@ export class UserService {
         routines,
         workouts,
         body_weight_logs: bodyWeightLogs,
+        body_measurements: bodyMeasurements,
         character,
         exercise_battles: battles,
         workout_exercise_notes: exerciseNotes,

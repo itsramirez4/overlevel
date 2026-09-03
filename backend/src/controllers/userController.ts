@@ -5,6 +5,7 @@ import { importService } from '../services/importService';
 import { followService } from '../services/followService';
 import { workoutService } from '../services/workoutService';
 import { characterService } from '../services/characterService';
+import { measurementService } from '../services/measurementService';
 import { parsePositiveIntParam } from '../utils/queryParams';
 import { isAdmin } from '../utils/admin';
 
@@ -26,6 +27,22 @@ export class UserController {
     const days = parsePositiveIntParam(req.query.days, 90);
     const history = await userService.getBodyWeightHistory(req.userId!, days);
     res.json(history);
+  }
+
+  async listMeasurements(req: AuthRequest, res: Response) {
+    const days = parsePositiveIntParam(req.query.days, 365);
+    const measurements = await measurementService.list(req.userId!, days);
+    res.json(measurements);
+  }
+
+  async logMeasurement(req: AuthRequest, res: Response) {
+    const measurement = await measurementService.log(req.userId!, req.body);
+    res.status(201).json(measurement);
+  }
+
+  async removeMeasurement(req: AuthRequest, res: Response) {
+    await measurementService.remove(req.params.measurementId, req.userId!);
+    res.status(204).send();
   }
 
   async changePassword(req: AuthRequest, res: Response) {

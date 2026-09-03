@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Dumbbell,
   LucideIcon,
+  Ruler,
   Settings,
   Skull,
   Swords,
@@ -29,6 +30,7 @@ const MENU_ITEMS: { icon: LucideIcon; label: string; href: string }[] = [
   { icon: Dumbbell, label: 'Ejercicios', href: '/profile/exercises' },
   { icon: CalendarDays, label: 'Historial de entrenamientos', href: '/workouts/history' },
   { icon: Trophy, label: 'Récords personales', href: '/profile/records' },
+  { icon: Ruler, label: 'Medidas corporales', href: '/profile/measurements' },
   { icon: Calculator, label: 'Calculadora de discos', href: '/profile/plate-calculator' },
   { icon: Settings, label: 'Ajustes', href: '/profile/settings' },
 ];

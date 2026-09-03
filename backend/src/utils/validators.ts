@@ -187,6 +187,23 @@ export const setWorkoutExerciseNoteSchema = z.object({
   notes: z.string().max(2000),
 });
 
+// All optional (a session might only measure a couple of things), but at
+// least one has to be present — an entry with nothing filled in isn't a
+// measurement.
+export const logMeasurementSchema = z
+  .object({
+    waist_cm: z.number().positive().optional(),
+    chest_cm: z.number().positive().optional(),
+    hips_cm: z.number().positive().optional(),
+    bicep_cm: z.number().positive().optional(),
+    thigh_cm: z.number().positive().optional(),
+    neck_cm: z.number().positive().optional(),
+    body_fat_pct: z.number().positive().max(100).optional(),
+  })
+  .refine((v) => Object.values(v).some((n) => n !== undefined), {
+    message: 'Introduce al menos una medida',
+  });
+
 export const createCharacterSchema = z.object({
   character_type: z.enum(['powerlifter', 'bodybuilder', 'crossfitter', 'calisthenics', 'fracasado']),
 });

@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, Link2, X } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Info, Link2, X } from 'lucide-react-native';
 import { colors, radius, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
 import { authStore } from '../../stores/authStore';
@@ -64,6 +65,7 @@ export const ExerciseLogSection = ({
   canMoveUp,
   canMoveDown,
 }: ExerciseLogSectionProps) => {
+  const [showInstructions, setShowInstructions] = useState(false);
   const globalUnit = authStore((s) => s.user?.weight_unit) || 'kg';
   const globalDistanceUnit = authStore((s) => s.user?.distance_unit) || 'km';
   const unit = exercise.weight_unit || globalUnit;
@@ -141,6 +143,24 @@ export const ExerciseLogSection = ({
       </View>
 
       <EnemyCard enemyName={exercise.name} battle={battle} />
+
+      {!!exercise.notes && (
+        <>
+          <TouchableOpacity
+            onPress={() => setShowInstructions((v) => !v)}
+            style={styles.instructionsToggle}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showInstructions }}
+          >
+            <Info size={12} color={colors.text.secondary} />
+            <Text style={styles.instructionsToggleText}>
+              {showInstructions ? 'Ocultar instrucciones' : 'Ver instrucciones'}
+            </Text>
+          </TouchableOpacity>
+          {showInstructions && <Text style={styles.instructionsText}>{exercise.notes}</Text>}
+        </>
+      )}
 
       {targetLabel && (
         <Text style={styles.target} numberOfLines={1}>
@@ -228,6 +248,26 @@ const styles = StyleSheet.create({
   lastSession: {
     ...typography.tiny,
     color: colors.text.secondary,
+    marginBottom: spacing.md,
+  },
+  instructionsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    marginBottom: spacing.xs,
+  },
+  instructionsToggleText: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+    fontWeight: '700',
+  },
+  instructionsText: {
+    ...typography.small,
+    color: colors.text.secondary,
+    backgroundColor: colors.bg.elevated,
+    borderRadius: radius.sm,
+    padding: spacing.sm,
     marginBottom: spacing.md,
   },
   loggedSets: {

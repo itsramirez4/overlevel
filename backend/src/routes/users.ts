@@ -2,7 +2,7 @@ import express from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { authRateLimiter } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validation';
-import { changePasswordSchema, importHevySchema, updateUserSchema } from '../utils/validators';
+import { changePasswordSchema, importHevySchema, logMeasurementSchema, updateUserSchema } from '../utils/validators';
 import { userController } from '../controllers/userController';
 
 const router = express.Router();
@@ -11,6 +11,9 @@ router.use(authMiddleware);
 router.get('/me', userController.me);
 router.put('/me', validateBody(updateUserSchema), userController.update);
 router.get('/me/body-weight-history', userController.bodyWeightHistory);
+router.get('/me/measurements', userController.listMeasurements);
+router.post('/me/measurements', validateBody(logMeasurementSchema), userController.logMeasurement);
+router.delete('/me/measurements/:measurementId', userController.removeMeasurement);
 // Verifies current_password against the real account password — same
 // brute-force exposure as login, so it needs the same strict limiter
 // instead of the generous default every other authenticated route gets.

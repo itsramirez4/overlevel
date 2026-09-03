@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors, radius, spacing, typography } from '../../utils/theme';
+import { MUSCLE_GROUPS } from '../../utils/constants';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 
@@ -22,19 +23,6 @@ const categories: { value: ExerciseFormData['category']; label: string }[] = [
   { value: 'compound', label: 'Compuesto' },
   { value: 'isolation', label: 'Aislamiento' },
   { value: 'cardio', label: 'Cardio' },
-];
-
-const muscleGroupOptions = [
-  'Pecho',
-  'Espalda',
-  'Piernas',
-  'Hombros',
-  'Bíceps',
-  'Tríceps',
-  'Core',
-  'Glúteos',
-  'Pantorrillas',
-  'Antebrazos',
 ];
 
 export const ExerciseForm = ({ onSubmit, loading, initialValues, submitLabel }: ExerciseFormProps) => {
@@ -74,7 +62,7 @@ export const ExerciseForm = ({ onSubmit, loading, initialValues, submitLabel }: 
 
       <Text style={styles.label}>Grupos musculares (opcional)</Text>
       <View style={styles.muscleGroupsWrap}>
-        {muscleGroupOptions.map((group) => {
+        {MUSCLE_GROUPS.map((group) => {
           const selected = muscleGroups.includes(group);
           return (
             <TouchableOpacity
@@ -92,8 +80,8 @@ export const ExerciseForm = ({ onSubmit, loading, initialValues, submitLabel }: 
       </View>
 
       <Input
-        label="Notas (opcional)"
-        placeholder="Cualquier apunte sobre este ejercicio…"
+        label="Instrucciones (opcional)"
+        placeholder="Cómo hacer el ejercicio, técnica, precauciones…"
         value={notes}
         onChangeText={setNotes}
         multiline

@@ -16,6 +16,20 @@ export interface User {
   is_admin?: boolean;
 }
 
+export interface BodyMeasurement {
+  id: string;
+  user_id: string;
+  logged_at: string;
+  waist_cm?: number | null;
+  chest_cm?: number | null;
+  hips_cm?: number | null;
+  bicep_cm?: number | null;
+  thigh_cm?: number | null;
+  neck_cm?: number | null;
+  body_fat_pct?: number | null;
+  created_at: string;
+}
+
 export interface Exercise {
   id: string;
   user_id: string;

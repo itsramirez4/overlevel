@@ -103,6 +103,73 @@ describe('users', () => {
       expect(res.body.character).toBeNull();
       expect(res.body.exercise_battles).toEqual([]);
       expect(res.body.workout_exercise_notes).toEqual([]);
+      expect(res.body.body_measurements).toEqual([]);
+    });
+
+    it('includes logged body measurements', async () => {
+      await request(app).post('/api/users/me/measurements').set(authHeader(user)).send({ waist_cm: 80 });
+      const res = await request(app).get('/api/users/me/export').set(authHeader(user));
+      expect(res.status).toBe(200);
+      expect(res.body.body_measurements).toHaveLength(1);
+      expect(res.body.body_measurements[0].waist_cm).toBe(80);
+    });
+  });
+
+  describe('body measurements', () => {
+    it('logs a measurement with only some fields filled in, and lists it back', async () => {
+      const res = await request(app)
+        .post('/api/users/me/measurements')
+        .set(authHeader(user))
+        .send({ waist_cm: 82.5, bicep_cm: 35 });
+      expect(res.status).toBe(201);
+      expect(res.body.waist_cm).toBe(82.5);
+      expect(res.body.bicep_cm).toBe(35);
+      expect(res.body.chest_cm).toBeNull();
+
+      const list = await request(app).get('/api/users/me/measurements').set(authHeader(user));
+      expect(list.status).toBe(200);
+      expect(list.body.map((m: any) => m.id)).toContain(res.body.id);
+    });
+
+    it('rejects an entry with no fields at all', async () => {
+      const res = await request(app).post('/api/users/me/measurements').set(authHeader(user)).send({});
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects a non-positive value', async () => {
+      const res = await request(app).post('/api/users/me/measurements').set(authHeader(user)).send({ waist_cm: -5 });
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects a body_fat_pct over 100', async () => {
+      const res = await request(app)
+        .post('/api/users/me/measurements')
+        .set(authHeader(user))
+        .send({ body_fat_pct: 150 });
+      expect(res.status).toBe(400);
+    });
+
+    it('deletes a measurement, and 404s deleting one that is not this user\'s', async () => {
+      const other = await createTestUser('measurements-other');
+      try {
+        const mine = await request(app).post('/api/users/me/measurements').set(authHeader(user)).send({ waist_cm: 80 });
+        const theirs = await request(app).post('/api/users/me/measurements').set(authHeader(other)).send({ waist_cm: 90 });
+
+        const stealDelete = await request(app)
+          .delete(`/api/users/me/measurements/${theirs.body.id}`)
+          .set(authHeader(user));
+        expect(stealDelete.status).toBe(404);
+
+        const ownDelete = await request(app)
+          .delete(`/api/users/me/measurements/${mine.body.id}`)
+          .set(authHeader(user));
+        expect(ownDelete.status).toBe(204);
+
+        const list = await request(app).get('/api/users/me/measurements').set(authHeader(user));
+        expect(list.body.map((m: any) => m.id)).not.toContain(mine.body.id);
+      } finally {
+        await deleteTestUser(other.id);
+      }
     });
   });
 });

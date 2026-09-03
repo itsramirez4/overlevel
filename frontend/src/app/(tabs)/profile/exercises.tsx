@@ -10,6 +10,7 @@ import { colors, radius, shadow, spacing, typography } from '../../../utils/them
 import { EmptyState } from '../../../components/common/EmptyState';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { Input } from '../../../components/ui/Input';
+import { MuscleGroupFilter } from '../../../components/exercises/MuscleGroupFilter';
 import { getErrorMessage } from '../../../utils/errors';
 import { authStore } from '../../../stores/authStore';
 import { Exercise } from '../../../types';
@@ -28,6 +29,7 @@ export default function ManageExercisesScreen() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [muscleGroup, setMuscleGroup] = useState<string | null>(null);
 
   // Admins manage everyone's exercises here (moderation); everyone else
   // still only sees their own — the backend enforces this either way, this
@@ -37,9 +39,9 @@ export default function ManageExercisesScreen() {
     queryFn: () => api.get<Exercise[]>(isAdmin ? '/exercises?scope=all' : '/exercises').then((r) => r.data),
   });
 
-  const filteredExercises = (exercises || []).filter((e) =>
-    e.name.toLowerCase().includes(search.trim().toLowerCase())
-  );
+  const filteredExercises = (exercises || [])
+    .filter((e) => e.name.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter((e) => !muscleGroup || e.muscle_groups?.includes(muscleGroup));
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -95,6 +97,7 @@ export default function ManageExercisesScreen() {
 
       <View style={styles.searchContainer}>
         <Input placeholder="Buscar ejercicio…" value={search} onChangeText={setSearch} />
+        <MuscleGroupFilter value={muscleGroup} onChange={setMuscleGroup} />
       </View>
 
       <FlatList
@@ -105,8 +108,12 @@ export default function ManageExercisesScreen() {
           isLoading ? null : (
             <EmptyState
               icon={Dumbbell}
-              title={search ? 'Sin resultados' : 'Sin ejercicios todavía'}
-              message={search ? 'Prueba con otro nombre.' : 'Crea el primero con el botón de arriba.'}
+              title={search || muscleGroup ? 'Sin resultados' : 'Sin ejercicios todavía'}
+              message={
+                search || muscleGroup
+                  ? 'Prueba con otro nombre o grupo muscular.'
+                  : 'Crea el primero con el botón de arriba.'
+              }
             />
           )
         }

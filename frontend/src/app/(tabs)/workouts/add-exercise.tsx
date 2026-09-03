@@ -11,6 +11,7 @@ import { workoutStore } from '../../../stores/workoutStore';
 import { ExerciseForm } from '../../../components/forms/ExerciseForm';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Input } from '../../../components/ui/Input';
+import { MuscleGroupFilter } from '../../../components/exercises/MuscleGroupFilter';
 import { getErrorMessage } from '../../../utils/errors';
 import { authStore } from '../../../stores/authStore';
 import { Exercise } from '../../../types';
@@ -26,6 +27,7 @@ export default function WorkoutAddExerciseScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [muscleGroup, setMuscleGroup] = useState<string | null>(null);
 
   const { data: exercises, isLoading } = useQuery({
     queryKey: ['exercises', 'all'],
@@ -35,7 +37,8 @@ export default function WorkoutAddExerciseScreen() {
   const alreadyAddedIds = new Set(sessionExercises.map((e) => e.id));
   const availableExercises = (exercises || [])
     .filter((e) => !alreadyAddedIds.has(e.id))
-    .filter((e) => e.name.toLowerCase().includes(search.trim().toLowerCase()));
+    .filter((e) => e.name.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter((e) => !muscleGroup || e.muscle_groups?.includes(muscleGroup));
 
   const handlePick = (exercise: Exercise) => {
     addSessionExercise(exercise);
@@ -96,6 +99,7 @@ export default function WorkoutAddExerciseScreen() {
           ) : (
             <>
               <Input placeholder="Buscar ejercicio…" value={search} onChangeText={setSearch} />
+              <MuscleGroupFilter value={muscleGroup} onChange={setMuscleGroup} />
               <TouchableOpacity
                 style={styles.newButton}
                 onPress={() => setCreatingNew(true)}
@@ -111,8 +115,12 @@ export default function WorkoutAddExerciseScreen() {
           creatingNew || isLoading ? null : (
             <EmptyState
               icon={Dumbbell}
-              title={search ? 'Sin resultados' : 'Sin ejercicios disponibles'}
-              message={search ? 'Prueba con otro nombre.' : 'Crea uno nuevo para añadirlo a este entrenamiento.'}
+              title={search || muscleGroup ? 'Sin resultados' : 'Sin ejercicios disponibles'}
+              message={
+                search || muscleGroup
+                  ? 'Prueba con otro nombre o grupo muscular.'
+                  : 'Crea uno nuevo para añadirlo a este entrenamiento.'
+              }
             />
           )
         }
