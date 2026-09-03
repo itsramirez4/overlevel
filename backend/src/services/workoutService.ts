@@ -3,6 +3,7 @@ import { Workout } from '../types';
 import { AppError } from '../middleware/errorHandler';
 import { routineService } from './routineService';
 import { userService } from './userService';
+import { followService } from './followService';
 import { recomputeIsPrForExercise } from './setService';
 import { fetchAllRows } from '../utils/pagination';
 
@@ -40,6 +41,33 @@ export class WorkoutService {
         .order('started_at', { ascending: false })
         .range(from, to)
     );
+  }
+
+  /**
+   * Recent completed workouts from everyone `userId` follows — the social
+   * feed. Re-checks `profile_public` live (not "was public when followed")
+   * via the `users!inner` embed filter: an account that's gone private
+   * since must disappear from here the same way it disappears from
+   * direct-profile viewing, not just freeze at whatever it looked like at
+   * follow time.
+   */
+  async getFeed(userId: string): Promise<(Workout & { character_type: string | null })[]> {
+    const followingIds = await followService.getFollowingIds(userId);
+    if (followingIds.length === 0) return [];
+
+    const { data, error } = await supabaseAdmin
+      .from('workouts')
+      .select('*, sets(*, exercises(name)), users!inner(username, full_name, profile_public)')
+      .in('user_id', followingIds)
+      .not('completed_at', 'is', null)
+      .eq('users.profile_public', true)
+      .order('started_at', { ascending: false })
+      .limit(30);
+
+    if (error) throw new AppError('Failed to fetch feed');
+
+    const characterTypes = await userService.getCharacterTypes(followingIds);
+    return (data || []).map((w: any) => ({ ...w, character_type: characterTypes[w.user_id] || null }));
   }
 
   async getById(id: string, userId: string): Promise<Workout> {

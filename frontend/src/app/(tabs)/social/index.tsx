@@ -4,15 +4,16 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Search } from 'lucide-react-native';
+import { Dumbbell, Search } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { Header } from '../../../components/common/Header';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Input } from '../../../components/ui/Input';
 import { UserAvatar } from '../../../components/character/UserAvatar';
+import { getWorkoutName } from '../../../utils/workoutName';
 import { authStore } from '../../../stores/authStore';
-import { PublicUser, PublicProfile } from '../../../types';
+import { PublicUser, PublicProfile, Workout } from '../../../types';
 
 export default function SocialScreen() {
   const router = useRouter();
@@ -37,6 +38,14 @@ export default function SocialScreen() {
     queryKey: ['users', 'search', debouncedQuery],
     queryFn: () => api.get('/users/search', { params: { q: debouncedQuery } }).then((r) => r.data),
     enabled: debouncedQuery.trim().length > 0,
+  });
+
+  const isSearching = !!debouncedQuery.trim();
+
+  const { data: feed, isLoading: feedLoading } = useQuery<Workout[]>({
+    queryKey: ['users', 'me', 'feed'],
+    queryFn: () => api.get<Workout[]>('/users/me/feed').then((r) => r.data),
+    enabled: !isSearching,
   });
 
   return (
@@ -68,30 +77,68 @@ export default function SocialScreen() {
         <Input placeholder="Buscar por nombre de usuario…" value={query} onChangeText={setQuery} autoCapitalize="none" />
       </View>
 
-      <FlatList
-        data={debouncedQuery.trim() ? results || [] : []}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          isLoading || !debouncedQuery.trim() ? null : (
-            <EmptyState icon={Search} title="Sin resultados" message="Solo se pueden encontrar perfiles públicos." />
-          )
-        }
-        renderItem={({ item, index }) => (
-          <AnimatedTouchable
-            entering={FadeInDown.delay(index * 50).duration(250)}
-            style={styles.card}
-            onPress={() => router.push(`/social/user/${item.id}`)}
-            activeOpacity={0.7}
-          >
-            <UserAvatar characterType={item.character_type} size={36} />
-            <View style={styles.info}>
-              <Text style={styles.username}>{item.username}</Text>
-              {!!item.full_name && <Text style={styles.fullName}>{item.full_name}</Text>}
-            </View>
-          </AnimatedTouchable>
-        )}
-      />
+      {isSearching ? (
+        <FlatList
+          data={results || []}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            isLoading ? null : (
+              <EmptyState icon={Search} title="Sin resultados" message="Solo se pueden encontrar perfiles públicos." />
+            )
+          }
+          renderItem={({ item, index }) => (
+            <AnimatedTouchable
+              entering={FadeInDown.delay(index * 50).duration(250)}
+              style={styles.card}
+              onPress={() => router.push(`/social/user/${item.id}`)}
+              activeOpacity={0.7}
+            >
+              <UserAvatar characterType={item.character_type} size={36} />
+              <View style={styles.info}>
+                <Text style={styles.username}>{item.username}</Text>
+                {!!item.full_name && <Text style={styles.fullName}>{item.full_name}</Text>}
+              </View>
+            </AnimatedTouchable>
+          )}
+        />
+      ) : (
+        <FlatList
+          data={feed || []}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            feedLoading ? null : (
+              <EmptyState
+                icon={Dumbbell}
+                title="Sin actividad todavía"
+                message="Sigue a alguien para ver aquí sus entrenamientos."
+              />
+            )
+          }
+          renderItem={({ item, index }) => (
+            <AnimatedTouchable
+              entering={FadeInDown.delay(index * 50).duration(250)}
+              style={styles.card}
+              onPress={() => router.push(`/social/user-workout?ownerId=${item.user_id}&workoutId=${item.id}`)}
+              activeOpacity={0.7}
+            >
+              <UserAvatar characterType={item.character_type} size={36} />
+              <View style={styles.info}>
+                <Text style={styles.username}>{item.users?.username}</Text>
+                <Text style={styles.feedWorkoutName} numberOfLines={1}>
+                  {getWorkoutName(item)}
+                </Text>
+                <Text style={styles.fullName}>
+                  {new Date(item.started_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                  {' · '}
+                  {(item.sets || []).length} series
+                </Text>
+              </View>
+            </AnimatedTouchable>
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -150,6 +197,13 @@ const styles = StyleSheet.create({
   fullName: {
     ...typography.tiny,
     color: colors.text.secondary,
+    marginTop: 2,
+  },
+  feedWorkoutName: {
+    ...typography.small,
+    color: colors.text.primary,
+    fontWeight: '700',
+    textTransform: 'capitalize',
     marginTop: 2,
   },
 });

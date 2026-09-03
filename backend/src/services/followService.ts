@@ -56,6 +56,14 @@ export class FollowService {
     return this.fetchUsers((rows || []).map((r) => r.followed_id));
   }
 
+  /** Just the ids, for building a query scoped to "everyone this user
+   * follows" (the activity feed) — no need for the extra user-details
+   * round trip listFollowing does. */
+  async getFollowingIds(userId: string): Promise<string[]> {
+    const { data } = await supabaseAdmin.from('follows').select('followed_id').eq('follower_id', userId);
+    return (data || []).map((r) => r.followed_id);
+  }
+
   // Two queries (ids, then users) instead of an embedded join — follows has
   // two FKs to the same `users` table, and relying on the auto-generated FK
   // constraint name for PostgREST's embed disambiguation is fragile. This

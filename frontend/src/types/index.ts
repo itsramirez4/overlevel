@@ -182,4 +182,7 @@ export interface Workout {
   // Only present in the response to PUT /workouts/:id/complete, and only
   // when the user has a character — the RPG layer is fully optional.
   xp_award?: { xpGained: number; leveledUp: boolean; previousLevel: number; newLevel: number };
+  // Only present in the activity feed (GET /users/me/feed) — who logged it.
+  users?: { username: string; full_name?: string };
+  character_type?: CharacterType | null;
 }

@@ -16,6 +16,7 @@ router.get('/me/body-weight-history', userController.bodyWeightHistory);
 // instead of the generous default every other authenticated route gets.
 router.put('/me/password', authRateLimiter, validateBody(changePasswordSchema), userController.changePassword);
 router.get('/me/export', userController.exportData);
+router.get('/me/feed', userController.feed);
 router.post('/me/import/hevy', validateBody(importHevySchema), userController.importHevy);
 
 // Social — /search must stay before /:id, or a request for /search would

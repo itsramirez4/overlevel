@@ -200,4 +200,55 @@ describe('social (follows + public profiles)', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('activity feed', () => {
+    it('shows a completed workout from someone the viewer follows', async () => {
+      await makePublic(b);
+      await request(app).post(`/api/users/${b.id}/follow`).set(authHeader(a)).expect(204);
+
+      const workout = await request(app).post('/api/workouts').set(authHeader(b)).send({});
+      await request(app).put(`/api/workouts/${workout.body.id}/complete`).set(authHeader(b)).send({});
+
+      const feed = await request(app).get('/api/users/me/feed').set(authHeader(a));
+      expect(feed.status).toBe(200);
+      expect(feed.body.map((w: any) => w.id)).toContain(workout.body.id);
+      expect(feed.body.find((w: any) => w.id === workout.body.id).users.username).toBeTruthy();
+    });
+
+    it('excludes workouts from users the viewer does not follow', async () => {
+      await makePublic(b);
+      const workout = await request(app).post('/api/workouts').set(authHeader(b)).send({});
+      await request(app).put(`/api/workouts/${workout.body.id}/complete`).set(authHeader(b)).send({});
+
+      const feed = await request(app).get('/api/users/me/feed').set(authHeader(a));
+      expect(feed.body.map((w: any) => w.id)).not.toContain(workout.body.id);
+    });
+
+    it('excludes an in-progress workout even from someone followed', async () => {
+      await makePublic(b);
+      await request(app).post(`/api/users/${b.id}/follow`).set(authHeader(a)).expect(204);
+      const inProgress = await request(app).post('/api/workouts').set(authHeader(b)).send({});
+
+      const feed = await request(app).get('/api/users/me/feed').set(authHeader(a));
+      expect(feed.body.map((w: any) => w.id)).not.toContain(inProgress.body.id);
+    });
+
+    it('drops a followed user from the feed once their account goes private again', async () => {
+      await makePublic(b);
+      await request(app).post(`/api/users/${b.id}/follow`).set(authHeader(a)).expect(204);
+      const workout = await request(app).post('/api/workouts').set(authHeader(b)).send({});
+      await request(app).put(`/api/workouts/${workout.body.id}/complete`).set(authHeader(b)).send({});
+
+      await request(app).put('/api/users/me').set(authHeader(b)).send({ profile_public: false });
+
+      const feed = await request(app).get('/api/users/me/feed').set(authHeader(a));
+      expect(feed.body.map((w: any) => w.id)).not.toContain(workout.body.id);
+    });
+
+    it('is empty when following no one', async () => {
+      const feed = await request(app).get('/api/users/me/feed').set(authHeader(a));
+      expect(feed.status).toBe(200);
+      expect(feed.body).toEqual([]);
+    });
+  });
 });

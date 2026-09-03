@@ -38,6 +38,11 @@ export class UserController {
     res.json(data);
   }
 
+  async feed(req: AuthRequest, res: Response) {
+    const workouts = await workoutService.getFeed(req.userId!);
+    res.json(workouts);
+  }
+
   async importHevy(req: AuthRequest, res: Response) {
     const result = await importService.importHevyCsv(req.userId!, req.body.csv);
     res.json(result);
