@@ -17,14 +17,17 @@ import { XpRewardDialog } from '../../../components/workout/XpRewardDialog';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Button } from '../../../components/ui/Button';
 import { Loader } from '../../../components/ui/Loader';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { ExerciseBattle, Set, WorkoutExerciseNote } from '../../../types';
 
 export default function WorkoutLogScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { hasHydrated, currentWorkout, completeWorkout } = useWorkout();
+  const { hasHydrated, currentWorkout, completeWorkout, discardWorkout } = useWorkout();
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
   const [xpAward, setXpAward] = useState<{
     xpGained: number;
     leveledUp: boolean;
@@ -133,6 +136,19 @@ export default function WorkoutLogScreen() {
     );
   }
 
+  const handleDiscard = async () => {
+    if (discarding) return;
+    setDiscarding(true);
+    try {
+      await discardWorkout();
+      setDiscardDialogOpen(false);
+      router.replace('/(tabs)/workouts');
+    } catch {
+      setDiscarding(false);
+      Alert.alert('Error', 'No se pudo descartar el entrenamiento. Inténtalo de nuevo.');
+    }
+  };
+
   const handleComplete = async (title?: string, feltLike?: string, notes?: string) => {
     if (completing) return;
     setCompleting(true);
@@ -237,6 +253,10 @@ export default function WorkoutLogScreen() {
           onPress={() => setCompleteDialogOpen(true)}
           style={styles.endButton}
         />
+
+        <TouchableOpacity onPress={() => setDiscardDialogOpen(true)} style={styles.discardLink}>
+          <Text style={styles.discardLinkText}>Descartar entrenamiento</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       <CompleteWorkoutDialog
@@ -245,6 +265,17 @@ export default function WorkoutLogScreen() {
         defaultTitle={currentWorkout.title || currentWorkout.routines?.name}
         onConfirm={handleComplete}
         onCancel={() => !completing && setCompleteDialogOpen(false)}
+      />
+
+      <ConfirmDialog
+        visible={discardDialogOpen}
+        title="Descartar entrenamiento"
+        message="Se borrará este entrenamiento y todas las series registradas en él. Esta acción no se puede deshacer."
+        confirmLabel="Descartar"
+        destructive
+        loading={discarding}
+        onConfirm={handleDiscard}
+        onCancel={() => !discarding && setDiscardDialogOpen(false)}
       />
     </SafeAreaView>
   );
@@ -309,5 +340,13 @@ const styles = StyleSheet.create({
   },
   endButton: {
     marginBottom: spacing.lg,
+  },
+  discardLink: {
+    alignItems: 'center',
+  },
+  discardLinkText: {
+    ...typography.small,
+    color: colors.semantic.error,
+    fontWeight: '600',
   },
 });

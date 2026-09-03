@@ -92,5 +92,17 @@ export const useWorkout = () => {
     return data;
   };
 
-  return { hasHydrated, currentWorkout, startWorkout, completeWorkout };
+  // Deletes the in-progress workout outright (cascades to its sets/notes/
+  // battles server-side) instead of completing it — the only way out of an
+  // accidental or abandoned session, since startWorkout() otherwise always
+  // resumes it rather than letting a new one start.
+  const discardWorkout = async () => {
+    if (!currentWorkout) return;
+    await api.delete(`/workouts/${currentWorkout.id}`);
+    setCurrentWorkout(null);
+    setSessionExercises([]);
+    cancelRestTimerNotification();
+  };
+
+  return { hasHydrated, currentWorkout, startWorkout, completeWorkout, discardWorkout };
 };

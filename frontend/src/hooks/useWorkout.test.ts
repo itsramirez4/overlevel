@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { requestNotificationPermissions, cancelRestTimerNotification } from '../services/notifications';
 
 jest.mock('../services/api', () => ({
-  api: { post: jest.fn(), get: jest.fn(), put: jest.fn() },
+  api: { post: jest.fn(), get: jest.fn(), put: jest.fn(), delete: jest.fn() },
 }));
 jest.mock('../services/notifications', () => ({
   requestNotificationPermissions: jest.fn(),
@@ -141,6 +141,34 @@ describe('completeWorkout', () => {
     expect(returned).toEqual({ id: 'w3', completed_at: '2026-01-01T01:00:00Z' });
     // Otherwise a rest timer still counting down fires its OS notification
     // minutes later, for a workout that's already finished.
+    expect(cancelRestTimerNotification).toHaveBeenCalled();
+  });
+});
+
+describe('discardWorkout', () => {
+  it('is a no-op when there is no current workout', async () => {
+    const { result } = await renderHook(() => useWorkout());
+
+    await act(async () => result.current.discardWorkout());
+
+    expect(mockedApi.delete).not.toHaveBeenCalled();
+  });
+
+  it('deletes the current workout and clears session state', async () => {
+    workoutStore.getState().setCurrentWorkout({ id: 'w6', user_id: 'u1', started_at: '2026-01-01T00:00:00Z', created_at: '2026-01-01T00:00:00Z' });
+    workoutStore.getState().setSessionExercises([
+      { id: 'a', user_id: 'u1', name: 'A', category: 'compound', muscle_groups: [], equipment: [], is_custom: true, created_at: '2026-01-01T00:00:00Z' },
+    ]);
+    mockedApi.delete.mockResolvedValue({ data: undefined });
+
+    const { result } = await renderHook(() => useWorkout());
+    await act(async () => result.current.discardWorkout());
+
+    expect(mockedApi.delete).toHaveBeenCalledWith('/workouts/w6');
+    expect(workoutStore.getState().currentWorkout).toBeNull();
+    expect(workoutStore.getState().sessionExercises).toEqual([]);
+    // Otherwise a rest timer still counting down fires its OS notification
+    // minutes later, for a workout that no longer exists.
     expect(cancelRestTimerNotification).toHaveBeenCalled();
   });
 });

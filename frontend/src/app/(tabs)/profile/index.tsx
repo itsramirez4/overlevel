@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -21,6 +22,7 @@ import { colors, spacing, typography } from '../../../utils/theme';
 import { Header } from '../../../components/common/Header';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { UserAvatar } from '../../../components/character/UserAvatar';
 import { Character } from '../../../types';
 
@@ -38,6 +40,7 @@ const MENU_ITEMS: { icon: LucideIcon; label: string; href: string }[] = [
 export default function ProfileScreen() {
   const router = useRouter();
   const user = authStore((state) => state.user);
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
 
   const { data: character } = useQuery<Character | null>({
     queryKey: ['character'],
@@ -45,6 +48,7 @@ export default function ProfileScreen() {
   });
 
   const handleLogout = async () => {
+    setConfirmingLogout(false);
     await authService.logout();
     router.replace('/(auth)/login');
   };
@@ -69,10 +73,20 @@ export default function ProfileScreen() {
         <Button
           label="CERRAR SESIÓN"
           variant="outline"
-          onPress={handleLogout}
+          onPress={() => setConfirmingLogout(true)}
           style={styles.logoutButton}
         />
       </ScrollView>
+
+      <ConfirmDialog
+        visible={confirmingLogout}
+        title="Cerrar sesión"
+        message="¿Seguro que quieres cerrar sesión?"
+        confirmLabel="Cerrar sesión"
+        destructive
+        onConfirm={handleLogout}
+        onCancel={() => setConfirmingLogout(false)}
+      />
     </SafeAreaView>
   );
 }
