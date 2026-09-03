@@ -74,12 +74,14 @@ export default function AddExerciseScreen() {
     const parsedSets = targetSets.trim() ? parseInt(targetSets, 10) : undefined;
     const parsedWeight = targetWeight.trim() ? parseFloat(targetWeight) : undefined;
     const parsedReps = targetReps.trim() ? parseInt(targetReps, 10) : undefined;
+    // Sets: 0 isn't a real target, so stays > 0. Weight/reps: 0 is a real
+    // target (a bodyweight exercise), so only reject negative values.
     const invalid =
       (parsedSets !== undefined && (!Number.isFinite(parsedSets) || parsedSets <= 0)) ||
-      (parsedWeight !== undefined && (!Number.isFinite(parsedWeight) || parsedWeight <= 0)) ||
-      (parsedReps !== undefined && (!Number.isFinite(parsedReps) || parsedReps <= 0));
+      (parsedWeight !== undefined && (!Number.isFinite(parsedWeight) || parsedWeight < 0)) ||
+      (parsedReps !== undefined && (!Number.isFinite(parsedReps) || parsedReps < 0));
     if (invalid) {
-      setError('Sets, peso y reps deben ser números mayores que cero');
+      setError('Sets debe ser mayor que cero; peso y reps no pueden ser negativos');
       return;
     }
 

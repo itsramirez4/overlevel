@@ -14,11 +14,13 @@ import { authStore } from '../../../stores/authStore';
 import { formatWeight } from '../../../utils/units';
 import { Routine, RoutineExercise } from '../../../types';
 
+// != null, not a truthy check — a target_weight/target_reps of 0 (a
+// bodyweight exercise target) is real and must still show, not disappear.
 const formatTarget = (item: RoutineExercise, unit: 'kg' | 'lbs'): string =>
   [
     item.target_sets ? `${item.target_sets} sets` : null,
-    item.target_weight ? formatWeight(item.target_weight, unit) : null,
-    item.target_reps ? `${item.target_reps} reps` : null,
+    item.target_weight != null ? formatWeight(item.target_weight, unit) : null,
+    item.target_reps != null ? `${item.target_reps} reps` : null,
   ]
     .filter(Boolean)
     .join(' × ') || 'Sin objetivo definido';

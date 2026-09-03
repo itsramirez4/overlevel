@@ -78,9 +78,12 @@ export const createRoutineSchema = z.object({
 export const addRoutineExerciseSchema = z.object({
   exercise_id: z.string().uuid(),
   order_num: z.number().int().positive(),
+  // target_sets stays positive — a target of 0 sets isn't a real target.
+  // target_weight/target_reps are nonnegative like their logged-set
+  // counterparts: a 0 weight target (bodyweight exercise) is real.
   target_sets: z.number().int().positive().optional(),
-  target_weight: z.number().positive().optional(),
-  target_reps: z.number().int().positive().optional(),
+  target_weight: z.number().nonnegative().optional(),
+  target_reps: z.number().int().nonnegative().optional(),
   notes: z.string().optional(),
 });
 

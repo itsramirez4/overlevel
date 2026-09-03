@@ -40,6 +40,45 @@ describe('routines', () => {
     }
   });
 
+  describe('routine exercise targets', () => {
+    it('accepts 0 for target_weight and target_reps — a bodyweight exercise is a real target', async () => {
+      const routine = await request(app).post('/api/routines').set(authHeader(user)).send({ name: 'Bodyweight Day' });
+      const exercise = await request(app)
+        .post('/api/exercises')
+        .set(authHeader(user))
+        .send({ name: 'Target Pushup', category: 'compound' });
+
+      const res = await request(app)
+        .post(`/api/routines/${routine.body.id}/exercises`)
+        .set(authHeader(user))
+        .send({ exercise_id: exercise.body.id, order_num: 1, target_sets: 3, target_weight: 0, target_reps: 0 });
+
+      expect(res.status).toBe(201);
+      expect(res.body.target_weight).toBe(0);
+      expect(res.body.target_reps).toBe(0);
+    });
+
+    it('still rejects a negative target_weight/target_reps, and a target_sets of 0', async () => {
+      const routine = await request(app).post('/api/routines').set(authHeader(user)).send({ name: 'Invalid Targets' });
+      const exercise = await request(app)
+        .post('/api/exercises')
+        .set(authHeader(user))
+        .send({ name: 'Target Squat', category: 'compound' });
+
+      const negativeWeight = await request(app)
+        .post(`/api/routines/${routine.body.id}/exercises`)
+        .set(authHeader(user))
+        .send({ exercise_id: exercise.body.id, order_num: 1, target_weight: -5 });
+      expect(negativeWeight.status).toBe(400);
+
+      const zeroSets = await request(app)
+        .post(`/api/routines/${routine.body.id}/exercises`)
+        .set(authHeader(user))
+        .send({ exercise_id: exercise.body.id, order_num: 1, target_sets: 0 });
+      expect(zeroSets.status).toBe(400);
+    });
+  });
+
   describe('trash lifecycle', () => {
     it('moves a deleted routine to the trash instead of destroying it', async () => {
       const created = await request(app).post('/api/routines').set(authHeader(user)).send({ name: 'Trash Me' });

@@ -72,10 +72,12 @@ export const ExerciseLogSection = ({
   const sortedSets = [...loggedSets].sort((a, b) => a.set_number - b.set_number);
   const lastSet = sortedSets[sortedSets.length - 1];
 
+  // != null, not a truthy check — a target_weight/target_reps of 0 (a
+  // bodyweight exercise target) is real and must still show, not disappear.
   const targetParts = [
     exercise.target_sets ? `${exercise.target_sets} series` : null,
-    exercise.target_weight ? formatWeight(exercise.target_weight, unit) : null,
-    exercise.target_reps ? `${exercise.target_reps} reps` : null,
+    exercise.target_weight != null ? formatWeight(exercise.target_weight, unit) : null,
+    exercise.target_reps != null ? `${exercise.target_reps} reps` : null,
   ].filter(Boolean);
   const targetLabel = targetParts.length > 0 ? targetParts.join(' × ') : null;
 
