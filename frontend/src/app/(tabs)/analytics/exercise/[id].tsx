@@ -261,6 +261,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   metricOptionTextActive: {
-    color: colors.text.primary,
+    color: colors.text.onAccent,
   },
 });

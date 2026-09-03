@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Updates from 'expo-updates';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, spacing, typography } from '../../../utils/theme';
+import { getThemePreference, setThemePreference, ThemePreference } from '../../../services/themeStorage';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
@@ -35,6 +37,7 @@ export default function SettingsScreen() {
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km');
   const [profilePublic, setProfilePublic] = useState(false);
+  const [theme, setTheme] = useState<ThemePreference>(getThemePreference());
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -139,6 +142,28 @@ export default function SettingsScreen() {
     setProfilePublic(value);
     setSaved(false);
     setSaveError('');
+  };
+
+  // theme.ts resolves light/dark once, synchronously, at module load — every
+  // screen's colors are already baked into its own StyleSheet.create() by
+  // the time any component could react to a change, so there's no live
+  // re-render path here. Saving the new preference and reloading the whole
+  // JS bundle is what actually applies it, same trick expo-updates already
+  // uses elsewhere in this app (_layout.tsx's OTA auto-update).
+  const handleSelectTheme = async (pref: ThemePreference) => {
+    setThemePreference(pref);
+    setTheme(pref);
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') window.location.reload();
+      return;
+    }
+    if (Updates.isEnabled) {
+      await Updates.reloadAsync();
+    } else {
+      // Expo Go / a dev client — Updates.reloadAsync() isn't available there.
+      Alert.alert('Reinicia la app', 'Cierra y vuelve a abrir Overlevel para aplicar el nuevo tema.');
+    }
   };
 
   const handleSelectDistanceUnit = (unit: DistanceUnit) => {
@@ -248,6 +273,30 @@ export default function SettingsScreen() {
             ? 'Cualquier persona puede encontrarte, ver tus entrenamientos y seguirte.'
             : 'Nadie puede encontrarte, ver tus entrenamientos ni seguirte.'}
         </Text>
+
+        <Text style={styles.label}>Tema</Text>
+        <View style={styles.chipsRow}>
+          {([
+            { value: 'system' as const, label: 'Sistema' },
+            { value: 'light' as const, label: 'Claro' },
+            { value: 'dark' as const, label: 'Oscuro' },
+          ]).map(({ value, label }) => {
+            const selected = value === theme;
+            return (
+              <TouchableOpacity
+                key={value}
+                style={[styles.chip, selected && styles.chipSelected]}
+                onPress={() => handleSelectTheme(value)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Text style={styles.helperText}>Cambiar el tema reinicia la app para aplicarlo.</Text>
 
         <Text style={styles.label}>Unidad de peso</Text>
         <View style={styles.chipsRow}>

@@ -69,9 +69,13 @@ export const Button = ({ label, onPress, loading, disabled, variant = 'primary',
         style={[styles.overlay, { backgroundColor: OVERLAY_COLOR[variant], borderRadius: radius.md }, overlayStyle]}
       />
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? colors.text.primary : colors.accent.fire} />
+        <ActivityIndicator color={variant === 'primary' ? colors.text.onAccent : colors.accent.fire} />
       ) : (
-        <Text style={[styles.text, variant !== 'primary' && styles.tintedText]}>{label}</Text>
+        <Text
+          style={[styles.text, variant === 'primary' && styles.primaryText, variant !== 'primary' && styles.tintedText]}
+        >
+          {label}
+        </Text>
       )}
     </AnimatedPressable>
   );
@@ -108,7 +112,14 @@ const styles = StyleSheet.create({
   },
   text: {
     ...typography.h3,
+    // .primary, not .onAccent: only the primary variant's background is a
+    // solid accent color — outline/ghost render on the ordinary page
+    // background, where the fixed onAccent white would be unreadable in
+    // light mode. tintedText below overrides this for those two anyway.
     color: colors.text.primary,
+  },
+  primaryText: {
+    color: colors.text.onAccent,
   },
   tintedText: {
     color: colors.accent.fire,
