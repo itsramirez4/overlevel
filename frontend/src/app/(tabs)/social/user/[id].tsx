@@ -15,6 +15,7 @@ import { ProgressBar } from '../../../../components/ui/ProgressBar';
 import { UserAvatar } from '../../../../components/character/UserAvatar';
 import { CharacterAvatar } from '../../../../components/character/CharacterAvatar';
 import { getWorkoutName } from '../../../../utils/workoutName';
+import { formatCharacterStat } from '../../../../utils/character';
 import { Character, PublicProfile, Workout } from '../../../../types';
 import { authStore } from '../../../../stores/authStore';
 
@@ -153,13 +154,17 @@ export default function PublicProfileScreen() {
                 <View style={styles.characterStatsRow}>
                   <View style={styles.characterStat}>
                     <Trophy size={14} color={colors.accent.ember} strokeWidth={2.2} />
-                    <Text style={styles.characterStatText}>Fuerza {character.stats.fuerza}kg</Text>
+                    <Text style={styles.characterStatText}>Fuerza {formatCharacterStat('fuerza', character.stats.fuerza)}</Text>
                   </View>
                   <View style={styles.characterStat}>
-                    <Text style={styles.characterStatText}>Resistencia {character.stats.resistencia}</Text>
+                    <Text style={styles.characterStatText}>
+                      Resistencia {formatCharacterStat('resistencia', character.stats.resistencia)}
+                    </Text>
                   </View>
                   <View style={styles.characterStat}>
-                    <Text style={styles.characterStatText}>Constancia {character.stats.constancia}d</Text>
+                    <Text style={styles.characterStatText}>
+                      Constancia {formatCharacterStat('constancia', character.stats.constancia)}
+                    </Text>
                   </View>
                 </View>
               </Card>

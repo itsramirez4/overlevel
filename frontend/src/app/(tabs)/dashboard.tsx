@@ -18,6 +18,7 @@ import { ProgressBar } from '../../components/ui/ProgressBar';
 import { CharacterAvatar } from '../../components/character/CharacterAvatar';
 import { getWorkoutName } from '../../utils/workoutName';
 import { kgToUnit } from '../../utils/units';
+import { getXpProgressLabel } from '../../utils/character';
 import { scheduleTrainingReminder, cancelTrainingReminder } from '../../services/notifications';
 import { AnalyticsSummary } from '../../types/api';
 import { Character, Workout } from '../../types';
@@ -103,9 +104,7 @@ export default function DashboardScreen() {
                 <Badge label={`NIVEL ${character.level}`} tone="fire" size="sm" />
               </View>
               <ProgressBar progress={character.progress} height={5} style={styles.characterXpTrack} />
-              <Text style={styles.characterXpLabel}>
-                {character.xp - character.xp_for_current_level} / {character.xp_for_next_level - character.xp_for_current_level} XP
-              </Text>
+              <Text style={styles.characterXpLabel}>{getXpProgressLabel(character)}</Text>
             </View>
             <ChevronRight size={18} color={colors.text.muted} />
           </TouchableOpacity>

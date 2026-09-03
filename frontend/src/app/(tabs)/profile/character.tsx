@@ -13,6 +13,7 @@ import { ProgressBar } from '../../../components/ui/ProgressBar';
 import { CharacterAvatar } from '../../../components/character/CharacterAvatar';
 import { CharacterTypeDef } from '../../../types';
 import { getErrorMessage } from '../../../utils/errors';
+import { formatCharacterStat, getXpProgressLabel } from '../../../utils/character';
 
 export default function CharacterScreen() {
   const router = useRouter();
@@ -103,17 +104,20 @@ export default function CharacterScreen() {
 
               <View style={styles.xpRow}>
                 <ProgressBar progress={character.progress} height={10} />
-                <Text style={styles.xpLabel}>
-                  {character.xp - character.xp_for_current_level} / {character.xp_for_next_level - character.xp_for_current_level} XP
-                </Text>
+                <Text style={styles.xpLabel}>{getXpProgressLabel(character)}</Text>
               </View>
             </Card>
 
             <Text style={styles.sectionTitle}>Estadísticas</Text>
             <Card style={styles.statsCard}>
-              <StatRow icon={Dumbbell} label="Fuerza" value={`${character.stats.fuerza}kg`} />
-              <StatRow icon={Flame} label="Resistencia" value={character.stats.resistencia} />
-              <StatRow icon={Sparkles} label="Constancia" value={`${character.stats.constancia}d`} isLast />
+              <StatRow icon={Dumbbell} label="Fuerza" value={formatCharacterStat('fuerza', character.stats.fuerza)} />
+              <StatRow icon={Flame} label="Resistencia" value={formatCharacterStat('resistencia', character.stats.resistencia)} />
+              <StatRow
+                icon={Sparkles}
+                label="Constancia"
+                value={formatCharacterStat('constancia', character.stats.constancia)}
+                isLast
+              />
             </Card>
 
             <Text style={styles.hint}>
