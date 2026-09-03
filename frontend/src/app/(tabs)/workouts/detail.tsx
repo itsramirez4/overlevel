@@ -82,10 +82,6 @@ export default function WorkoutDetailScreen() {
     enabled: !!id,
   });
 
-  const handleNoteSaved = (exerciseId: string, notes: string) => {
-    api.put(`/workout-exercise-notes/${id}/${exerciseId}`, { notes }).then(() => refetchNotes());
-  };
-
   const confirmDelete = async () => {
     try {
       await api.delete(`/workouts/${id}`);
@@ -318,8 +314,10 @@ export default function WorkoutDetailScreen() {
               </View>
 
               <ExerciseNoteField
+                workoutId={id!}
+                exerciseId={item.exerciseId}
                 value={exerciseNotes?.find((n) => n.exercise_id === item.exerciseId)?.notes}
-                onSave={(notes) => handleNoteSaved(item.exerciseId, notes)}
+                onSaved={refetchNotes}
               />
 
               {editingSets ? (

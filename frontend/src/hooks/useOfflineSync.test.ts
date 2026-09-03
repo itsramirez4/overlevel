@@ -7,7 +7,7 @@ import { useOfflineSync, enqueueOfflineMutation } from './useOfflineSync';
 import { api } from '../services/api';
 
 jest.mock('../services/api', () => ({
-  api: { post: jest.fn() },
+  api: { post: jest.fn(), put: jest.fn() },
 }));
 jest.mock('@react-native-community/netinfo', () => ({
   addEventListener: jest.fn(() => jest.fn()),
@@ -43,6 +43,18 @@ describe('useOfflineSync', () => {
     await triggerReconnect();
 
     expect(mockedApi.post).toHaveBeenCalledWith('/sets', { weight: 100 });
+    expect(await readQueue()).toEqual([]);
+  });
+
+  it('flushes a queued PUT mutation (e.g. an exercise note) using PUT, not POST', async () => {
+    await enqueueOfflineMutation('/workout-exercise-notes/w1/e1', { notes: 'Fue duro' }, 'PUT');
+    mockedApi.put.mockResolvedValue({ data: {} });
+
+    await renderHook(() => useOfflineSync(), { wrapper });
+    await triggerReconnect();
+
+    expect(mockedApi.put).toHaveBeenCalledWith('/workout-exercise-notes/w1/e1', { notes: 'Fue duro' });
+    expect(mockedApi.post).not.toHaveBeenCalled();
     expect(await readQueue()).toEqual([]);
   });
 
@@ -87,7 +99,7 @@ describe('useOfflineSync', () => {
     expect(stored[0].body).toEqual({ weight: 200 });
   });
 
-  it('invalidates sets/battles/workouts queries once a flush actually lands', async () => {
+  it('invalidates sets/battles/workouts/exercise-notes queries once a flush actually lands', async () => {
     await enqueueOfflineMutation('/sets', { weight: 100 });
     mockedApi.post.mockResolvedValue({ data: {} });
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
@@ -98,6 +110,7 @@ describe('useOfflineSync', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['sets'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['battles'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['workouts'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['exercise-notes'] });
   });
 
   it('does not invalidate anything when the queue was already empty', async () => {

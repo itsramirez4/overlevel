@@ -85,10 +85,6 @@ export default function WorkoutLogScreen() {
     enabled: !!currentWorkout,
   });
 
-  const handleNoteSaved = (exerciseId: string, notes: string) => {
-    api.put(`/workout-exercise-notes/${currentWorkout!.id}/${exerciseId}`, { notes }).then(() => refetchNotes());
-  };
-
   if (!hasHydrated) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -206,7 +202,7 @@ export default function WorkoutLogScreen() {
                 loggedSets={(sets || []).filter((s) => s.exercise_id === exercise.id)}
                 battle={(battles || []).find((b) => b.exercise_id === exercise.id)}
                 note={(exerciseNotes || []).find((n) => n.exercise_id === exercise.id)?.notes}
-                onNoteSaved={(notes) => handleNoteSaved(exercise.id, notes)}
+                onNoteSaved={refetchNotes}
                 onSetLogged={() => {
                   refetch();
                   refetchBattles();

@@ -31,7 +31,7 @@ interface ExerciseLogSectionProps {
   loggedSets: Set[];
   battle?: ExerciseBattle;
   note?: string;
-  onNoteSaved: (notes: string) => void;
+  onNoteSaved: () => void;
   onSetLogged: () => void;
   onRemove: () => void;
   isFirst: boolean;
@@ -187,7 +187,7 @@ export const ExerciseLogSection = ({
         shouldRest={shouldRest}
       />
 
-      <ExerciseNoteField value={note} onSave={onNoteSaved} />
+      <ExerciseNoteField workoutId={workoutId} exerciseId={exercise.id} value={note} onSaved={onNoteSaved} />
     </Card>
   );
 };

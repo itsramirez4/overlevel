@@ -10,6 +10,9 @@ interface QueuedMutation {
   id: string;
   url: string;
   body: unknown;
+  // Absent means POST — items queued before PUT support existed never had
+  // this field, and were always POSTs (SetLogger was the only caller).
+  method?: 'POST' | 'PUT';
 }
 
 const getQueue = async (): Promise<QueuedMutation[]> => {
@@ -40,10 +43,10 @@ function withQueueLock<T>(fn: () => Promise<T>): Promise<T> {
   return result;
 }
 
-export const enqueueOfflineMutation = (url: string, body: unknown) =>
+export const enqueueOfflineMutation = (url: string, body: unknown, method: 'POST' | 'PUT' = 'POST') =>
   withQueueLock(async () => {
     const queue = await getQueue();
-    queue.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, url, body });
+    queue.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, url, body, method });
     await setQueue(queue);
   });
 
@@ -61,7 +64,11 @@ export const useOfflineSync = () => {
 
       for (const item of queue) {
         try {
-          await api.post(item.url, item.body);
+          if (item.method === 'PUT') {
+            await api.put(item.url, item.body);
+          } else {
+            await api.post(item.url, item.body);
+          }
           flushedAny = true;
           // Remove just this one item, re-reading the queue under the same
           // lock enqueueOfflineMutation uses — not the snapshot taken
@@ -88,6 +95,7 @@ export const useOfflineSync = () => {
         queryClient.invalidateQueries({ queryKey: ['sets'] });
         queryClient.invalidateQueries({ queryKey: ['battles'] });
         queryClient.invalidateQueries({ queryKey: ['workouts'] });
+        queryClient.invalidateQueries({ queryKey: ['exercise-notes'] });
       }
 
       syncing.current = false;
