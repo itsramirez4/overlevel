@@ -1,6 +1,6 @@
 import request from 'supertest';
 import app from '../../src/index';
-import { supabaseAdmin } from '../../src/config/supabase';
+import { supabase, supabaseAdmin } from '../../src/config/supabase';
 import { createTestUser, deleteTestUser } from '../helpers/testUser';
 
 describe('auth', () => {
@@ -58,6 +58,111 @@ describe('auth', () => {
         await supabaseAdmin.from('users').delete().eq('id', userId);
         await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
       }
+    });
+  });
+
+  describe('register', () => {
+    it('creates the Supabase Auth account and reports that email confirmation is required', async () => {
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const email = `jest-register-${suffix}@gmail.com`;
+      let userId: string | undefined;
+
+      try {
+        const res = await request(app).post('/api/auth/register').send({ email, password: 'StrongPass123!' });
+
+        expect(res.status).toBe(201);
+        // This Supabase project has email confirmation on (verified
+        // empirically) — no session/tokens come back yet.
+        expect(res.body.requires_email_confirmation).toBe(true);
+        expect(res.body.access_token).toBeUndefined();
+
+        const { data: found } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
+        const created = found.users.find((u) => u.email === email);
+        expect(created).toBeTruthy();
+        userId = created!.id;
+
+        // No public.users row until the account is actually signed in for
+        // the first time (via confirm-email or a later login) — register()
+        // alone doesn't provision it when confirmation is pending.
+        const { data: profile } = await supabaseAdmin.from('users').select('*').eq('id', userId).maybeSingle();
+        expect(profile).toBeNull();
+      } finally {
+        if (userId) await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+      }
+    });
+
+    it('rejects a password shorter than 8 characters', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ email: 'jest-register-short@gmail.com', password: 'short1' });
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects a malformed email', async () => {
+      const res = await request(app).post('/api/auth/register').send({ email: 'not-an-email', password: 'StrongPass123!' });
+      expect(res.status).toBe(400);
+    });
+
+    it('gives no distinguishable response for an email that already has an account — same anti-enumeration spirit as forgot-password', async () => {
+      // createTestUser only inserts a public.users row, not a real Supabase
+      // Auth account — signUp() would never see it as taken. Needs a genuine
+      // Auth account to actually exercise Supabase's own duplicate check.
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const email = `jest-register-dupe-${suffix}@gmail.com`;
+      const { data: created } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: 'StrongPass123!',
+        email_confirm: true,
+      });
+      const userId = created.user!.id;
+
+      try {
+        const res = await request(app).post('/api/auth/register').send({ email, password: 'AnotherPass123!' });
+        // Supabase itself returns a fake success (identities: []) instead of
+        // an error for a taken email — same response shape as a genuine new
+        // signup, so this can't be used to enumerate registered emails.
+        expect(res.status).toBe(201);
+        expect(res.body.requires_email_confirmation).toBe(true);
+      } finally {
+        await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+      }
+    });
+  });
+
+  describe('confirm-email', () => {
+    it("logs a newly-confirmed account in, provisioning its profile on the way", async () => {
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const email = `jest-confirm-${suffix}@example.com`;
+      const password = `Test-${suffix}!`;
+
+      // email_confirm: true here just sidesteps having to click a real email
+      // link in a test — confirmEmail() itself doesn't care how the account
+      // became confirmed, only that the access token it's handed is valid.
+      const { data: created } = await supabaseAdmin.auth.admin.createUser({ email, password, email_confirm: true });
+      const userId = created.user!.id;
+
+      try {
+        const { data: signedIn } = await supabase.auth.signInWithPassword({ email, password });
+        const accessToken = signedIn.session!.access_token;
+
+        const res = await request(app).post('/api/auth/confirm-email').send({ access_token: accessToken });
+
+        expect(res.status).toBe(200);
+        expect(res.body.access_token).toBeTruthy();
+        expect(res.body.refresh_token).toBeTruthy();
+        expect(res.body.user.id).toBe(userId);
+
+        const { data: profile } = await supabaseAdmin.from('users').select('*').eq('id', userId).maybeSingle();
+        expect(profile).toBeTruthy();
+      } finally {
+        await supabaseAdmin.from('users').delete().eq('id', userId);
+        await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+      }
+    });
+
+    it('rejects an invalid/garbage access token', async () => {
+      const res = await request(app).post('/api/auth/confirm-email').send({ access_token: 'not-a-real-token' });
+      expect(res.status).toBe(401);
     });
   });
 

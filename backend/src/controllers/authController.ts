@@ -22,11 +22,40 @@ function deriveUsername(email: string, userId: string): string {
   return trimmed.length >= 3 ? trimmed : `user_${userId.slice(0, 8)}`;
 }
 
+/** Shared by login, register (when email confirmation is off), and
+ * confirm-email (when it's on) — every path a Supabase Auth user can first
+ * become "signed in" through needs the matching `users` profile row to
+ * exist before issueTokenPair runs (refresh_tokens.user_id has a hard FK
+ * to users(id)). */
+async function provisionUserProfile(authUser: { id: string; email?: string }) {
+  const { data: existing } = await supabaseAdmin.from('users').select('*').eq('id', authUser.id).single();
+  if (existing) return existing;
+
+  const username = deriveUsername(authUser.email || '', authUser.id);
+  const { data: createdUser, error: createError } = await supabaseAdmin
+    .from('users')
+    .insert({ id: authUser.id, email: authUser.email, username })
+    .select()
+    .single();
+
+  if (createError?.code === '23505') {
+    // Two different emails normalized to the same username (stripping
+    // punctuation collapsed them) — retry once with a short unique
+    // suffix instead of failing this account's first session outright.
+    const { data: retried, error: retryError } = await supabaseAdmin
+      .from('users')
+      .insert({ id: authUser.id, email: authUser.email, username: `${username}_${authUser.id.slice(0, 6)}` })
+      .select()
+      .single();
+
+    if (retryError || !retried) throw new AppError('Failed to provision user profile');
+    return retried;
+  }
+  if (createError || !createdUser) throw new AppError('Failed to provision user profile');
+  return createdUser;
+}
+
 export class AuthController {
-  /**
-   * No self-registration: users are provisioned in Supabase Auth (dashboard/admin only).
-   * The matching `users` profile row is created lazily on first successful login.
-   */
   async login(req: Request, res: Response) {
     const { email, password } = req.body;
 
@@ -39,46 +68,7 @@ export class AuthController {
 
     if (error || !data.user) throw new AppError('Invalid credentials', 401);
 
-    let { data: userData } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
-
-    if (!userData) {
-      const username = deriveUsername(data.user.email || '', data.user.id);
-      const { data: createdUser, error: createError } = await supabaseAdmin
-        .from('users')
-        .insert({ id: data.user.id, email: data.user.email, username })
-        .select()
-        .single();
-
-      if (createError?.code === '23505') {
-        // Two different emails normalized to the same username (stripping
-        // punctuation collapsed them) — retry once with a short unique
-        // suffix instead of failing this user's very first login outright.
-        const { data: retried, error: retryError } = await supabaseAdmin
-          .from('users')
-          .insert({ id: data.user.id, email: data.user.email, username: `${username}_${data.user.id.slice(0, 6)}` })
-          .select()
-          .single();
-
-        if (retryError || !retried) throw new AppError('Failed to provision user profile');
-        userData = retried;
-      } else if (createError || !createdUser) {
-        throw new AppError('Failed to provision user profile');
-      } else {
-        userData = createdUser;
-      }
-    }
-
-    // Only after the users row is guaranteed to exist: refresh_tokens.user_id
-    // has a hard FK to users(id), so issuing tokens before provisioning the
-    // profile (the previous order) made every brand-new user's very first
-    // login — the only account-creation path this app has — fail outright
-    // with a 500. Caught by actually running the app, not by any test: every
-    // test helper pre-creates the users row directly, sidestepping this exact
-    // ordering.
+    const userData = await provisionUserProfile(data.user);
     const { accessToken, refreshToken } = await issueTokenPair(data.user.id);
 
     res.json({
@@ -86,6 +76,66 @@ export class AuthController {
       access_token: accessToken,
       refresh_token: refreshToken,
     });
+  }
+
+  /**
+   * Self-service signup. Supabase Auth requires email confirmation on this
+   * project (verified empirically — signUp() comes back with no session),
+   * so the normal path here is "no session yet, check your email", not an
+   * immediate login. Still handles the case where confirmation is off
+   * (data.session present) by logging straight in, so this keeps working if
+   * that project setting ever changes.
+   */
+  async register(req: Request, res: Response) {
+    const { email, password } = req.body;
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: 'overlevel://confirm-email' },
+    });
+
+    if (error) {
+      // 400 here is Supabase's own validation (bad domain, weak password,
+      // etc.) — its message is already user-facing English/plain text, not
+      // an internal detail, so it's safe to forward as-is.
+      throw new AppError(error.message || 'No se pudo crear la cuenta', 400);
+    }
+    if (!data.user) throw new AppError('No se pudo crear la cuenta', 400);
+
+    // Signing up with an email that already has an account does NOT come
+    // back as an error — Supabase's own anti-enumeration behavior returns a
+    // fake `user` (identities: []) instead, same "don't leak who's
+    // registered" spirit as forgotPassword below always returning 200
+    // regardless. Deliberately not special-cased here either: this response
+    // is identical to a genuine new signup either way.
+    if (!data.session) {
+      return res.status(201).json({ requires_email_confirmation: true });
+    }
+
+    const userData = await provisionUserProfile(data.user);
+    const { accessToken, refreshToken } = await issueTokenPair(data.user.id);
+    res.status(201).json({ user: userData, access_token: accessToken, refresh_token: refreshToken });
+  }
+
+  /**
+   * Landing spot for the confirmation email's link. `access_token` here is
+   * Supabase's own session token from the confirm redirect (overlevel://
+   * confirm-email#access_token=...&type=signup), the same fragment shape as
+   * the password-recovery link — not this app's own JWT. Validating it and
+   * minting our own token pair is exactly resetPassword's pattern, plus
+   * provisioning the profile row since this can be the very first time this
+   * account is ever "signed in".
+   */
+  async confirmEmail(req: Request, res: Response) {
+    const { access_token } = req.body;
+
+    const { data, error } = await supabase.auth.getUser(access_token);
+    if (error || !data.user) throw new AppError('El enlace no es válido o ha caducado', 401);
+
+    const userData = await provisionUserProfile(data.user);
+    const { accessToken, refreshToken } = await issueTokenPair(data.user.id);
+    res.json({ user: userData, access_token: accessToken, refresh_token: refreshToken });
   }
 
   /**

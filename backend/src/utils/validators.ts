@@ -29,6 +29,16 @@ export const forgotPasswordSchema = z.object({
   email: z.string().email(),
 });
 
+export const registerSchema = z.object({
+  email: z.string().email(),
+  // 8, not 6 — same OWASP/NIST-informed minimum as changePasswordSchema.
+  password: z.string().min(8),
+});
+
+export const confirmEmailSchema = z.object({
+  access_token: z.string().min(1),
+});
+
 export const resetPasswordSchema = z.object({
   access_token: z.string().min(1),
   new_password: z.string().min(6),

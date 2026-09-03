@@ -66,6 +66,46 @@ describe('login', () => {
   });
 });
 
+describe('register', () => {
+  it('reports that email confirmation is required without signing the user in', async () => {
+    mockedApi.post.mockResolvedValue({ data: { requires_email_confirmation: true } });
+
+    const result = await authStore.getState().register('new@example.com', 'StrongPass123!');
+
+    expect(result).toEqual({ requiresEmailConfirmation: true });
+    expect(authStore.getState().isSignedIn).toBe(false);
+    expect(mockedStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('logs the user straight in when the backend hands back a session (confirmation off)', async () => {
+    mockedApi.post.mockResolvedValue({
+      data: { user: mockUser, access_token: 'access-1', refresh_token: 'refresh-1' },
+    });
+
+    const result = await authStore.getState().register('new@example.com', 'StrongPass123!');
+
+    expect(result).toEqual({ requiresEmailConfirmation: false });
+    expect(authStore.getState().isSignedIn).toBe(true);
+    expect(authStore.getState().user).toEqual(mockUser);
+    expect(mockedQueryClient.clear).toHaveBeenCalled();
+  });
+});
+
+describe('confirmEmail', () => {
+  it("exchanges Supabase's confirmation token for this app's own session", async () => {
+    mockedApi.post.mockResolvedValue({
+      data: { user: mockUser, access_token: 'access-1', refresh_token: 'refresh-1' },
+    });
+
+    await authStore.getState().confirmEmail('supabase-confirm-token');
+
+    expect(mockedApi.post).toHaveBeenCalledWith('/auth/confirm-email', { access_token: 'supabase-confirm-token' });
+    expect(authStore.getState().isSignedIn).toBe(true);
+    expect(authStore.getState().user).toEqual(mockUser);
+    expect(mockedQueryClient.clear).toHaveBeenCalled();
+  });
+});
+
 describe('logout', () => {
   it('clears local state and the auth header even when the server revoke call fails', async () => {
     mockedStorage.getItem.mockResolvedValue('some-refresh-token');

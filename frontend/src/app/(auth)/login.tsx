@@ -84,11 +84,9 @@ export default function LoginScreen() {
               variant="ghost"
               onPress={() => router.push('/(auth)/forgot-password')}
             />
-          </View>
 
-          <Text style={styles.footnote}>
-            ¿No tienes acceso? Pide que te den de alta en Supabase Auth.
-          </Text>
+            <Button label="Crear cuenta" variant="outline" onPress={() => router.push('/(auth)/register')} />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -133,11 +131,5 @@ const styles = StyleSheet.create({
     color: colors.semantic.error,
     marginBottom: spacing.md,
     textAlign: 'center',
-  },
-  footnote: {
-    ...typography.tiny,
-    color: colors.text.muted,
-    textAlign: 'center',
-    marginTop: spacing.xl,
   },
 });
