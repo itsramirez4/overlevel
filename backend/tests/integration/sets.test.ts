@@ -167,6 +167,18 @@ describe('sets / cardio', () => {
     expect(res.status).toBe(400);
   });
 
+  it('accepts 0 for both duration and distance — stationary/no-distance cardio work is real too', async () => {
+    const res = await logCardioSet({ set_number: 1, duration_seconds: 0, distance_km: 0 });
+    expect(res.status).toBe(201);
+    expect(res.body.duration_seconds).toBe(0);
+    expect(res.body.distance_km).toBe(0);
+  });
+
+  it('still rejects a negative duration or distance', async () => {
+    const res = await logCardioSet({ set_number: 1, duration_seconds: 1800, distance_km: -5 });
+    expect(res.status).toBe(400);
+  });
+
   it('a longer run beats the prior cardio PR', async () => {
     await logCardioSet({ set_number: 1, distance_km: 5, duration_seconds: 1800 });
     const res = await logCardioSet({ set_number: 2, distance_km: 8, duration_seconds: 2700 });

@@ -106,8 +106,10 @@ export const logSetSchema = z.object({
   // (bodyweight-only, or an unloaded bar) are both real, loggable sets.
   reps: z.number().int().nonnegative().optional(),
   weight: z.number().nonnegative().optional(),
-  duration_seconds: z.number().int().positive().optional(),
-  distance_km: z.number().positive().optional(),
+  // Same reasoning as reps/weight: 0 distance (stationary/no-distance
+  // cardio) and 0 duration are both real values, not "missing".
+  duration_seconds: z.number().int().nonnegative().optional(),
+  distance_km: z.number().nonnegative().optional(),
   rpe: z.number().int().min(1).max(10).optional(),
   rest_seconds: z.number().int().nonnegative().optional(),
   tempo: z.string().optional(),
@@ -121,8 +123,8 @@ export const updateSetSchema = z.object({
   // (bodyweight-only, or an unloaded bar) are both real, loggable sets.
   reps: z.number().int().nonnegative().optional(),
   weight: z.number().nonnegative().optional(),
-  duration_seconds: z.number().int().positive().optional(),
-  distance_km: z.number().positive().optional(),
+  duration_seconds: z.number().int().nonnegative().optional(),
+  distance_km: z.number().nonnegative().optional(),
   rpe: z.number().int().min(1).max(10).optional(),
   rest_seconds: z.number().int().nonnegative().optional(),
   tempo: z.string().optional(),

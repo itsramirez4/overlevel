@@ -22,6 +22,7 @@ const mockedEnqueue = enqueueOfflineMutation as jest.Mock;
 // Only the fields SetLogger actually reads — a full Exercise fixture would
 // just be noise across every test case here.
 const exercise = { id: 'ex1', name: 'Bench Press' } as Exercise;
+const cardioExercise = { id: 'ex2', name: 'Running', category: 'cardio' } as Exercise;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -73,6 +74,38 @@ describe('SetLogger validation', () => {
     const payload = mockedApi.post.mock.calls[0][1];
     expect((payload as any).weight).toBe(0);
     expect((payload as any).reps).toBe(0);
+  });
+});
+
+describe('SetLogger cardio validation', () => {
+  it('rejects negative duration or distance', async () => {
+    const { getByText, getByPlaceholderText } = await render(
+      <SetLogger workoutId="w1" exercise={cardioExercise} setNumber={1} onSetLogged={jest.fn()} />
+    );
+
+    await fireEvent.changeText(getByPlaceholderText('Minutos'), '10');
+    await fireEvent.changeText(getByPlaceholderText('Km'), '-5');
+    await fireEvent.press(getByText('REGISTRAR SERIE'));
+
+    await waitFor(() => expect(getByText(/no pueden ser negativos/)).toBeTruthy());
+    expect(mockedApi.post).not.toHaveBeenCalled();
+  });
+
+  it('accepts zero for both duration and distance — stationary/no-distance cardio work is real too', async () => {
+    mockedApi.post.mockResolvedValue({ data: { id: 'set1' } });
+    const { getByText, getByPlaceholderText, queryByText } = await render(
+      <SetLogger workoutId="w1" exercise={cardioExercise} setNumber={1} onSetLogged={jest.fn()} />
+    );
+
+    await fireEvent.changeText(getByPlaceholderText('Minutos'), '0');
+    await fireEvent.changeText(getByPlaceholderText('Km'), '0');
+    await fireEvent.press(getByText('REGISTRAR SERIE'));
+
+    await waitFor(() => expect(mockedApi.post).toHaveBeenCalled());
+    expect(queryByText(/no pueden ser negativos/)).toBeNull();
+    const payload = mockedApi.post.mock.calls[0][1];
+    expect((payload as any).duration_seconds).toBe(0);
+    expect((payload as any).distance_km).toBe(0);
   });
 });
 

@@ -100,8 +100,10 @@ export const SetLogger = ({
     if (isCardio) {
       const parsedMinutes = parseFloat(minutes);
       const parsedDistance = parseFloat(distance);
-      if (!Number.isFinite(parsedMinutes) || parsedMinutes <= 0 || !Number.isFinite(parsedDistance) || parsedDistance <= 0) {
-        setError('Tiempo y distancia deben ser números mayores que cero');
+      // < 0, not <= 0: 0 distance (stationary/no-distance cardio) and 0
+      // duration are both real values someone might log.
+      if (!Number.isFinite(parsedMinutes) || parsedMinutes < 0 || !Number.isFinite(parsedDistance) || parsedDistance < 0) {
+        setError('Tiempo y distancia no pueden ser negativos');
         return;
       }
       cardioPayload = {

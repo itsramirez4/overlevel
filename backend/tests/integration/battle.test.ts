@@ -71,6 +71,28 @@ describe('battle (combat layer)', () => {
     expect(battles.body[0].defeated).toBe(true);
   });
 
+  it('a 0-distance cardio set as the exercise\'s entire history still deals damage instead of crashing', async () => {
+    const cardioExercise = await request(app)
+      .post('/api/exercises')
+      .set(authHeader(user))
+      .send({ name: 'Battle Stationary Bike', category: 'cardio' });
+
+    const setRes = await request(app)
+      .post('/api/sets')
+      .set(authHeader(user))
+      .send({
+        workout_id: workoutId,
+        exercise_id: cardioExercise.body.id,
+        set_number: 1,
+        duration_seconds: 600,
+        distance_km: 0,
+      });
+
+    expect(setRes.status).toBe(201);
+    expect(setRes.body.battle).toBeTruthy();
+    expect(setRes.body.battle.hp_current).toBeLessThan(setRes.body.battle.hp_max);
+  });
+
   it('logging a cardio set also creates a battle and deals damage', async () => {
     const cardioExercise = await request(app)
       .post('/api/exercises')

@@ -178,7 +178,12 @@ export class BattleService {
 
       const efforts = (data || []).map((s: any) => calculateCardioEffort(s.distance_km || 0));
       if (efforts.length === 0) return DEFAULT_REFERENCE_VOLUME_PER_SET;
-      return efforts.reduce((sum, e) => sum + e, 0) / efforts.length;
+      // Same "never return exactly 0" guard as the strength branch below —
+      // a history of only 0-distance cardio sets (stationary/no-distance
+      // work) must fall back to the default, not divide a future hit's
+      // damage by an actual 0.
+      const average = efforts.reduce((sum, e) => sum + e, 0) / efforts.length;
+      return average > 0 ? average : DEFAULT_REFERENCE_VOLUME_PER_SET;
     }
 
     const { data: stats } = await supabaseAdmin

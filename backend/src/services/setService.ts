@@ -186,7 +186,10 @@ export class SetService {
 
     const category: ExerciseCategory = exercise.category;
     if (category === 'cardio') {
-      if (!input.duration_seconds || !input.distance_km) {
+      // === undefined, not a falsy check — 0 distance (stationary/no-
+      // distance cardio) and 0 duration are both real values, same as 0
+      // weight/reps below.
+      if (input.duration_seconds === undefined || input.distance_km === undefined) {
         throw new AppError('Los ejercicios de cardio necesitan duración y distancia', 400);
       }
       // input.weight/reps === undefined, not the falsy check this used to

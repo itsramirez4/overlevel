@@ -21,6 +21,18 @@ const baseSet: Set = {
   created_at: '2026-01-01T00:00:00Z',
 };
 
+const baseCardioSet: Set = {
+  id: 'set2',
+  workout_id: 'w1',
+  exercise_id: 'ex2',
+  set_number: 1,
+  duration_seconds: 1800,
+  distance_km: 5,
+  is_pr: false,
+  is_warmup: false,
+  created_at: '2026-01-01T00:00:00Z',
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -113,6 +125,39 @@ describe('editing', () => {
     await fireEvent.press(getByText('Guardar'));
 
     await waitFor(() => expect(getByText('No se pudo guardar la serie')).toBeTruthy());
+  });
+});
+
+describe('cardio editing', () => {
+  it('rejects saving a negative duration or distance without calling the API', async () => {
+    const onChanged = jest.fn();
+    const { getByText, getByLabelText, getByPlaceholderText } = await render(
+      <LoggedSetRow set={baseCardioSet} isCardio exerciseId="ex2" weightUnit="kg" distanceUnit="km" onChanged={onChanged} />
+    );
+
+    await fireEvent.press(getByLabelText('Editar serie 1'));
+    await fireEvent.changeText(getByPlaceholderText('Km'), '-5');
+    await fireEvent.press(getByText('Guardar'));
+
+    await waitFor(() => expect(getByText(/no pueden ser negativos/)).toBeTruthy());
+    expect(mockedApi.put).not.toHaveBeenCalled();
+    expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it('accepts zero distance — stationary/no-distance cardio work is real too', async () => {
+    mockedApi.put.mockResolvedValue({ data: {} });
+    const onChanged = jest.fn();
+    const { getByText, getByLabelText, getByPlaceholderText } = await render(
+      <LoggedSetRow set={baseCardioSet} isCardio exerciseId="ex2" weightUnit="kg" distanceUnit="km" onChanged={onChanged} />
+    );
+
+    await fireEvent.press(getByLabelText('Editar serie 1'));
+    await fireEvent.changeText(getByPlaceholderText('Km'), '0');
+    await fireEvent.press(getByText('Guardar'));
+
+    await waitFor(() =>
+      expect(mockedApi.put).toHaveBeenCalledWith('/sets/set2', { duration_seconds: 1800, distance_km: 0 })
+    );
   });
 });
 
