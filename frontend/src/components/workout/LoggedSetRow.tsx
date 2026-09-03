@@ -4,6 +4,7 @@ import { Link2, Pencil, Trophy, X } from 'lucide-react-native';
 import { colors, radius, shadow, spacing, typography } from '../../utils/theme';
 import { api } from '../../services/api';
 import { workoutStore } from '../../stores/workoutStore';
+import { enqueueOfflineMutation } from '../../hooks/useOfflineSync';
 import { formatWeight, kgToUnit, unitToKg, formatDistance, kmToUnit, unitToKm, DistanceUnit } from '../../utils/units';
 import { WeightUnit } from '../../services/calculations';
 import { formatSetDuration } from '../../utils/duration';
@@ -12,7 +13,7 @@ import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { UnitToggle } from './UnitToggle';
 import { Set } from '../../types';
-import { getErrorMessage } from '../../utils/errors';
+import { getErrorMessage, hasServerResponse } from '../../utils/errors';
 
 interface LoggedSetRowProps {
   set: Set;
@@ -41,6 +42,7 @@ export const LoggedSetRow = ({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [queuedOffline, setQueuedOffline] = useState(false);
 
   // Same fire-and-forget persistence + shared-state update as SetLogger's
   // unit toggle — see the comment there.
@@ -91,13 +93,24 @@ export const LoggedSetRow = ({
     }
 
     setError('');
+    setQueuedOffline(false);
     setSaving(true);
     try {
       await api.put(`/sets/${set.id}`, payload);
       setEditing(false);
       onChanged();
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo guardar la serie'));
+      if (!hasServerResponse(err)) {
+        // No response at all — never reached the server (no signal), not
+        // rejected by it. Queue the edit instead of leaving it stuck open
+        // with a misleading error; useOfflineSync flushes it automatically
+        // the moment connectivity returns.
+        await enqueueOfflineMutation(`/sets/${set.id}`, payload, 'PUT');
+        setEditing(false);
+        setQueuedOffline(true);
+      } else {
+        setError(getErrorMessage(err, 'No se pudo guardar la serie'));
+      }
     } finally {
       setSaving(false);
     }
@@ -112,9 +125,14 @@ export const LoggedSetRow = ({
       await api.delete(`/sets/${set.id}`);
       setConfirmingDelete(false);
       onChanged();
-    } catch {
+    } catch (err) {
       setConfirmingDelete(false);
-      Alert.alert('Error', 'No se pudo borrar la serie. Inténtalo de nuevo.');
+      if (!hasServerResponse(err)) {
+        await enqueueOfflineMutation(`/sets/${set.id}`, undefined, 'DELETE');
+        setQueuedOffline(true);
+      } else {
+        Alert.alert('Error', 'No se pudo borrar la serie. Inténtalo de nuevo.');
+      }
     }
   };
 
@@ -168,29 +186,33 @@ export const LoggedSetRow = ({
   }
 
   return (
-    <View style={[styles.row, set.is_pr && styles.rowPr, set.is_warmup && styles.rowWarmup]}>
-      <Text style={styles.number}>{set.set_number}</Text>
-      <Text style={[styles.value, set.is_warmup && styles.valueWarmup]}>{displayValue}</Text>
-      {set.is_warmup ? <Text style={styles.warmupTag}>Calentamiento</Text> : null}
-      {set.superset_group ? <Link2 size={12} color={colors.accent.ember} strokeWidth={2.2} /> : null}
-      {set.is_pr && <Trophy size={14} color={colors.accent.ember} strokeWidth={2.2} />}
-      {set.rpe ? <Text style={styles.rpe}>RPE {set.rpe}</Text> : null}
-      <TouchableOpacity
-        onPress={() => setEditing(true)}
-        hitSlop={8}
-        style={styles.iconButton}
-        accessibilityLabel={`Editar serie ${set.set_number}`}
-      >
-        <Pencil size={14} color={colors.text.secondary} />
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => setConfirmingDelete(true)}
-        hitSlop={8}
-        style={styles.iconButton}
-        accessibilityLabel={`Borrar serie ${set.set_number}`}
-      >
-        <X size={14} color={colors.semantic.error} />
-      </TouchableOpacity>
+    <View>
+      <View style={[styles.row, set.is_pr && styles.rowPr, set.is_warmup && styles.rowWarmup]}>
+        <Text style={styles.number}>{set.set_number}</Text>
+        <Text style={[styles.value, set.is_warmup && styles.valueWarmup]}>{displayValue}</Text>
+        {set.is_warmup ? <Text style={styles.warmupTag}>Calentamiento</Text> : null}
+        {set.superset_group ? <Link2 size={12} color={colors.accent.ember} strokeWidth={2.2} /> : null}
+        {set.is_pr && <Trophy size={14} color={colors.accent.ember} strokeWidth={2.2} />}
+        {set.rpe ? <Text style={styles.rpe}>RPE {set.rpe}</Text> : null}
+        <TouchableOpacity
+          onPress={() => setEditing(true)}
+          hitSlop={8}
+          style={styles.iconButton}
+          accessibilityLabel={`Editar serie ${set.set_number}`}
+        >
+          <Pencil size={14} color={colors.text.secondary} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setConfirmingDelete(true)}
+          hitSlop={8}
+          style={styles.iconButton}
+          accessibilityLabel={`Borrar serie ${set.set_number}`}
+        >
+          <X size={14} color={colors.semantic.error} />
+        </TouchableOpacity>
+      </View>
+
+      {queuedOffline ? <Text style={styles.offlineNotice}>Sin conexión — se sincronizará solo</Text> : null}
 
       <ConfirmDialog
         visible={confirmingDelete}
@@ -277,5 +299,10 @@ const styles = StyleSheet.create({
     color: colors.semantic.error,
     marginBottom: spacing.xs,
     textAlign: 'center',
+  },
+  offlineNotice: {
+    ...typography.tiny,
+    color: colors.text.secondary,
+    marginTop: 2,
   },
 });

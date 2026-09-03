@@ -7,7 +7,7 @@ import { useOfflineSync, enqueueOfflineMutation } from './useOfflineSync';
 import { api } from '../services/api';
 
 jest.mock('../services/api', () => ({
-  api: { post: jest.fn(), put: jest.fn() },
+  api: { post: jest.fn(), put: jest.fn(), delete: jest.fn() },
 }));
 jest.mock('@react-native-community/netinfo', () => ({
   addEventListener: jest.fn(() => jest.fn()),
@@ -58,6 +58,19 @@ describe('useOfflineSync', () => {
     expect(await readQueue()).toEqual([]);
   });
 
+  it('flushes a queued DELETE mutation (e.g. deleting a set) using DELETE, with no body', async () => {
+    await enqueueOfflineMutation('/sets/s1', undefined, 'DELETE');
+    mockedApi.delete.mockResolvedValue({ data: {} });
+
+    await renderHook(() => useOfflineSync(), { wrapper });
+    await triggerReconnect();
+
+    expect(mockedApi.delete).toHaveBeenCalledWith('/sets/s1');
+    expect(mockedApi.post).not.toHaveBeenCalled();
+    expect(mockedApi.put).not.toHaveBeenCalled();
+    expect(await readQueue()).toEqual([]);
+  });
+
   it('keeps a mutation queued if the retry also fails', async () => {
     await enqueueOfflineMutation('/sets', { weight: 100 });
     mockedApi.post.mockRejectedValue(new Error('still offline'));
@@ -99,7 +112,7 @@ describe('useOfflineSync', () => {
     expect(stored[0].body).toEqual({ weight: 200 });
   });
 
-  it('invalidates sets/battles/workouts/exercise-notes queries once a flush actually lands', async () => {
+  it('invalidates sets/battles/workouts/exercise-notes/stats/analytics queries once a flush actually lands', async () => {
     await enqueueOfflineMutation('/sets', { weight: 100 });
     mockedApi.post.mockResolvedValue({ data: {} });
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
@@ -111,6 +124,8 @@ describe('useOfflineSync', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['battles'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['workouts'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['exercise-notes'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['stats'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['analytics'] });
   });
 
   it('does not invalidate anything when the queue was already empty', async () => {

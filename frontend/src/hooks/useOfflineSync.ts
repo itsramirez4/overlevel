@@ -10,9 +10,10 @@ interface QueuedMutation {
   id: string;
   url: string;
   body: unknown;
-  // Absent means POST — items queued before PUT support existed never had
-  // this field, and were always POSTs (SetLogger was the only caller).
-  method?: 'POST' | 'PUT';
+  // Absent means POST — items queued before PUT/DELETE support existed
+  // never had this field, and were always POSTs (SetLogger was the only
+  // caller).
+  method?: 'POST' | 'PUT' | 'DELETE';
 }
 
 const getQueue = async (): Promise<QueuedMutation[]> => {
@@ -43,7 +44,7 @@ function withQueueLock<T>(fn: () => Promise<T>): Promise<T> {
   return result;
 }
 
-export const enqueueOfflineMutation = (url: string, body: unknown, method: 'POST' | 'PUT' = 'POST') =>
+export const enqueueOfflineMutation = (url: string, body: unknown, method: 'POST' | 'PUT' | 'DELETE' = 'POST') =>
   withQueueLock(async () => {
     const queue = await getQueue();
     queue.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, url, body, method });
@@ -66,6 +67,8 @@ export const useOfflineSync = () => {
         try {
           if (item.method === 'PUT') {
             await api.put(item.url, item.body);
+          } else if (item.method === 'DELETE') {
+            await api.delete(item.url);
           } else {
             await api.post(item.url, item.body);
           }
@@ -96,6 +99,12 @@ export const useOfflineSync = () => {
         queryClient.invalidateQueries({ queryKey: ['battles'] });
         queryClient.invalidateQueries({ queryKey: ['workouts'] });
         queryClient.invalidateQueries({ queryKey: ['exercise-notes'] });
+        // A queued workout edit could have changed started_at, which shifts
+        // PR flags, monthly/streak counts, and volume charts — the flush
+        // doesn't know which queued item that was, so this invalidates both
+        // broadly rather than trying to be surgical about it.
+        queryClient.invalidateQueries({ queryKey: ['stats'] });
+        queryClient.invalidateQueries({ queryKey: ['analytics'] });
       }
 
       syncing.current = false;

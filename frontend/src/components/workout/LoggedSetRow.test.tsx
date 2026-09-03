@@ -1,13 +1,18 @@
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { LoggedSetRow } from './LoggedSetRow';
 import { api } from '../../services/api';
+import { enqueueOfflineMutation } from '../../hooks/useOfflineSync';
 import { Set } from '../../types';
 
 jest.mock('../../services/api', () => ({
   api: { put: jest.fn(), delete: jest.fn() },
 }));
+jest.mock('../../hooks/useOfflineSync', () => ({
+  enqueueOfflineMutation: jest.fn().mockResolvedValue(undefined),
+}));
 
 const mockedApi = api as jest.Mocked<typeof api>;
+const mockedEnqueue = enqueueOfflineMutation as jest.Mock;
 
 const baseSet: Set = {
   id: 'set1',
@@ -126,6 +131,24 @@ describe('editing', () => {
 
     await waitFor(() => expect(getByText('No se pudo guardar la serie')).toBeTruthy());
   });
+
+  it('queues the edit offline when the request never reaches the server, instead of leaving it stuck', async () => {
+    mockedApi.put.mockRejectedValue(new Error('Network Error'));
+    const onChanged = jest.fn();
+    const { getByText, getByLabelText, getByPlaceholderText, queryByText } = await render(
+      <LoggedSetRow set={baseSet} exerciseId="ex1" weightUnit="kg" distanceUnit="km" onChanged={onChanged} />
+    );
+
+    await fireEvent.press(getByLabelText('Editar serie 1'));
+    await fireEvent.changeText(getByPlaceholderText('Kg'), '65');
+    await fireEvent.press(getByText('Guardar'));
+
+    await waitFor(() => expect(getByText(/Sin conexión/)).toBeTruthy());
+    expect(mockedEnqueue).toHaveBeenCalledWith('/sets/set1', { weight: 65, reps: 8 }, 'PUT');
+    // Edit mode closed instead of staying stuck open with a misleading error.
+    expect(queryByText('Guardar')).toBeNull();
+    expect(onChanged).not.toHaveBeenCalled();
+  });
 });
 
 describe('cardio editing', () => {
@@ -195,5 +218,20 @@ describe('deleting', () => {
 
     await waitFor(() => expect(mockedApi.delete).toHaveBeenCalledWith('/sets/set1'));
     expect(onChanged).toHaveBeenCalled();
+  });
+
+  it('queues the deletion offline when the request never reaches the server', async () => {
+    mockedApi.delete.mockRejectedValue(new Error('Network Error'));
+    const onChanged = jest.fn();
+    const { getByText, getByLabelText } = await render(
+      <LoggedSetRow set={baseSet} exerciseId="ex1" weightUnit="kg" distanceUnit="km" onChanged={onChanged} />
+    );
+
+    await fireEvent.press(getByLabelText('Borrar serie 1'));
+    await fireEvent.press(getByText('Borrar'));
+
+    await waitFor(() => expect(getByText(/Sin conexión/)).toBeTruthy());
+    expect(mockedEnqueue).toHaveBeenCalledWith('/sets/set1', undefined, 'DELETE');
+    expect(onChanged).not.toHaveBeenCalled();
   });
 });

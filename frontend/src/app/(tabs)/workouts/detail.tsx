@@ -36,7 +36,8 @@ import { feltLikeLabel } from '../../../utils/feltLike';
 import { formatWeight, kgToUnit, formatDistance } from '../../../utils/units';
 import { formatDuration, formatSetDuration } from '../../../utils/duration';
 import { authStore } from '../../../stores/authStore';
-import { getErrorMessage } from '../../../utils/errors';
+import { enqueueOfflineMutation } from '../../../hooks/useOfflineSync';
+import { getErrorMessage, hasServerResponse } from '../../../utils/errors';
 import { Exercise, Set as WorkoutSet, Workout, WorkoutExerciseNote } from '../../../types';
 
 interface ExerciseGroup {
@@ -111,7 +112,20 @@ export default function WorkoutDetailScreen() {
         await queryClient.invalidateQueries({ queryKey: ['analytics'] });
       }
     } catch (err) {
-      Alert.alert('Error', getErrorMessage(err, 'No se pudieron guardar los cambios. Inténtalo de nuevo.'));
+      if (!hasServerResponse(err)) {
+        // No response at all — never reached the server (no signal), not
+        // rejected by it (a real rejection, e.g. an invalid date, does have
+        // a response and falls through to the message below instead).
+        await enqueueOfflineMutation(
+          `/workouts/${id}`,
+          { title, notes, felt_like: feltLike, started_at: startedAt },
+          'PUT'
+        );
+        setEditOpen(false);
+        Alert.alert('Sin conexión', 'Los cambios se guardarán en cuanto recuperes conexión.');
+      } else {
+        Alert.alert('Error', getErrorMessage(err, 'No se pudieron guardar los cambios. Inténtalo de nuevo.'));
+      }
     } finally {
       setSavingEdit(false);
     }
