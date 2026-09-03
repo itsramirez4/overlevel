@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 import { storage } from '../services/storage';
+import { queryClient } from '../services/queryClient';
+import { clearOfflineQueue } from '../hooks/useOfflineSync';
 import { User } from '../types';
 import { AuthResponse } from '../types/api';
 import { getResponseStatus } from '../utils/errors';
@@ -25,6 +27,16 @@ export const authStore = create<AuthStore>((set) => ({
 
     api.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
 
+    // A previous account's data (workouts, character, stats…) can still be
+    // sitting in the query cache from an earlier session on this device —
+    // without this, a freshly logged-in account briefly (or not-so-briefly,
+    // given the 30s staleTime) renders screens still showing whoever was
+    // signed in before. Any mutation still queued offline from that earlier
+    // session is dropped for the same reason — it must never replay against
+    // this account's data instead.
+    queryClient.clear();
+    await clearOfflineQueue();
+
     set({ isSignedIn: true, user: data.user });
   },
 
@@ -45,6 +57,8 @@ export const authStore = create<AuthStore>((set) => ({
     await storage.removeItem('access_token');
     await storage.removeItem('refresh_token');
     delete api.defaults.headers.common['Authorization'];
+    queryClient.clear();
+    await clearOfflineQueue();
     set({ isSignedIn: false, user: null });
   },
 

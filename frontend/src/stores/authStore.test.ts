@@ -1,6 +1,8 @@
 import { authStore } from './authStore';
 import { api } from '../services/api';
 import { storage } from '../services/storage';
+import { queryClient } from '../services/queryClient';
+import { clearOfflineQueue } from '../hooks/useOfflineSync';
 import { User } from '../types';
 
 jest.mock('../services/api', () => ({
@@ -17,9 +19,17 @@ jest.mock('../services/storage', () => ({
     removeItem: jest.fn(),
   },
 }));
+jest.mock('../services/queryClient', () => ({
+  queryClient: { clear: jest.fn() },
+}));
+jest.mock('../hooks/useOfflineSync', () => ({
+  clearOfflineQueue: jest.fn().mockResolvedValue(undefined),
+}));
 
 const mockedApi = api as jest.Mocked<typeof api>;
 const mockedStorage = storage as jest.Mocked<typeof storage>;
+const mockedQueryClient = queryClient as jest.Mocked<typeof queryClient>;
+const mockedClearOfflineQueue = clearOfflineQueue as jest.Mock;
 
 const mockUser = { id: 'u1', username: 'joe' } as User;
 
@@ -42,6 +52,17 @@ describe('login', () => {
     expect(mockedApi.defaults.headers.common['Authorization']).toBe('Bearer access-1');
     expect(authStore.getState().isSignedIn).toBe(true);
     expect(authStore.getState().user).toEqual(mockUser);
+  });
+
+  it("clears the previous session's query cache and offline queue — a switched account must never see stale data", async () => {
+    mockedApi.post.mockResolvedValue({
+      data: { user: mockUser, access_token: 'access-1', refresh_token: 'refresh-1' },
+    });
+
+    await authStore.getState().login('joe@example.com', 'pw');
+
+    expect(mockedQueryClient.clear).toHaveBeenCalled();
+    expect(mockedClearOfflineQueue).toHaveBeenCalled();
   });
 });
 
@@ -68,6 +89,15 @@ describe('logout', () => {
 
     expect(mockedApi.post).not.toHaveBeenCalled();
     expect(authStore.getState().isSignedIn).toBe(false);
+  });
+
+  it('clears the query cache and any queued offline mutations', async () => {
+    mockedStorage.getItem.mockResolvedValue(null);
+
+    await authStore.getState().logout();
+
+    expect(mockedQueryClient.clear).toHaveBeenCalled();
+    expect(mockedClearOfflineQueue).toHaveBeenCalled();
   });
 });
 

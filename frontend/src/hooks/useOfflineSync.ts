@@ -51,6 +51,16 @@ export const enqueueOfflineMutation = (url: string, body: unknown, method: 'POST
     await setQueue(queue);
   });
 
+/**
+ * Called on login/logout — a mutation queued while signed in as one account
+ * must never flush against a different account's data (the queue has no
+ * concept of "whose" a queued item is; it just replays against whatever
+ * token `api` is currently holding). Dropping it on an identity switch is
+ * the safe choice — the alternative is silently misapplying a stale edit to
+ * the wrong account.
+ */
+export const clearOfflineQueue = () => withQueueLock(() => setQueue([]));
+
 export const useOfflineSync = () => {
   const syncing = useRef(false);
   const queryClient = useQueryClient();
