@@ -77,6 +77,48 @@ export class RoutineService {
     return data as Routine;
   }
 
+  /** A full copy — new routine row (name suffixed so it doesn't collide with
+   * the original), every routine_exercise re-inserted under the new id with
+   * the same order/targets. Lets someone start a variant of a routine
+   * without rebuilding it exercise-by-exercise from scratch. */
+  async duplicate(id: string, userId: string): Promise<Routine> {
+    const original = await this.getById(id, userId);
+
+    const { data: newRoutine, error: createError } = await supabaseAdmin
+      .from('routines')
+      .insert({
+        user_id: userId,
+        name: `${original.name} (copia)`,
+        day_of_week: original.day_of_week,
+        pattern: original.pattern,
+        notes: original.notes,
+      })
+      .select()
+      .single();
+
+    if (createError || !newRoutine) throw new AppError('Failed to duplicate routine');
+
+    // (original as any) — same workaround as addExercise() above: the
+    // Routine type says `exercises`, but the actual select() embed (and
+    // the frontend's own Routine type) key this `routine_exercises`.
+    const exercises = (original as any).routine_exercises || [];
+    if (exercises.length > 0) {
+      const rows = exercises.map((re: any) => ({
+        routine_id: newRoutine.id,
+        exercise_id: re.exercise_id,
+        order_num: re.order_num,
+        target_sets: re.target_sets,
+        target_weight: re.target_weight,
+        target_reps: re.target_reps,
+        notes: re.notes,
+      }));
+      const { error: exercisesError } = await supabaseAdmin.from('routine_exercises').insert(rows);
+      if (exercisesError) throw new AppError('Failed to duplicate routine exercises');
+    }
+
+    return this.getById(newRoutine.id, userId);
+  }
+
   /** Moves to the trash — the routine and its routine_exercises stay intact
    * and come back exactly as they were if restored. Only permanentlyDelete()
    * actually destroys data. */

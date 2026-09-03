@@ -17,6 +17,7 @@ router.get('/trash', routineController.listTrash);
 router.get('/:id', routineController.get);
 router.post('/', validateBody(createRoutineSchema), routineController.create);
 router.put('/:id', validateBody(updateRoutineSchema), routineController.update);
+router.post('/:id/duplicate', routineController.duplicate);
 router.delete('/:id', routineController.remove);
 router.post('/:id/restore', routineController.restore);
 router.delete('/:id/permanent', routineController.permanentlyDelete);

@@ -23,6 +23,11 @@ export class RoutineController {
     res.json(routine);
   }
 
+  async duplicate(req: AuthRequest, res: Response) {
+    const routine = await routineService.duplicate(req.params.id, req.userId!);
+    res.status(201).json(routine);
+  }
+
   async remove(req: AuthRequest, res: Response) {
     await routineService.remove(req.params.id, req.userId!);
     res.status(204).send();

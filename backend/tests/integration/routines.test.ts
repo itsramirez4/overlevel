@@ -79,6 +79,62 @@ describe('routines', () => {
     });
   });
 
+  describe('duplicate', () => {
+    it("copies the routine's fields and every exercise slot, leaving the original untouched", async () => {
+      const routine = await request(app)
+        .post('/api/routines')
+        .set(authHeader(user))
+        .send({ name: 'Push Day', day_of_week: 'Monday', pattern: 'fixed_day', notes: 'Chest focus' });
+      const exercise = await request(app)
+        .post('/api/exercises')
+        .set(authHeader(user))
+        .send({ name: 'Duplicate Bench', category: 'compound' });
+      await request(app)
+        .post(`/api/routines/${routine.body.id}/exercises`)
+        .set(authHeader(user))
+        .send({ exercise_id: exercise.body.id, order_num: 1, target_sets: 4, target_weight: 60, target_reps: 8 });
+
+      const duplicate = await request(app).post(`/api/routines/${routine.body.id}/duplicate`).set(authHeader(user));
+
+      expect(duplicate.status).toBe(201);
+      expect(duplicate.body.id).not.toBe(routine.body.id);
+      expect(duplicate.body.name).toBe('Push Day (copia)');
+      expect(duplicate.body.day_of_week).toBe('Monday');
+      expect(duplicate.body.pattern).toBe('fixed_day');
+      expect(duplicate.body.notes).toBe('Chest focus');
+      expect(duplicate.body.routine_exercises).toHaveLength(1);
+      expect(duplicate.body.routine_exercises[0]).toMatchObject({
+        exercise_id: exercise.body.id,
+        order_num: 1,
+        target_sets: 4,
+        target_weight: 60,
+        target_reps: 8,
+      });
+
+      // The original is untouched — still just its own one exercise slot.
+      const original = await request(app).get(`/api/routines/${routine.body.id}`).set(authHeader(user));
+      expect(original.body.routine_exercises).toHaveLength(1);
+    });
+
+    it('duplicates a routine with no exercises yet', async () => {
+      const routine = await request(app).post('/api/routines').set(authHeader(user)).send({ name: 'Empty Routine' });
+      const duplicate = await request(app).post(`/api/routines/${routine.body.id}/duplicate`).set(authHeader(user));
+      expect(duplicate.status).toBe(201);
+      expect(duplicate.body.routine_exercises).toEqual([]);
+    });
+
+    it("cannot duplicate another user's routine", async () => {
+      const other = await createTestUser('routines-duplicate-other');
+      try {
+        const routine = await request(app).post('/api/routines').set(authHeader(other)).send({ name: 'Other Routine' });
+        const res = await request(app).post(`/api/routines/${routine.body.id}/duplicate`).set(authHeader(user));
+        expect(res.status).toBe(404);
+      } finally {
+        await deleteTestUser(other.id);
+      }
+    });
+  });
+
   describe('trash lifecycle', () => {
     it('moves a deleted routine to the trash instead of destroying it', async () => {
       const created = await request(app).post('/api/routines').set(authHeader(user)).send({ name: 'Trash Me' });

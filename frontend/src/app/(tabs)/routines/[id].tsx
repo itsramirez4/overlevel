@@ -4,7 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronLeft, ChevronUp, ListChecks, Pencil, Trash2, X } from 'lucide-react-native';
+import { ChevronDown, ChevronLeft, ChevronUp, Copy, ListChecks, Pencil, Trash2, X } from 'lucide-react-native';
 import { api } from '../../../services/api';
 import { colors, radius, shadow, spacing, typography } from '../../../utils/theme';
 import { EmptyState } from '../../../components/common/EmptyState';
@@ -33,6 +33,7 @@ export default function RoutineDetailScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deleteRoutineOpen, setDeleteRoutineOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
+  const [duplicating, setDuplicating] = useState(false);
 
   const { data: routine, isLoading } = useQuery({
     queryKey: ['routines', id],
@@ -42,6 +43,20 @@ export default function RoutineDetailScreen() {
   const exercises = (routine?.routine_exercises || []).slice().sort((a, b) => a.order_num - b.order_num);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['routines', id] });
+
+  const handleDuplicate = async () => {
+    if (duplicating) return;
+    setDuplicating(true);
+    try {
+      const { data: copy } = await api.post<Routine>(`/routines/${id}/duplicate`);
+      await queryClient.invalidateQueries({ queryKey: ['routines'] });
+      router.replace(`/routines/${copy.id}`);
+    } catch {
+      Alert.alert('Error', 'No se pudo duplicar la rutina. Inténtalo de nuevo.');
+    } finally {
+      setDuplicating(false);
+    }
+  };
 
   const confirmDeleteRoutine = async () => {
     try {
@@ -114,6 +129,15 @@ export default function RoutineDetailScreen() {
               accessibilityLabel="Editar rutina"
             >
               <Pencil size={18} color={colors.text.secondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleDuplicate}
+              disabled={duplicating}
+              hitSlop={10}
+              style={[styles.headerActionButton, duplicating && styles.headerActionButtonBusy]}
+              accessibilityLabel="Duplicar rutina"
+            >
+              <Copy size={18} color={colors.text.secondary} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setDeleteRoutineOpen(true)}
@@ -249,6 +273,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.elevated,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerActionButtonBusy: {
+    opacity: 0.5,
   },
   listContent: {
     paddingHorizontal: spacing.lg,
