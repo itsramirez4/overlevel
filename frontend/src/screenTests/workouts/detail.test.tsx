@@ -1,10 +1,10 @@
 import { Alert } from 'react-native';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import WorkoutDetailScreen from './detail';
-import { api } from '../../../services/api';
-import { authStore } from '../../../stores/authStore';
-import { Workout } from '../../../types';
+import WorkoutDetailScreen from '../../app/(tabs)/workouts/detail';
+import { api } from '../../services/api';
+import { authStore } from '../../stores/authStore';
+import { Workout } from '../../types';
 
 const mockBack = jest.fn();
 const mockPush = jest.fn();
@@ -14,11 +14,11 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ id: 'w1' }),
 }));
 
-jest.mock('../../../services/api', () => ({
+jest.mock('../../services/api', () => ({
   api: { get: jest.fn(), delete: jest.fn(), put: jest.fn(), post: jest.fn() },
 }));
 
-jest.mock('../../../hooks/useOfflineSync', () => ({
+jest.mock('../../hooks/useOfflineSync', () => ({
   enqueueOfflineMutation: jest.fn().mockResolvedValue(undefined),
 }));
 
