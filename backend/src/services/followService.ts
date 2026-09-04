@@ -1,6 +1,8 @@
 import { supabaseAdmin } from '../config/supabase';
 import { AppError } from '../middleware/errorHandler';
 import { userService } from './userService';
+import { pushTokenService } from './pushTokenService';
+import { sendPushNotification } from './pushService';
 
 export interface PublicUser {
   id: string;
@@ -20,6 +22,28 @@ export class FollowService {
     const { error } = await supabaseAdmin.from('follows').insert({ follower_id: followerId, followed_id: followedId });
     // 23505 = unique_violation — already following; treat as success (idempotent).
     if (error && error.code !== '23505') throw new AppError('No se pudo seguir al usuario');
+
+    // Only push on a genuinely new follow, not the idempotent re-follow case
+    // above — error is only ever null or 23505 past the throw, so this
+    // alone distinguishes them.
+    if (!error) this.notifyNewFollower(followerId, followedId);
+  }
+
+  /** Fire-and-forget — a failed push must never fail the follow itself. */
+  private async notifyNewFollower(followerId: string, followedId: string): Promise<void> {
+    try {
+      const [{ data: follower }, tokens] = await Promise.all([
+        supabaseAdmin.from('users').select('username').eq('id', followerId).maybeSingle(),
+        pushTokenService.getTokensForUsers([followedId]),
+      ]);
+      if (!follower || tokens.length === 0) return;
+      await sendPushNotification(tokens, 'Nuevo seguidor', `@${follower.username} ha empezado a seguirte`, {
+        type: 'new_follower',
+        userId: followerId,
+      });
+    } catch {
+      // Best-effort — see the comment above.
+    }
   }
 
   async unfollow(followerId: string, followedId: string): Promise<void> {

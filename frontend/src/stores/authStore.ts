@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { storage } from '../services/storage';
 import { queryClient } from '../services/queryClient';
 import { clearOfflineQueue } from '../hooks/useOfflineSync';
+import { registerForPushNotifications, unregisterPushNotifications } from '../services/notifications';
 import { User } from '../types';
 import { AuthResponse } from '../types/api';
 import { getResponseStatus } from '../utils/errors';
@@ -40,6 +41,12 @@ export const authStore = create<AuthStore>((set) => {
     await clearOfflineQueue();
 
     set({ isSignedIn: true, user: data.user });
+
+    // Best-effort, fire-and-forget — re-registers this device's token (if
+    // permission was already granted in an earlier session) against the
+    // account that just signed in, so a device switching accounts doesn't
+    // keep receiving the previous one's pushes indefinitely.
+    registerForPushNotifications();
   };
 
   return {
@@ -80,6 +87,10 @@ export const authStore = create<AuthStore>((set) => {
         }
       }
 
+      // Must run before the Authorization header below is removed — the
+      // unregister call itself needs to still be authenticated as this user.
+      await unregisterPushNotifications();
+
       await storage.removeItem('access_token');
       await storage.removeItem('refresh_token');
       delete api.defaults.headers.common['Authorization'];
@@ -98,6 +109,7 @@ export const authStore = create<AuthStore>((set) => {
       try {
         const { data: user } = await api.get<User>('/users/me');
         set({ user });
+        registerForPushNotifications();
       } catch (error) {
         // A genuine auth failure (401) only reaches here after the api.ts
         // interceptor already tried refreshing and failed — it has already

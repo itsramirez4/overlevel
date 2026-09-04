@@ -6,6 +6,7 @@ import { followService } from '../services/followService';
 import { workoutService } from '../services/workoutService';
 import { characterService } from '../services/characterService';
 import { measurementService } from '../services/measurementService';
+import { pushTokenService } from '../services/pushTokenService';
 import { parsePositiveIntParam } from '../utils/queryParams';
 import { isAdmin } from '../utils/admin';
 
@@ -42,6 +43,16 @@ export class UserController {
 
   async removeMeasurement(req: AuthRequest, res: Response) {
     await measurementService.remove(req.params.measurementId, req.userId!);
+    res.status(204).send();
+  }
+
+  async registerPushToken(req: AuthRequest, res: Response) {
+    await pushTokenService.register(req.userId!, req.body.token, req.body.platform);
+    res.status(204).send();
+  }
+
+  async unregisterPushToken(req: AuthRequest, res: Response) {
+    await pushTokenService.unregister(req.userId!, req.body.token);
     res.status(204).send();
   }
 

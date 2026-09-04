@@ -2,7 +2,13 @@ import express from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { authRateLimiter } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validation';
-import { changePasswordSchema, importHevySchema, logMeasurementSchema, updateUserSchema } from '../utils/validators';
+import {
+  changePasswordSchema,
+  importHevySchema,
+  logMeasurementSchema,
+  pushTokenSchema,
+  updateUserSchema,
+} from '../utils/validators';
 import { userController } from '../controllers/userController';
 
 const router = express.Router();
@@ -21,6 +27,8 @@ router.put('/me/password', authRateLimiter, validateBody(changePasswordSchema), 
 router.get('/me/export', userController.exportData);
 router.get('/me/feed', userController.feed);
 router.post('/me/import/hevy', validateBody(importHevySchema), userController.importHevy);
+router.post('/me/push-token', validateBody(pushTokenSchema), userController.registerPushToken);
+router.delete('/me/push-token', validateBody(pushTokenSchema), userController.unregisterPushToken);
 
 // Social — /search must stay before /:id, or a request for /search would
 // itself get captured as `id: "search"` by the param route below.

@@ -1,5 +1,8 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { api } from './api';
 
 // expo-notifications has no real web implementation — scheduling/permission
 // calls there are either no-ops or throw, so skip it outright rather than
@@ -11,12 +14,61 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
 
   try {
     const { status: existing } = await Notifications.getPermissionsAsync();
-    if (existing === 'granted') return true;
+    if (existing === 'granted') {
+      registerForPushNotifications();
+      return true;
+    }
 
     const { status } = await Notifications.requestPermissionsAsync();
-    return status === 'granted';
+    const granted = status === 'granted';
+    // Fire-and-forget — the caller only cares about the permission result,
+    // not whether the (separate, best-effort) push-token registration succeeded.
+    if (granted) registerForPushNotifications();
+    return granted;
   } catch {
     return false;
+  }
+};
+
+const PUSH_TOKEN_STORAGE_KEY = 'overlevel-push-token';
+
+/**
+ * Registers this device for server-sent push notifications (new followers,
+ * weekly recaps — see backend pushService.ts), distinct from the local-only
+ * notifications above. Best-effort and silent throughout: called from
+ * establishSession/checkAuth, where a push-registration failure must never
+ * block signing in.
+ */
+export const registerForPushNotifications = async (): Promise<void> => {
+  if (!isSupported) return;
+
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    if (!projectId) return;
+
+    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    await AsyncStorage.setItem(PUSH_TOKEN_STORAGE_KEY, token);
+    await api.post('/users/me/push-token', { token, platform: Platform.OS });
+  } catch {
+    // Best-effort.
+  }
+};
+
+/** Called on logout — must run while the account's auth header is still
+ * attached, or the unregister call itself 401s. */
+export const unregisterPushNotifications = async (): Promise<void> => {
+  if (!isSupported) return;
+
+  try {
+    const token = await AsyncStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
+    if (!token) return;
+    await api.delete('/users/me/push-token', { data: { token } });
+    await AsyncStorage.removeItem(PUSH_TOKEN_STORAGE_KEY);
+  } catch {
+    // Best-effort.
   }
 };
 

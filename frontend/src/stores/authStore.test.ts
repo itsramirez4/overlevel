@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { storage } from '../services/storage';
 import { queryClient } from '../services/queryClient';
 import { clearOfflineQueue } from '../hooks/useOfflineSync';
+import { registerForPushNotifications, unregisterPushNotifications } from '../services/notifications';
 import { User } from '../types';
 
 jest.mock('../services/api', () => ({
@@ -25,11 +26,17 @@ jest.mock('../services/queryClient', () => ({
 jest.mock('../hooks/useOfflineSync', () => ({
   clearOfflineQueue: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('../services/notifications', () => ({
+  registerForPushNotifications: jest.fn(),
+  unregisterPushNotifications: jest.fn().mockResolvedValue(undefined),
+}));
 
 const mockedApi = api as jest.Mocked<typeof api>;
 const mockedStorage = storage as jest.Mocked<typeof storage>;
 const mockedQueryClient = queryClient as jest.Mocked<typeof queryClient>;
 const mockedClearOfflineQueue = clearOfflineQueue as jest.Mock;
+const mockedRegisterForPush = registerForPushNotifications as jest.Mock;
+const mockedUnregisterFromPush = unregisterPushNotifications as jest.Mock;
 
 const mockUser = { id: 'u1', username: 'joe' } as User;
 
@@ -63,6 +70,16 @@ describe('login', () => {
 
     expect(mockedQueryClient.clear).toHaveBeenCalled();
     expect(mockedClearOfflineQueue).toHaveBeenCalled();
+  });
+
+  it("re-registers this device's push token against the account that just signed in", async () => {
+    mockedApi.post.mockResolvedValue({
+      data: { user: mockUser, access_token: 'access-1', refresh_token: 'refresh-1' },
+    });
+
+    await authStore.getState().login('joe@example.com', 'pw');
+
+    expect(mockedRegisterForPush).toHaveBeenCalled();
   });
 });
 
@@ -138,6 +155,15 @@ describe('logout', () => {
 
     expect(mockedQueryClient.clear).toHaveBeenCalled();
     expect(mockedClearOfflineQueue).toHaveBeenCalled();
+  });
+
+  it("unregisters this device's push token while still authenticated, before clearing the session", async () => {
+    mockedStorage.getItem.mockResolvedValue(null);
+    mockedApi.defaults.headers.common['Authorization'] = 'Bearer access-1';
+
+    await authStore.getState().logout();
+
+    expect(mockedUnregisterFromPush).toHaveBeenCalled();
   });
 });
 

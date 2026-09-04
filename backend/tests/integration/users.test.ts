@@ -1,5 +1,6 @@
 import request from 'supertest';
 import app from '../../src/index';
+import { supabaseAdmin } from '../../src/config/supabase';
 import { createTestUser, deleteTestUser, authHeader, TestUser } from '../helpers/testUser';
 
 describe('users', () => {
@@ -170,6 +171,58 @@ describe('users', () => {
       } finally {
         await deleteTestUser(other.id);
       }
+    });
+  });
+
+  describe('push tokens', () => {
+    // Deliberately NOT in Expo's ExponentPushToken[...] format — registration
+    // itself doesn't validate that shape, and using a real-looking token here
+    // would make sendPushNotification (fired from other flows, e.g. a new
+    // follower) actually call Expo's push API with garbage during tests.
+    const fakeToken = () => `test-token-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    it('registers a token, then unregisters it', async () => {
+      const token = fakeToken();
+
+      const register = await request(app)
+        .post('/api/users/me/push-token')
+        .set(authHeader(user))
+        .send({ token, platform: 'ios' });
+      expect(register.status).toBe(204);
+
+      const { data: stored } = await supabaseAdmin.from('push_tokens').select('*').eq('token', token).maybeSingle();
+      expect(stored?.user_id).toBe(user.id);
+      expect(stored?.platform).toBe('ios');
+
+      const unregister = await request(app)
+        .delete('/api/users/me/push-token')
+        .set(authHeader(user))
+        .send({ token });
+      expect(unregister.status).toBe(204);
+
+      const { data: gone } = await supabaseAdmin.from('push_tokens').select('id').eq('token', token).maybeSingle();
+      expect(gone).toBeNull();
+    });
+
+    it('registering the same token under a different account reassigns it, not duplicates it', async () => {
+      const other = await createTestUser('push-tokens-other');
+      const token = fakeToken();
+      try {
+        await request(app).post('/api/users/me/push-token').set(authHeader(user)).send({ token });
+        await request(app).post('/api/users/me/push-token').set(authHeader(other)).send({ token });
+
+        const { data: rows } = await supabaseAdmin.from('push_tokens').select('*').eq('token', token);
+        expect(rows).toHaveLength(1);
+        expect(rows?.[0].user_id).toBe(other.id);
+      } finally {
+        await supabaseAdmin.from('push_tokens').delete().eq('token', token);
+        await deleteTestUser(other.id);
+      }
+    });
+
+    it('rejects a missing token', async () => {
+      const res = await request(app).post('/api/users/me/push-token').set(authHeader(user)).send({});
+      expect(res.status).toBe(400);
     });
   });
 });

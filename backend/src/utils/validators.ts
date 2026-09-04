@@ -204,6 +204,11 @@ export const logMeasurementSchema = z
     message: 'Introduce al menos una medida',
   });
 
+export const pushTokenSchema = z.object({
+  token: z.string().min(1),
+  platform: z.enum(['ios', 'android', 'web']).optional(),
+});
+
 export const createCharacterSchema = z.object({
   character_type: z.enum(['powerlifter', 'bodybuilder', 'crossfitter', 'calisthenics', 'fracasado']),
 });
