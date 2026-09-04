@@ -191,7 +191,8 @@ export class UserService {
    * someone who isn't already looking at it (e.g. via a guessed/shared id).
    */
   async assertViewable(targetId: string, viewerId: string): Promise<User> {
-    const { data } = await supabaseAdmin.from('users').select('*').eq('id', targetId).maybeSingle();
+    const { data, error } = await supabaseAdmin.from('users').select('*').eq('id', targetId).maybeSingle();
+    if (error) throw new AppError('Failed to fetch user');
     if (!data) throw new AppError('User not found', 404);
     if (data.id !== viewerId && !data.profile_public) throw new AppError('User not found', 404);
     return data as User;

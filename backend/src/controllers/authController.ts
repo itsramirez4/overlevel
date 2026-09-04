@@ -28,7 +28,20 @@ function deriveUsername(email: string, userId: string): string {
  * exist before issueTokenPair runs (refresh_tokens.user_id has a hard FK
  * to users(id)). */
 async function provisionUserProfile(authUser: { id: string; email?: string }) {
-  const { data: existing } = await supabaseAdmin.from('users').select('*').eq('id', authUser.id).single();
+  // .maybeSingle(), not .single() — "no row yet" (the normal case on a
+  // first-ever login) must resolve as data: null, error: null so it's
+  // distinguishable from a real DB failure below. .single() sets an error
+  // for both cases alike, which used to make a transient read error here
+  // fall through to the INSERT path same as a genuine first login — for a
+  // RETURNING user that then hits a 23505 on the id itself, which the
+  // retry-with-a-suffixed-username logic below can't actually resolve
+  // (the conflict isn't the username), turning a blip into a failed login.
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from('users')
+    .select('*')
+    .eq('id', authUser.id)
+    .maybeSingle();
+  if (existingError) throw new AppError('Failed to fetch user profile');
   if (existing) return existing;
 
   const username = deriveUsername(authUser.email || '', authUser.id);
@@ -158,7 +171,19 @@ export class AuthController {
       // A JWT's signature staying valid doesn't mean the account still does —
       // without this, a deleted user's refresh token could keep minting new
       // 15min/7day token pairs indefinitely, forever.
-      const { data: user } = await supabaseAdmin.from('users').select('id').eq('id', decoded.userId).maybeSingle();
+      const { data: user, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('id', decoded.userId)
+        .maybeSingle();
+      // Checked separately from `!user` below and returned immediately — a
+      // transient DB failure here must surface as a retryable 500, not get
+      // funneled into this function's catch-all 401, which would otherwise
+      // force a real, valid session to fully re-login over a blip.
+      if (userError) {
+        logger.error('refresh: failed to verify user existence', userError);
+        return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Something went wrong' });
+      }
       if (!user) throw new Error('User no longer exists');
 
       // Validates against the DB record (not just the JWT signature), and

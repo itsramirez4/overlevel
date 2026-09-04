@@ -183,12 +183,13 @@ export class WorkoutService {
         throw new AppError('La fecha no puede ser en el futuro', 400);
       }
 
-      const { data: existing } = await supabaseAdmin
+      const { data: existing, error: existingError } = await supabaseAdmin
         .from('workouts')
         .select('completed_at')
         .eq('id', id)
         .eq('user_id', userId)
         .maybeSingle();
+      if (existingError) throw new AppError('Failed to fetch workout');
       if (!existing) throw new AppError('Workout not found', 404);
       if (existing.completed_at && startedAt.getTime() > new Date(existing.completed_at).getTime()) {
         throw new AppError('La fecha no puede ser posterior a cuando terminaste el entrenamiento', 400);

@@ -77,12 +77,13 @@ export class CharacterService {
       throw new AppError('Invalid character type', 400);
     }
 
-    const { data: existing } = await supabaseAdmin
+    const { data: existing, error: existingError } = await supabaseAdmin
       .from('characters')
       .select('id')
       .eq('user_id', userId)
       .maybeSingle();
 
+    if (existingError) throw new AppError('Failed to check for an existing character');
     if (existing) throw new AppError('Ya tienes un personaje creado', 409);
 
     const typeDef = CHARACTER_TYPES.find((t) => t.id === characterType)!;
@@ -111,12 +112,13 @@ export class CharacterService {
       throw new AppError('Invalid character type', 400);
     }
 
-    const { data: existing } = await supabaseAdmin
+    const { data: existing, error: existingError } = await supabaseAdmin
       .from('characters')
       .select('id')
       .eq('user_id', userId)
       .maybeSingle();
 
+    if (existingError) throw new AppError('Failed to fetch character');
     if (!existing) throw new AppError('No tienes ningún personaje todavía', 404);
 
     const typeDef = CHARACTER_TYPES.find((t) => t.id === characterType)!;

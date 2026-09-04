@@ -163,11 +163,12 @@ export class ExerciseService {
   async merge(loserId: string, survivorId: string): Promise<Exercise> {
     if (loserId === survivorId) throw new AppError('No se puede fusionar un ejercicio consigo mismo', 400);
 
-    const { data: both } = await supabaseAdmin
+    const { data: both, error: bothError } = await supabaseAdmin
       .from('exercises')
       .select('id')
       .in('id', [loserId, survivorId])
       .is('deleted_at', null);
+    if (bothError) throw new AppError('Failed to fetch exercises');
     if (!both || both.length !== 2) throw new AppError('Exercise not found', 404);
 
     const [{ data: loserBattles }, { data: survivorBattles }, { data: loserNotes }, { data: survivorNotes }] =
