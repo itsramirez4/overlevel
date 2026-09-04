@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "864794544396",
+    "project_id": "overlevel-b58f0",
+    "storage_bucket": "overlevel-b58f0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:864794544396:android:07bc33a4127153b8afa129",
+        "android_client_info": {
+          "package_name": "com.overlevel.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1aVdet1vOGGyrmZjxP0gcXaQ4MXFZ7vw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

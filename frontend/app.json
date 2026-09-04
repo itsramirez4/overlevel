@@ -22,7 +22,8 @@
         "foregroundImage": "./assets/logo/png/1024x1024/logo-icon-1024x1024.png",
         "backgroundColor": "#0A0E27"
       },
-      "package": "com.overlevel.app"
+      "package": "com.overlevel.app",
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-router",
