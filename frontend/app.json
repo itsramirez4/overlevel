@@ -12,7 +12,10 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.overlevel.app"
+      "bundleIdentifier": "com.overlevel.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
