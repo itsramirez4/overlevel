@@ -43,6 +43,7 @@ export const LoggedSetRow = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [queuedOffline, setQueuedOffline] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Same fire-and-forget persistence + shared-state update as SetLogger's
   // unit toggle — see the comment there.
@@ -121,6 +122,8 @@ export const LoggedSetRow = ({
     : `${formatWeight(set.weight || 0, unit)} × ${set.reps} reps`;
 
   const handleDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
     try {
       await api.delete(`/sets/${set.id}`);
       setConfirmingDelete(false);
@@ -133,6 +136,8 @@ export const LoggedSetRow = ({
       } else {
         Alert.alert('Error', 'No se pudo borrar la serie. Inténtalo de nuevo.');
       }
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -220,8 +225,9 @@ export const LoggedSetRow = ({
         message={`¿Borrar la serie ${set.set_number} (${displayValue})?`}
         confirmLabel="Borrar"
         destructive
+        loading={deleting}
         onConfirm={handleDelete}
-        onCancel={() => setConfirmingDelete(false)}
+        onCancel={() => !deleting && setConfirmingDelete(false)}
       />
     </View>
   );

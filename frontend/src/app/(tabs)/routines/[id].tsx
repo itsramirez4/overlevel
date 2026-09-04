@@ -32,6 +32,7 @@ export default function RoutineDetailScreen() {
   const unit = authStore((s) => s.user?.weight_unit) || 'kg';
   const [busyId, setBusyId] = useState<string | null>(null);
   const [deleteRoutineOpen, setDeleteRoutineOpen] = useState(false);
+  const [deletingRoutine, setDeletingRoutine] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{ id: string; name: string } | null>(null);
   const [duplicating, setDuplicating] = useState(false);
 
@@ -59,6 +60,8 @@ export default function RoutineDetailScreen() {
   };
 
   const confirmDeleteRoutine = async () => {
+    if (deletingRoutine) return;
+    setDeletingRoutine(true);
     try {
       await api.delete(`/routines/${id}`);
       setDeleteRoutineOpen(false);
@@ -67,6 +70,8 @@ export default function RoutineDetailScreen() {
     } catch {
       setDeleteRoutineOpen(false);
       Alert.alert('Error', 'No se pudo borrar la rutina. Inténtalo de nuevo.');
+    } finally {
+      setDeletingRoutine(false);
     }
   };
 
@@ -232,8 +237,9 @@ export default function RoutineDetailScreen() {
         message={`"${routine?.name}" se moverá a la papelera. Podrás restaurarla desde ahí cuando quieras.`}
         confirmLabel="Borrar"
         destructive
+        loading={deletingRoutine}
         onConfirm={confirmDeleteRoutine}
-        onCancel={() => setDeleteRoutineOpen(false)}
+        onCancel={() => !deletingRoutine && setDeleteRoutineOpen(false)}
       />
 
       <ConfirmDialog

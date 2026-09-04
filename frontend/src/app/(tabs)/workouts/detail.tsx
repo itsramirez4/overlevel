@@ -53,6 +53,7 @@ export default function WorkoutDetailScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editingSets, setEditingSets] = useState(false);
@@ -84,6 +85,8 @@ export default function WorkoutDetailScreen() {
   });
 
   const confirmDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
     try {
       await api.delete(`/workouts/${id}`);
       setDeleteOpen(false);
@@ -92,6 +95,8 @@ export default function WorkoutDetailScreen() {
     } catch {
       setDeleteOpen(false);
       Alert.alert('Error', 'No se pudo borrar el entrenamiento. Inténtalo de nuevo.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -407,8 +412,9 @@ export default function WorkoutDetailScreen() {
         message="¿Seguro que quieres borrar este entrenamiento y todas sus series? Esta acción no se puede deshacer."
         confirmLabel="Borrar"
         destructive
+        loading={deleting}
         onConfirm={confirmDelete}
-        onCancel={() => setDeleteOpen(false)}
+        onCancel={() => !deleting && setDeleteOpen(false)}
       />
 
       <ConfirmDialog
