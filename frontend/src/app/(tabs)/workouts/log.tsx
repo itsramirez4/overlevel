@@ -18,6 +18,7 @@ import { EmptyState } from '../../../components/common/EmptyState';
 import { Button } from '../../../components/ui/Button';
 import { Loader } from '../../../components/ui/Loader';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { hapticWorkoutComplete } from '../../../services/haptics';
 import { ExerciseBattle, Set, WorkoutExerciseNote } from '../../../types';
 
 export default function WorkoutLogScreen() {
@@ -162,6 +163,7 @@ export default function WorkoutLogScreen() {
         .filter((exercise) => (battles || []).some((b) => b.exercise_id === exercise.id))
         .map((exercise) => exercise.name);
       const result = await completeWorkout(title, feltLike, notes);
+      hapticWorkoutComplete();
       setCompleteDialogOpen(false);
       setDefeatedNames(namesSnapshot);
       // The dashboard's ['stats']/['workouts'] queries (and, if this

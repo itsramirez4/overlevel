@@ -6,6 +6,7 @@ import { enqueueOfflineMutation } from '../../hooks/useOfflineSync';
 import { workoutStore } from '../../stores/workoutStore';
 import { authStore } from '../../stores/authStore';
 import { scheduleRestTimerNotification } from '../../services/notifications';
+import { hapticSetLogged, hapticPr } from '../../services/haptics';
 import { kgToUnit, unitToKg, kmToUnit, unitToKm, DistanceUnit } from '../../utils/units';
 import { WeightUnit } from '../../services/calculations';
 import { Input } from '../ui/Input';
@@ -154,7 +155,9 @@ export const SetLogger = ({
     }
 
     try {
-      await api.post('/sets', payload);
+      const { data } = await api.post<Set>('/sets', payload);
+      if (data.is_pr) hapticPr();
+      else hapticSetLogged();
       onSetLogged();
     } catch (err) {
       if (!hasServerResponse(err)) {
