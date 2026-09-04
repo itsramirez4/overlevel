@@ -6,10 +6,18 @@ const expo = new Expo();
 
 /**
  * Sends one push notification to every given token, chunked the way Expo
- * requires, then prunes any token Expo immediately reports as dead
- * (DeviceNotRegistered) — best-effort throughout: a push failure is never
- * worth surfacing as an error to whatever triggered it (a follow, a cron
- * job), so this never throws.
+ * requires — best-effort throughout: a push failure is never worth
+ * surfacing as an error to whatever triggered it (a follow, a cron job), so
+ * this never throws.
+ *
+ * Only prunes a token when Expo's own send TICKET immediately flags it
+ * DeviceNotRegistered — real uninstalled-app tokens are more commonly only
+ * discoverable from the separate getPushNotificationReceiptsAsync call,
+ * which Expo doesn't make truthful until minutes-to-a-day after sending.
+ * This doesn't poll receipts (would need storing each ticket's receipt id
+ * and a follow-up job to check them later), so most dead tokens accumulate
+ * and get silently retried on every future push rather than pruned — wasted
+ * sends, not a correctness bug.
  */
 export async function sendPushNotification(
   tokens: string[],

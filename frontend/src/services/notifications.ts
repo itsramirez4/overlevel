@@ -57,18 +57,32 @@ export const registerForPushNotifications = async (): Promise<void> => {
   }
 };
 
-/** Called on logout — must run while the account's auth header is still
- * attached, or the unregister call itself 401s. */
+/**
+ * Called on logout — must run while the account's auth header is still
+ * attached, or the unregister call itself 401s (and once logout finishes,
+ * that header and the refresh token are both gone — there's no session left
+ * to retry with later, unlike other mutations' offline queue). Retries a
+ * couple of times through a genuine "offline right at this instant" blip;
+ * doesn't solve a fully offline logout on a shared/borrowed device, which
+ * leaves that device registered for this account's pushes until either the
+ * same account logs back in and this runs again, or someone else logs into
+ * that device (registerForPushNotifications' upsert reassigns the token).
+ */
 export const unregisterPushNotifications = async (): Promise<void> => {
   if (!isSupported) return;
 
-  try {
-    const token = await AsyncStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
-    if (!token) return;
-    await api.delete('/users/me/push-token', { data: { token } });
-    await AsyncStorage.removeItem(PUSH_TOKEN_STORAGE_KEY);
-  } catch {
-    // Best-effort.
+  const token = await AsyncStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
+  if (!token) return;
+
+  const attempts = 3;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await api.delete('/users/me/push-token', { data: { token } });
+      await AsyncStorage.removeItem(PUSH_TOKEN_STORAGE_KEY);
+      return;
+    } catch {
+      if (i < attempts - 1) await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
 };
 

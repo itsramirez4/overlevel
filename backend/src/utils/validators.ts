@@ -205,7 +205,10 @@ export const logMeasurementSchema = z
   });
 
 export const pushTokenSchema = z.object({
-  token: z.string().min(1),
+  // 200 comfortably covers Expo's actual token format (~40 chars) with
+  // headroom, while still bounding what an unbounded TEXT column would
+  // otherwise happily store forever from a malformed or malicious client.
+  token: z.string().min(1).max(200),
   platform: z.enum(['ios', 'android', 'web']).optional(),
 });
 
