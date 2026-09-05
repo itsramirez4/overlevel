@@ -42,7 +42,8 @@
           "color": "#FF5A4A"
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "@sentry/react-native/expo"
     ],
     "extra": {
       "router": {

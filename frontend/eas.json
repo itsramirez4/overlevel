@@ -16,7 +16,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://overlevel-backend.onrender.com",
-        "EXPO_PUBLIC_APP_ENV": "production"
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://000d99a19758adc3c732daa387455618@o4512032796377088.ingest.de.sentry.io/4512032810926160"
       },
       "channel": "preview"
     },
@@ -24,7 +25,8 @@
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://overlevel-backend.onrender.com",
-        "EXPO_PUBLIC_APP_ENV": "production"
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://000d99a19758adc3c732daa387455618@o4512032796377088.ingest.de.sentry.io/4512032810926160"
       }
     }
   },

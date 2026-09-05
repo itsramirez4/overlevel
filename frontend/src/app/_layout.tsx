@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { QueryClientProvider, focusManager, onlineManager } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
 import * as Updates from 'expo-updates';
+import * as Sentry from '@sentry/react-native';
 import { useAuth } from '../hooks/useAuth';
 import { useBackendWakeUp } from '../hooks/useBackendWakeUp';
 import { useOfflineSync } from '../hooks/useOfflineSync';
@@ -11,6 +12,19 @@ import { Loader } from '../components/ui/Loader';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { reportError } from '../services/errorReporting';
 import { queryClient } from '../services/queryClient';
+
+// Undefined DSN (dev/Expo Go, or before EXPO_PUBLIC_SENTRY_DSN is set)
+// leaves the SDK disabled rather than throwing — safe to call unconditionally.
+// Runs before the ErrorUtils wrapping below so its own native-crash and
+// global-JS-error handlers are installed first; this app's handler wraps
+// around it the same way it wraps around React Native's own default one.
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  environment: process.env.EXPO_PUBLIC_APP_ENV || 'development',
+  // Error/crash capture only — no performance tracing, keeps this well
+  // within Sentry's free-tier event quota for an app this size.
+  tracesSampleRate: 0,
+});
 
 // React Query's "refetch on focus/reconnect" only works out of the box on
 // web (it listens for the browser's visibilitychange/online events) — on
@@ -86,7 +100,7 @@ function AutoUpdateMount() {
   return null;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   // useAuth() already calls authStore.checkAuth() internally and tracks
   // isLoading against it — a second direct call here just fired the same
   // /users/me request twice on every app launch. isSignedIn itself is read
@@ -134,3 +148,8 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
+
+// Wraps the root component with Sentry's own error boundary + touch/gesture
+// instrumentation — separate from (and outside) this app's own ErrorBoundary
+// above, which handles the user-facing fallback UI.
+export default Sentry.wrap(RootLayout);
