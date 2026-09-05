@@ -43,7 +43,14 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "@sentry/react-native/expo"
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "overlevel",
+          "project": "overlevel_frontend",
+          "disableAutoUpload": true
+        }
+      ]
     ],
     "extra": {
       "router": {
