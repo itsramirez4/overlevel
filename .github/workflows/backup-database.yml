@@ -1,0 +1,45 @@
+name: Weekly Database Backup
+
+# Supabase's free tier has no point-in-time recovery and very limited
+# built-in backup retention — this is the free alternative: a full pg_dump,
+# stored as a GitHub Actions artifact (free, no external storage needed).
+# retention-days below keeps roughly the last 8 weekly backups before
+# GitHub auto-expires the older ones, so this doesn't grow without bound.
+on:
+  schedule:
+    - cron: '0 3 * * 0' # Sundays 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Set backup filename
+        id: vars
+        run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Dump database
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          pg_dump \
+            --host=db.kyzpbwrmtrppngivhiec.supabase.co \
+            --port=5432 \
+            --username=postgres \
+            --dbname=postgres \
+            --no-owner --no-acl \
+            --format=plain \
+            --file=backup-${{ steps.vars.outputs.date }}.sql
+          gzip backup-${{ steps.vars.outputs.date }}.sql
+
+      - name: Upload backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ steps.vars.outputs.date }}
+          path: backup-${{ steps.vars.outputs.date }}.sql.gz
+          retention-days: 60
