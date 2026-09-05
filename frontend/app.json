@@ -47,8 +47,7 @@
         "@sentry/react-native/expo",
         {
           "organization": "overlevel",
-          "project": "overlevel_frontend",
-          "disableAutoUpload": true
+          "project": "overlevel_frontend"
         }
       ]
     ],
