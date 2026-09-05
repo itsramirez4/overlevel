@@ -13,6 +13,22 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    # Ephemeral, isolated to this job only — lives and dies with the runner,
+    # never touches the real project. This is what proves the dump is
+    # actually restorable, not just that pg_dump exited 0: a backup nobody
+    # has ever restored is a promise, not a guarantee.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Install PostgreSQL client
         # Ubuntu noble's own postgresql-client package is v16, but Supabase
@@ -55,3 +71,35 @@ jobs:
           name: db-backup-${{ steps.vars.outputs.date }}
           path: backup-${{ steps.vars.outputs.date }}.sql.gz
           retention-days: 60
+
+      - name: Verify the dump actually restores
+        # Deliberately NOT ON_ERROR_STOP=1 — the dump also contains
+        # Supabase-internal bits (auth/storage schemas, its own roles,
+        # extensions) that don't exist on a bare postgres:17 image and are
+        # expected to fail here; what matters is that this app's own tables
+        # and data come back. Fails the job if they don't.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          gunzip -k backup-${{ steps.vars.outputs.date }}.sql.gz
+          psql --host=localhost --port=5432 --username=postgres --dbname=postgres \
+            -f backup-${{ steps.vars.outputs.date }}.sql > restore.log 2>&1 || true
+
+          echo "--- Tables present after restore ---"
+          psql --host=localhost --port=5432 --username=postgres --dbname=postgres -c "\dt public.*"
+
+          echo "--- Row counts ---"
+          psql --host=localhost --port=5432 --username=postgres --dbname=postgres -c "
+            SELECT 'users' AS table_name, count(*) FROM users
+            UNION ALL SELECT 'exercises', count(*) FROM exercises
+            UNION ALL SELECT 'workouts', count(*) FROM workouts
+            UNION ALL SELECT 'sets', count(*) FROM sets;
+          "
+
+          USER_COUNT=$(psql --host=localhost --port=5432 --username=postgres --dbname=postgres -tAc "SELECT count(*) FROM users;")
+          if [ "$USER_COUNT" -lt 1 ]; then
+            echo "::error::Restored database has no users — the backup did not actually restore real data. Full restore log:"
+            cat restore.log
+            exit 1
+          fi
+          echo "Restore verified: $USER_COUNT user(s) present."
