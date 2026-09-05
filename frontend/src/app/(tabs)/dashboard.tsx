@@ -11,6 +11,7 @@ import { useWorkout } from '../../hooks/useWorkout';
 import { usePullToRefresh } from '../../hooks/usePullToRefresh';
 import { authStore } from '../../stores/authStore';
 import { StatCard } from '../../components/analytics/StatCard';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Logo } from '../../components/common/Logo';
 import { Badge } from '../../components/ui/Badge';
@@ -120,21 +121,14 @@ export default function DashboardScreen() {
         )}
 
         <View style={styles.statsGrid}>
-          <StatCard
-            label="Este mes"
-            value={statsLoading ? '—' : stats?.workouts_this_month ?? 0}
-            icon={CalendarDays}
-          />
+          <StatCard label="Este mes" value={stats?.workouts_this_month ?? 0} icon={CalendarDays} loading={statsLoading} />
           <StatCard
             label="Volumen total"
-            value={statsLoading ? '—' : `${Math.round(kgToUnit(stats?.total_volume || 0, unit))}${unit}`}
+            value={`${Math.round(kgToUnit(stats?.total_volume || 0, unit))}${unit}`}
             icon={Flame}
+            loading={statsLoading}
           />
-          <StatCard
-            label="Racha"
-            value={statsLoading ? '—' : `${stats?.current_streak ?? 0}d`}
-            icon={Zap}
-          />
+          <StatCard label="Racha" value={`${stats?.current_streak ?? 0}d`} icon={Zap} loading={statsLoading} />
         </View>
 
         {stats?.recommended_routine && (
@@ -153,7 +147,12 @@ export default function DashboardScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Entrenamientos recientes</Text>
-          {workoutsLoading ? null : !workouts?.length ? (
+          {workoutsLoading ? (
+            <>
+              <WorkoutRowSkeleton />
+              <WorkoutRowSkeleton />
+            </>
+          ) : !workouts?.length ? (
             <EmptyState
               icon={Dumbbell}
               title="Todavía no hay entrenamientos"
@@ -203,6 +202,16 @@ const WorkoutRow = ({
     </View>
     <ChevronRight size={18} color={colors.text.muted} />
   </AnimatedTouchable>
+);
+
+const WorkoutRowSkeleton = () => (
+  <View style={styles.workoutCard}>
+    <Skeleton width={36} height={36} radius={999} style={styles.workoutIconBadge} />
+    <View style={styles.workoutInfo}>
+      <Skeleton width="60%" height={15} />
+      <Skeleton width={90} height={11} style={styles.workoutSetsSkeleton} />
+    </View>
+  </View>
 );
 
 const styles = StyleSheet.create({
@@ -322,6 +331,9 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontWeight: '600',
     textTransform: 'capitalize',
+  },
+  workoutSetsSkeleton: {
+    marginTop: 6,
   },
   workoutSets: {
     ...typography.tiny,

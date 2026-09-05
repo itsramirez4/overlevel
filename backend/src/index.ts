@@ -22,6 +22,7 @@ import battleRoutes from './routes/battles';
 import workoutExerciseNoteRoutes from './routes/workoutExerciseNotes';
 import clientErrorRoutes from './routes/clientErrors';
 import internalCronRoutes from './routes/internalCron';
+import { PRIVACY_POLICY_HTML } from './content/privacyPolicy';
 
 // Cron Jobs
 import { initCronJobs } from './services/cronService';
@@ -114,6 +115,12 @@ app.use('/api/internal/cron', internalCronRoutes);
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Needs a stable public URL for app store listings, independent of any
+// particular app build — served here rather than as a frontend screen.
+app.get('/privacy', (req, res) => {
+  res.type('html').send(PRIVACY_POLICY_HTML);
 });
 
 // Error Handler (debe ser último)

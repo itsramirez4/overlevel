@@ -11,6 +11,7 @@ import { Header } from '../../../components/common/Header';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Card } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
+import { Skeleton } from '../../../components/ui/Skeleton';
 import { VolumeChart } from '../../../components/analytics/VolumeChart';
 import { usePullToRefresh } from '../../../hooks/usePullToRefresh';
 
@@ -75,6 +76,17 @@ export default function AnalyticsScreen() {
       <View style={styles.content}>
         <Header title="Analíticas" subtitle="Progreso por ejercicio" showLogo />
 
+        {isLoading ? (
+          <View style={styles.listContent}>
+            <Card style={styles.chartCard}>
+              <Skeleton width={140} height={16} style={styles.chartTitleSkeleton} />
+              <Skeleton width="100%" height={120} />
+            </Card>
+            <ExerciseRowSkeleton />
+            <ExerciseRowSkeleton />
+            <ExerciseRowSkeleton />
+          </View>
+        ) : (
         <FlatList
           data={filteredExercises}
           keyExtractor={(item) => item.id}
@@ -141,12 +153,20 @@ export default function AnalyticsScreen() {
             </AnimatedTouchable>
           )}
         />
+        )}
       </View>
     </SafeAreaView>
   );
 }
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+const ExerciseRowSkeleton = () => (
+  <View style={styles.card}>
+    <Skeleton width={36} height={36} radius={999} style={styles.iconBadge} />
+    <Skeleton width="50%" height={15} />
+  </View>
+);
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -170,6 +190,9 @@ const styles = StyleSheet.create({
   chartTitle: {
     ...typography.h3,
     color: colors.text.primary,
+    marginBottom: spacing.md,
+  },
+  chartTitleSkeleton: {
     marginBottom: spacing.md,
   },
   card: {

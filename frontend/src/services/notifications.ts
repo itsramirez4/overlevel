@@ -1,4 +1,4 @@
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -55,14 +55,10 @@ export const registerForPushNotifications = async (): Promise<void> => {
     await api.post('/users/me/push-token', { token, platform: Platform.OS });
   } catch (err) {
     // Best-effort — reported, not thrown, so a push-registration failure
-    // never blocks the sign-in/workout-start flow it's called from.
+    // never blocks the sign-in/workout-start flow it's called from. Visible
+    // in the backend logs/Sentry (see errorReporting.ts) instead of
+    // interrupting the user with an on-device alert.
     reportError(err, { context: 'registerForPushNotifications' });
-    // TEMPORARY, remove once real push is confirmed working end to end —
-    // this failure is otherwise invisible (no Sentry/log access from a
-    // released build), so surface it directly on-device for this one round
-    // of diagnosis.
-    const message = err instanceof Error ? err.message : String(err);
-    Alert.alert('Push registration failed (debug)', message);
   }
 };
 

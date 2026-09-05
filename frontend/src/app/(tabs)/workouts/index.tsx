@@ -14,6 +14,7 @@ import { Header } from '../../../components/common/Header';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Loader } from '../../../components/ui/Loader';
+import { Skeleton } from '../../../components/ui/Skeleton';
 import { Exercise, Routine, Workout } from '../../../types';
 
 export default function WorkoutsScreen() {
@@ -129,7 +130,12 @@ export default function WorkoutsScreen() {
             )}
 
             <Text style={styles.sectionTitle}>Tus rutinas</Text>
-            {isLoading ? null : !routines?.length ? (
+            {isLoading ? (
+              <>
+                <RoutineRowSkeleton />
+                <RoutineRowSkeleton />
+              </>
+            ) : !routines?.length ? (
               <EmptyState
                 icon={ListChecks}
                 title="Sin rutinas todavía"
@@ -170,6 +176,13 @@ export default function WorkoutsScreen() {
 }
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+const RoutineRowSkeleton = () => (
+  <View style={styles.routineCard}>
+    <Skeleton width={36} height={36} radius={999} style={styles.routineIconBadge} />
+    <Skeleton width="55%" height={15} />
+  </View>
+);
 
 const styles = StyleSheet.create({
   safeArea: {

@@ -8,3 +8,12 @@ describe('GET /health', () => {
     expect(res.body.status).toBe('ok');
   });
 });
+
+describe('GET /privacy', () => {
+  it('serves the privacy policy as HTML', async () => {
+    const res = await request(app).get('/privacy');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/html/);
+    expect(res.text).toContain('Política de privacidad');
+  });
+});
