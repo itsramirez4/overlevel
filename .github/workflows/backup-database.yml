@@ -15,9 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install PostgreSQL client
+        # Ubuntu noble's own postgresql-client package is v16, but Supabase
+        # runs Postgres 17 — pg_dump refuses to dump from a newer server
+        # than itself ("aborting because of server version mismatch").
+        # apt.postgresql.org.sh adds the PGDG repo, which carries current
+        # major versions Ubuntu's own repos lag behind.
         run: |
+          sudo apt-get install --yes postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get update
-          sudo apt-get install --yes postgresql-client
+          sudo apt-get install --yes postgresql-client-17
 
       - name: Set backup filename
         id: vars
