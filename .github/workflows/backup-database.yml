@@ -24,13 +24,18 @@ jobs:
         run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
 
       - name: Dump database
+        # The direct connection host (db.<ref>.supabase.co) resolves IPv6-only
+        # and GitHub Actions runners have no IPv6 route ("Network is
+        # unreachable") — the session pooler is Supabase's own recommended
+        # workaround for exactly this case, since it resolves over IPv4.
+        # Pooler connections need the project ref appended to the username.
         env:
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           pg_dump \
-            --host=db.kyzpbwrmtrppngivhiec.supabase.co \
+            --host=aws-0-eu-west-1.pooler.supabase.com \
             --port=5432 \
-            --username=postgres \
+            --username=postgres.kyzpbwrmtrppngivhiec \
             --dbname=postgres \
             --no-owner --no-acl \
             --format=plain \
