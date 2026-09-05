@@ -11,6 +11,7 @@ import {
 } from '../services/tokenService';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { DEFAULT_EXERCISE_CATALOG } from '../config/defaultExerciseCatalog';
 
 /** Same shape updateUserSchema enforces for a user-driven username change
  * (lowercase, [a-z0-9_.]+, 3-30 chars) — the auto-generated one from a
@@ -20,6 +21,28 @@ function deriveUsername(email: string, userId: string): string {
   const stripped = (email.split('@')[0] || '').toLowerCase().replace(/[^a-z0-9_.]/g, '');
   const trimmed = stripped.slice(0, 30);
   return trimmed.length >= 3 ? trimmed : `user_${userId.slice(0, 8)}`;
+}
+
+/** Best-effort — a brand-new account with zero exercises otherwise has to
+ * create every single one by hand before logging its first set (migration
+ * 016 only ever seeded this retroactively, for users that already existed
+ * at the time it ran). Never blocks/fails account creation over it: whoever
+ * calls this already has a real users row either way. */
+async function seedDefaultExercises(userId: string): Promise<void> {
+  try {
+    const rows = DEFAULT_EXERCISE_CATALOG.map((e) => ({
+      user_id: userId,
+      name: e.name,
+      category: e.category,
+      muscle_groups: e.muscle_groups,
+      equipment: e.equipment,
+      is_custom: false,
+    }));
+    const { error } = await supabaseAdmin.from('exercises').insert(rows);
+    if (error) logger.error('Failed to seed default exercise catalog', error);
+  } catch (err) {
+    logger.error('Failed to seed default exercise catalog', err);
+  }
 }
 
 /** Shared by login, register (when email confirmation is off), and
@@ -62,9 +85,11 @@ async function provisionUserProfile(authUser: { id: string; email?: string }) {
       .single();
 
     if (retryError || !retried) throw new AppError('Failed to provision user profile');
+    await seedDefaultExercises(retried.id);
     return retried;
   }
   if (createError || !createdUser) throw new AppError('Failed to provision user profile');
+  await seedDefaultExercises(createdUser.id);
   return createdUser;
 }
 
