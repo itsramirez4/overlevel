@@ -125,6 +125,13 @@ export class AuthController {
    * that project setting ever changes.
    */
   async register(req: Request, res: Response) {
+    // Closed for now — flip ENABLE_SELF_REGISTRATION=true on the backend
+    // when ready to open signups. Checked before ever touching Supabase Auth
+    // so a closed period can't accumulate half-created accounts.
+    if (process.env.ENABLE_SELF_REGISTRATION !== 'true') {
+      throw new AppError('El registro no está disponible todavía. Más adelante.', 403);
+    }
+
     const { email, password } = req.body;
 
     const { data, error } = await supabase.auth.signUp({

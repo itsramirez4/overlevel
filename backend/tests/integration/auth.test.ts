@@ -127,6 +127,19 @@ describe('auth', () => {
         await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
       }
     });
+
+    it('rejects with 403 when ENABLE_SELF_REGISTRATION is not "true"', async () => {
+      const original = process.env.ENABLE_SELF_REGISTRATION;
+      process.env.ENABLE_SELF_REGISTRATION = 'false';
+      try {
+        const res = await request(app)
+          .post('/api/auth/register')
+          .send({ email: 'jest-register-closed@gmail.com', password: 'StrongPass123!' });
+        expect(res.status).toBe(403);
+      } finally {
+        process.env.ENABLE_SELF_REGISTRATION = original;
+      }
+    });
   });
 
   describe('confirm-email', () => {

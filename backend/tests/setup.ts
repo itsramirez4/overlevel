@@ -10,3 +10,8 @@ process.env.SUPABASE_ANON_KEY ||= 'placeholder-anon-key';
 process.env.SUPABASE_SERVICE_KEY ||= 'placeholder-service-key';
 process.env.JWT_SECRET ||= 'test-secret';
 process.env.CRON_SECRET ||= 'test-cron-secret';
+// Always on for tests regardless of the real .env's value (closed by
+// default there) — the register/confirm-email suite needs to exercise the
+// real signup flow; the one test for the closed-by-default behavior
+// overrides this locally and restores it afterward.
+process.env.ENABLE_SELF_REGISTRATION = 'true';
